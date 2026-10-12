@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <title>AhBiYout IpName2</title>
+    <script>
+      // Ultimate error interceptor to silence cross-origin and dev-server/HMR errors in iframe preview
+      window.addEventListener('error', function(event) {
+        var msg = String(event.message || '');
+        var file = String(event.filename || '');
+        if (
+          msg === 'Script error.' || 
+          msg.includes('Script error.') ||
+          msg.includes('websocket') || 
+          msg.includes('WebSocket') || 
+          msg.includes('HMR') ||
+          file.includes('vite') ||
+          !msg
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        var msgStr = String(message || '');
+        var srcStr = String(source || '');
+        if (
+          msgStr === 'Script error.' || 
+          msgStr.includes('Script error.') ||
+          msgStr.includes('websocket') || 
+          msgStr.includes('WebSocket') || 
+          msgStr.includes('HMR') ||
+          srcStr.includes('vite') ||
+          !message
+        ) {
+          return true; // Completely suppress default browser reporting
+        }
+        return false;
+      };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason ? String(event.reason.message || event.reason) : '';
+        if (
+          reason.includes('websocket') || 
+          reason.includes('WebSocket') || 
+          reason.includes('HMR') ||
+          reason.includes('Script error.')
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+    // Apply saved theme immediately to prevent flash
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const savedTheme = localStorage.getItem('app-theme');
+        if (savedTheme) {
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+      }
+    } catch (e) {
+      console.warn("Storage item extraction failed:", e);
+    }
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "IpName2 v1.7",
+  "description": "Professional Windows-native utility for rapid computer name and network configuration with clean adapter filtering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

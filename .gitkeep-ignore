@@ -1,0 +1,68 @@
+# ======================================================================
+# AhBiYout IpName2 - .gitkeep-ignore
+# ======================================================================
+# Files and patterns listed in this file are excluded from Git commits,
+# ignored, and cleaned by automated build & staging scripts to ensure
+# that only essential source binaries, metadata, and configuration
+# are tracked and pushed to GitHub.
+# ======================================================================
+
+# Unversioned & Intermediate Binary Artifacts
+*.exe
+*.msi
+*.dll
+*.lib
+*.exp
+*.pdb
+*.obj
+*.o
+*.so
+*.dylib
+*.bundle
+
+# Build & Bundler Output Folders
+dist/
+dist-ssr/
+dist-installer/
+build/
+Output/
+release/
+
+# Tauri & Rust Compilation Cache
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Dependency Cache & Alternate Lockfiles
+node_modules/
+bun.lock
+
+# Temporary, Backup & Log Files
+*.tmp
+*.bak
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS & Filesystem Cache
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local Environment Secrets & Overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+
+# IDE Local States
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.sln

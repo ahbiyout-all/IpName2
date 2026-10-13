@@ -1,0 +1,100 @@
+name: Release & Packaging Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Package Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS (Compliant with Node 20 EOL Policy)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install npm dependencies
+        run: |
+          if (Test-Path "package-lock.json") {
+            npm ci
+          } else {
+            npm install
+          }
+
+      - name: Setup Rust Stable Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Compile Pure Native DLL (ipname_core.dll)
+        shell: cmd
+        run: |
+          if exist "native\ipname_core\build.bat" (
+            pushd native\ipname_core
+            call build.bat
+            popd
+          )
+
+      - name: Build React Frontend
+        run: npm run build
+
+      - name: Build Tauri Desktop Application
+        run: npm run tauri build
+
+      - name: Post-build Versioned Executable Pipeline
+        run: node bin/postbuild-rename.cjs
+
+      - name: Compile Inno Setup Professional Installer
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\iscc.exe" installer\setup.iss
+          if not exist "dist-installer" mkdir dist-installer
+          dir dist-installer
+
+      - name: Extract Release Version
+        id: extract_version
+        shell: pwsh
+        run: |
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $ver = $pkg.version
+          Write-Output "APP_VERSION=$ver" >> $env:GITHUB_ENV
+          Write-Output "version=$ver" >> $env:GITHUB_OUTPUT
+          echo "Detected version: $ver"
+
+      - name: Upload Installer Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        with:
+          name: "IpName2 v${{ steps.extract_version.outputs.version }}"
+          tag_name: "v${{ steps.extract_version.outputs.version }}"
+          body: |
+            ## 🚀 IpName2 v${{ steps.extract_version.outputs.version }} Release
+            
+            고급 윈도우 시스템 및 네트워크 구성 유틸리티 **AhBiYout IpName2**의 공식 릴리스 설치 파일입니다.
+            
+            ### 📦 다운로드 및 설치 안내
+            - 아래 첨부된 전용 설치 프로그램(`IpName2_v${{ steps.extract_version.outputs.version }}_Setup.exe`)을 다운로드하여 실행하세요.
+            - 기존 버전이 설치되어 있을 경우 자동으로 감지하여 덮어쓰기/삭제 후 업데이트를 진행합니다.
+            - Windows 방화벽 인바운드/아웃바운드 규칙이 자동으로 조용히 등록됩니다.
+            - 무인 설치 지원: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+            
+            ---
+            * **개발자**: AhBiYout (AhBiYout-all)
+            * **공식 블로그**: https://ahbiyoutvibe.blogspot.com/
+            * **공식 웹사이트**: https://www.cisnet.co.kr
+          draft: false
+          prerelease: false
+          files: |
+            dist-installer/*_Setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -100,6 +100,18 @@ typedef struct {
     uint32_t is_routable;       /* 1 = Routable on global internet, 0 = Local/Non-routable */
 } IpNameIpClassification;
 
+/**
+ * Network Adapter Distinction result structure
+ * Definitively separates physical hardware adapters from virtual/software adapters.
+ */
+typedef struct {
+    uint32_t is_virtual;         /* 1 = Virtual/Software adapter, 0 = Physical hardware NIC */
+    uint32_t is_wifi;            /* 1 = Wi-Fi (802.11) wireless adapter, 0 = Wired Ethernet */
+    uint32_t is_ghost_or_filter; /* 1 = Filter driver, loopback, or registry phantom remnant, 0 = Valid adapter */
+    char category[32];           /* "Physical Ethernet", "Physical Wi-Fi", "Virtual Ethernet", "Virtual Tunnel" */
+    char detection_reason[128];  /* Detailed detection criteria (e.g. "Physical Dedicated Hardware", "Hyper-V OUI MAC", "WSL/Hyper-V Interface") */
+} IpNameAdapterDistinction;
+
 /* ========================================================================= */
 /* Exported Function Declarations                                            */
 /* ========================================================================= */
@@ -186,6 +198,23 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
 );
 
 /**
+ * Extended IP conflict detection: Checks for IP conflicts on the local subnet using SendARP,
+ * explicitly ignoring/whitelisting the local machine's own MAC address to prevent false positives.
+ * 
+ * @param target_ip The IPv4 address to test for conflicts
+ * @param source_ip Optional local source IP (can be NULL for default)
+ * @param own_mac Optional MAC address of the local adapter (can be NULL)
+ * @param out_result Pointer to receive conflict detection outcome
+ * @return IPNAME_OK on successful probe or local match, or error code
+ */
+IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
+    const char* target_ip,
+    const char* source_ip,
+    const char* own_mac,
+    IpNameConflictResult* out_result
+);
+
+/**
  * High-speed TCP port connectivity and handshake latency probe.
  * Useful for validating DNS (port 53), HTTP (port 80), HTTPS (port 443), etc.
  * 
@@ -213,6 +242,27 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckTcpPort(
 IPNAME_API IpNameStatus IPNAME_CALL IpName_ClassifyIp(
     const char* ip_address,
     IpNameIpClassification* out_classification
+);
+
+/**
+ * Definitively distinguishes between physical hardware network adapters and
+ * virtual / software / tunnel adapters using NDIS parameters, MAC OUI, and heuristic inspection.
+ * 
+ * @param name Adapter friendly name or interface name
+ * @param desc Adapter description / driver name
+ * @param mac MAC address string formatted e.g. "AA:BB:CC:DD:EE:FF"
+ * @param if_type Windows NDIS IfType (e.g. 6 = Ethernet, 71 = IEEE 802.11 Wi-Fi, 131 = Tunnel, 24 = Loopback)
+ * @param tunnel_type Windows NDIS TunnelType (0 = None / Non-tunnel, >0 = Tunnel interface)
+ * @param out_result Pointer to receive distinction result
+ * @return IPNAME_OK on success, or error code
+ */
+IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
+    const char* name,
+    const char* desc,
+    const char* mac,
+    uint32_t if_type,
+    uint32_t tunnel_type,
+    IpNameAdapterDistinction* out_result
 );
 
 #ifdef __cplusplus

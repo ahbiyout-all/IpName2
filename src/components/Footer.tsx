@@ -36,7 +36,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
             title="About / Licenses"
           >
             <Settings size={11} className="animate-pulse text-primary" />
-            <span>v1.10-STABLE</span>
+            <span>v1.11-STABLE</span>
           </button>
           <div className="flex items-center gap-1 text-foreground/80" title={`${t('author')}: AhBiYout`}>
             <User size={11} className="text-primary/70" />
@@ -112,13 +112,13 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
               <Settings size={24} className="animate-spin-slow" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-base text-foreground leading-tight">IpName2 v1.10.3</h4>
+              <h4 className="font-bold text-base text-foreground leading-tight">IpName2 v1.11.0</h4>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">{t('appDesc')}</p>
               
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 pt-2.5 border-t border-border/40 text-[11px]">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Settings size={12} className="text-primary/70 shrink-0" />
-                  <span>{t('version')}: <strong className="text-foreground font-medium">v1.10.3 (STABLE)</strong></span>
+                  <span>{t('version')}: <strong className="text-foreground font-medium">v1.11.0 (STABLE)</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <User size={12} className="text-primary/70 shrink-0" />

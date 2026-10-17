@@ -1,6 +1,6 @@
 # IpName2 문서 허브 (Documentation Hub)
 
-본 디렉터리(`/docs`)는 **AhBiYout IpName2 (v1.10.0)** 데스크톱 애플리케이션의 개발, 아키텍처, 순수 창작 DLL, 버전 관리, 패치 노트 및 GitHub 배포 파이프라인을 체계적으로 관리하는 공식 문서 모음입니다.
+본 디렉터리(`/docs`)는 **AhBiYout IpName2 (v1.12.4)** 데스크톱 애플리케이션의 개발, 아키텍처, 순수 창작 DLL, 버전 관리, 패치 노트 및 GitHub 배포 파이프라인을 체계적으로 관리하는 공식 문서 모음입니다.
 
 ---
 
@@ -9,9 +9,9 @@
 | 문서명 | 설명 | 주요 내용 |
 | :--- | :--- | :--- |
 | **[DEVELOPMENT.md](./DEVELOPMENT.md)** | 개발 및 빌드 가이드 | 환경 설정, 빌드 스크립트(`build.bat`/`ps1`), 데스크톱 규격(650x800), 포트(3030), GitHub 핵심 파일 관리(`scripts/github/`), 실시간 자동 업데이트 |
-| **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.10.0` 상세 변경 내역, 순수 창작 DLL, 모바일 잔여물 제거, 핵심 빌드 파일 정밀 감사 기록 |
+| **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.12.4` 상세 변경 내역, git-push.bat 제외, 본인 MAC 충돌 필터링, 어댑터 및 IP 정렬 알고리즘 |
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | 시스템 아키텍처 명세서 | Rust Tauri Backend, Win32 Native C++ API, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, 실시간 GitHub 업데이트 데이터 흐름 |
-| **[DLL_SPECIFICATION.md](./DLL_SPECIFICATION.md)** | 순수 창작 DLL 명세서 | `ipname_core.dll` C-ABI 규격, Layer-2 ARP IP 충돌 감지(`SendARP`), 넌블로킹 TCP 포트 진단, 서브넷 비트 연산기, 기존 시스템 DLL 감사 보고서 |
+| **[DLL_SPECIFICATION.md](./DLL_SPECIFICATION.md)** | 순수 창작 DLL 명세서 | `ipname_core.dll` C-ABI 규격, 물리/가상 어댑터 정밀 판별(`IpName_DistinguishAdapter`), Layer-2 ARP IP 충돌 감지(`SendARP`), 넌블로킹 TCP 포트 진단, 서브넷 비트 연산기, 기존 시스템 DLL 감사 보고서 |
 | **[VERSIONING_POLICY.md](./VERSIONING_POLICY.md)** | 버전 관리 및 기록 정책 | **MAJOR.MINOR.PATCH** 3단계 버전 관리 원칙, 버전 삼중 동기화(Triple Lockstep), 다단 동적 버전 자동 추출 및 특이점 기록 규칙 |
 | **[LICENSE_NOTICE.md](./LICENSE_NOTICE.md)** | 라이선스 고지사항 | 오픈소스 라이선스 고지 및 MIT License 전문 (Tauri, React, Vite, Tailwind CSS, Lucide, Jimp 등) |
 

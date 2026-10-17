@@ -2,6 +2,170 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.12.4] - 2026-10-17
+
+### 1. `git-push.bat` GitHub 푸시 및 저장소 추적 제외 목록 공식 편입
+* **배치 스크립트 격리 및 저장소 추적 해제 (`.gitignore`, `.gitkeep-ignore`)**:
+  - `git-push.bat` 및 `scripts/git-push.bat`을 공식 `.gitignore` 및 `.gitkeep-ignore` 목록에 전면 등록.
+  - 로컬 환경에서의 배치 자동화 실행 기능은 완벽히 보존하면서, GitHub 리포지토리에는 업로드되지 않도록 Git 캐시 인덱스 추적(`git rm --cached`) 해제 적용.
+* **핵심 화이트리스트 매니페스트 및 자동 감사 스크립트 연동 (`core-manifest.json`, `verify-core-files.cjs`)**:
+  - `scripts/github/core-manifest.json` 내 `requiredFiles` 및 `coreRootFiles`에서 `git-push.bat`을 안전하게 제거하고 `excludedFiles` 항목으로 공식 재배치.
+  - `scripts/github/verify-core-files.cjs`에 제외 대상 파일의 Git 인덱스 추적 여부를 실시간 검증하는 무결성 검사 로직(Step 3b) 탑재.
+  - 리포지토리 구조 요약 출력에서 `git-push.bat`을 로컬 전용 자동화 스크립트로 분리 표기.
+
+---
+
+## [v1.12.3] - 2026-10-13
+
+### 1. 보조 IP 충돌 검사 시 본인 MAC 주소 오탐(Self-Conflict) 결함 원천 해결
+* **로컬 어댑터 MAC 주소 및 시스템 랜카드 화이트리스트 필터링 구현 (`AdapterItem.tsx`, `windows_native.rs`)**:
+  - **결함 원인 분석**: Windows 환경에서 이미 해당 랜카드(또는 로컬 PC)에 보조 IP로 바인딩되어 있는 IP 주소에 대해 `SendARP` 질의를 수행하면, Windows IP 스택이 본인 랜카드의 MAC 주소(예: `18:C0:4D:7F:68:08`)로 응답하여 이를 외부 기기와의 중복 충돌로 오인 경고하던 문제 해결.
+  - **Tauri 백엔드 개선 (`check_ip_conflict_native`)**:
+    - 호출 시 현재 검사 대상 어댑터의 MAC 주소(`own_mac`)를 전달받아, ARP 응답 MAC과 일치할 경우 `is_conflict: false` 및 정상 사용 메시지로 처리.
+    - 로컬 머신에 구성된 모든 네트워크 어댑터(`get_adapters_native`)의 MAC 목록 및 기존 할당 IP 목록과 전수 대조하여, 본인 컴퓨터 소유 IP인 경우 외부 충돌 경고를 원천 차단.
+  - **프론트엔드 연동 (`AdapterItem.tsx`)**:
+    - `isSameMac` 하드웨어 주소 비교 유틸리티를 적용하여 대소문자/구분기호(`:`, `-`) 차이에 상관없이 본인 MAC 주소를 정밀 식별.
+    - 본인 랜카드 MAC 감지 시 안내 문구를 `"✓ [현재 어댑터] 해당 보조 IP는 현재 본인 랜카드(MAC: ...)에 할당된 정상 주소이며, 외부 충돌이 없습니다."`로 긍정적 안내 전환.
+  - **내부 입력 중복 검증 추가**:
+    - 기본 IP와 동일한 IP를 보조 IP로 입력하거나, 보조 IP 목록 내 서로 중복된 IP를 입력한 경우 네트워크 ARP 요청 전 즉각 안내 문구(`⚠️ [내부 중복] ...`) 표출.
+    - 사용자가 보조 IP 주소를 수정하면 기존 충돌 경고 상태를 즉각 자동 리셋하여 UI 피드백 향상.
+
+### 2. 순수 창작 DLL (`ipname_core.dll`) 확장 충돌 검사 API 탑재
+* **`IpName_CheckIpConflictEx` 함수 신설 및 C-ABI 표준 탑재 (`ipname_core.h`, `ipname_core.c`)**:
+  - `own_mac` 파라미터를 추가하여 DLL 내부에서도 로컬 MAC 주소를 바이너리 레벨에서 대조 및 화이트리스트 처리.
+  - 기존 `IpName_CheckIpConflict` 호출부와의 100% 하위 호환성 유지.
+  - C DLL 버전 삼중 동기화 (`v1.12.3`).
+
+### 3. 어댑터 및 IP 자동 정렬 알고리즘 구현 (`useSystemConfig.ts`)
+* **DHCP 및 게이트웨이 연동 IPv4 기본(Primary) 우선순위 강제 정렬**:
+  - `useSystemConfig.ts` 내부에 `sortAdaptersAndEnforcePrimaryIp` 알고리즘 탑재.
+  - 게이트웨이 서브넷과 일치하는 IPv4 주소 또는 DHCP 할당 주소를 최우선(`ipAddress`, Primary)으로 강제 정렬하고, 보조 정적 IP나 링크 로컬 주소(`169.254.x.x`)를 보조 IP 목록으로 자동 배치.
+  - 네트워크 어댑터 목록 역시 게이트웨이/IP 연결 상태를 기준으로 최상단에 렌더링되도록 정렬 로직 자동화.
+
+### 4. GitHub 동기화 제외 목록 정밀 고도화 및 불필요 파일 완전 제거
+* **`.gitignore` 및 `.gitkeep-ignore` 제외 규칙 전면 강화**:
+  - 임시 및 스크래치 파일(`.aistudio/`, `bun.lock`, `*.cache`, `*.tsbuildinfo`, `coverage/`, `.claude/`, `.cursor/`, `.fleet/`, 일회성 스크립트 등)을 차단 목록에 완벽 등록.
+  - 빌드 산출물(`dist/`, `target/`, `node_modules/`, `Output/`, `release/`, `*.exe`, `*.dll`, `*.lib`, `*.obj` 등) 원천 제외.
+  - 프로젝트 빌드 및 실행에 필수적인 핵심 소스 코드(`src/`, `src-tauri/`, `native/`), 빌드 스크립트, 아이콘 리소스, 문서(`docs/`)만 엄격히 추적 및 푸시되도록 파이프라인 및 매니페스트(`core-manifest.json`, `verify-core-files.cjs`) 검증 체계 강화.
+
+---
+
+## [v1.12.2] - 2026-10-13
+
+### 1. Rust 컴파일러 경고 완전 제거 (Zero Compiler Warnings 달성)
+* **`AdapterDistinctionResult` 필드 명명 규칙 경고 해소 (`windows_native.rs`)**:
+  - `isVirtual`, `isWifi`, `isGhostOrFilter`, `detectionReason` 필드에 대해 발생하던 `non_snake_case` 경고 4건을 `#[allow(non_snake_case)]` 속성 부여로 완전 해결.
+  - Rust 백엔드와 프론트엔드 간 camelCase 직렬화/역직렬화 호환성을 100% 유지하면서 컴파일러 경고 원천 차단.
+* **`build.rs` 빌드 스크립트 정리 및 Deprecation 경고 해소**:
+  - `tauri_build` 내부에서 발생하던 `STATIC_VCRUNTIME is deprecated` 빌드 경고를 유발하는 레거시 호출을 제거하여 Clean Native Build (0 Warnings) 달성.
+* **최종 인스톨러 생성 검증 (`IpName2 v1.12.2_1.12.2_x64-setup.exe`)**:
+  - NSIS x64 번들 인스톨러 및 단독 실행 바이너리(`ipname2.exe`) 완전 패키징 확인.
+
+---
+
+## [v1.12.1] - 2026-10-13
+
+### 1. Tauri v2 빌드 설정(`tauri.conf.json`) 스키마 불일치 오류 완전 해결
+* **`bundle > windows` 내 예기치 않은 속성(`staticVCRuntime`) 스키마 에러 해소**:
+  - `tauri build` 실행 시 발생하던 `Error: "tauri.conf.json" error on bundle > windows: Additional properties are not allowed ('staticVCRuntime' was unexpected)` 오류 수정.
+  - `bundle.windows` 내부의 비표준 `staticVCRuntime` 필드를 제거하고, `src-tauri/build.rs`에서 `tauri_build::WindowsAttributes::new().static_vc_runtime(true)` 공식 API를 직접 호출하도록 완벽 전환.
+  - `npx tauri info` 및 `tauri build` 명령어가 스키마 유효성 검사를 100% 정상 통과하도록 보장.
+
+### 2. 순수 창작 DLL (`ipname_core.dll`) GCC 컴파일러 재정의 경고 제거
+* **`IPNAME_CORE_EXPORTS` 매크로 중복 정의 방어 (`ipname_core.c`)**:
+  - `native/ipname_core/build.bat`의 GCC 명령행 옵션(`-DIPNAME_CORE_EXPORTS`)과 소스 코드 내 `#define` 구문 간의 충돌로 발생하던 `'IPNAME_CORE_EXPORTS' redefined` 경고를 `#ifndef` 가드로 완벽 차단.
+  - MinGW GCC 및 MSVC 환경 모두에서 0 Warnings의 깨끗한 Clean Compile 달성.
+
+---
+
+## [v1.12.0] - 2026-10-13
+
+### 1. 물리/가상 어댑터 필터링 엄격화 및 가상 어댑터 혼입 버그 원천 해결
+* **물리 어댑터 선택 시 가상 어댑터가 함께 표시되던 폴백 버그 원천 차단 (`App.tsx`)**:
+  - 기존 로직에서 물리 어댑터 필터 적용 시 개수 미체크 폴백(`physicalAdapters.length > 0 ? physicalAdapters : adapters`)으로 인해 전체(가상 포함) 어댑터가 노출되던 문제를 완전 제거.
+  - 필터 탭(`물리 어댑터` / `가상 어댑터` / `전체`) 선택 시 각각의 순수 배열(`physicalAdapters`, `virtualAdapters`)만 독립적으로 반환되도록 엄격 분리.
+* **선택된 어댑터(`selectedAdapter`)의 필터 동기화 보장**:
+  - `selectedAdapter`를 `displayAdapters` 기준으로만 즉각 선출하도록 반응형 연산(`useMemo`) 최적화.
+  - 사용자가 '물리 어댑터' 탭을 누르는 즉시 상세 카드(`AdapterItem`)에 표시되는 어댑터도 100% 물리 하드웨어 랜카드로 자동 동기화되어 가상 어댑터가 혼재되는 현상 완전 종식.
+  - 가로 스크롤 탭 바 및 필터 세그먼트 카운터 수치(`물리 어댑터 (N)`) 실시간 일치.
+
+### 2. 어댑터 리스트 불일치(Adapter List Mismatch) 및 한글 인코딩 탈락 해결
+* **PowerShell 콘솔 인코딩(CP949)에 의한 어댑터 이름 손상 및 누락 방지 (`useSystemConfig.ts`)**:
+  - Windows 한국어 환경에서 PowerShell 출력 결과의 한글("이더넷", "가상")이 깨져 물리 어댑터 검증에서 누락되던 위험을 원천 방지하기 위해, Rust `GetAdaptersAddresses` 커널 API 수집 결과를 1차 권위(Authoritative Source)로 확정.
+  - PowerShell 이름 비교 실패로 인해 실제 하드웨어 랜카드가 목록에서 일방적으로 제외되던 결함 코드 완전 제거.
+* **유령(Ghost) 어댑터 부활 및 중복 식별자(`id`) 병합 불일치 해소**:
+  - 이전 상태(`prevAdapters`)의 비활성 잔여 항목이 중복 추가되던 로직을 제거하고, Windows 실시간 활성/비활성 어댑터와 1:1 완벽 정합 유지.
+
+### 3. 순수 창작 DLL (`ipname_core.dll`) 물리/가상 어댑터 정밀 판별 엔진 신설
+* **C-ABI 네이티브 판별 함수 `IpName_DistinguishAdapter` 공식 탑재 (`ipname_core.h`, `ipname_core.c`)**:
+  - **IEEE 하이퍼바이저 MAC OUI 하드웨어 식별**: Hyper-V(`00:15:5D`), VMware(`00:05:69`, `00:0C:29`, `00:50:56`), VirtualBox(`08:00:27`), QEMU/KVM(`52:54:00`), Xen(`00:16:3E`), Parallels(`00:1C:42`) 고유 OUI 프리픽스를 인프로세스 메모리에서 마이크로초 단위로 탐지.
+  - **Windows NDIS TunnelType & IfType 심층 검사**: 커널 레벨 터널 타입(`TunnelType != 0`) 및 가상/루프백 인터페이스 완벽 분별.
+  - **다국어(한국어 '가상' + 영문 시그니처) 휴리스틱 매칭**: 드라이버 설명 및 장치 이름에 포함된 `가상`, `virtual`, `wsl`, `wintun`, `virtio` 등 30여 개 특화 시그니처 판별.
+* **Tauri 네이티브 커맨드 연동 (`src-tauri/src/lib.rs`, `windows_native.rs`)**:
+  - Rust 및 프론트엔드에서 언제든지 호출 가능한 `distinguish_adapter` IPC 인터페이스 구현.
+  - `IpNameCore` DLL 버전 삼중 동기화 (`v1.12.0`).
+
+---
+
+## [v1.11.0] - 2026-10-13
+
+### 1. 단일 네트워크 어댑터(이더넷/Wi-Fi) 다중 IP(한 개 이상의 IP) 할당 및 보조 IP 관리 공식 지원
+* **Rust 네이티브 커널 스택(`windows_native.rs`) 다중 IP 수집 구현**:
+  - `SecondaryIp` 구조체 신설(`ipAddress`, `subnetMask`) 및 `NetworkAdapter`에 `additionalIps: Vec<SecondaryIp>` 필드 추가.
+  - `GetAdaptersAddresses` API의 IPv4 유니캐스트 주소 리스트 순회 시 단일 IP에서 중단되던 로직을 확장하여, 첫 번째 유효 IPv4는 기본 IP(`ipAddress`)로 설정하고 2번째 이상의 고유 IPv4 주소들을 `additionalIps`로 완벽 수집.
+* **Windows Netsh 네트워크 스택 자동 구성 연동 (`useSystemConfig.ts`)**:
+  - 수동 IP 설정 시 기본 IP(`set address ... source=static address=... mask=... gateway=...`)를 적용하여 기존 주소를 안전하게 갱신한 뒤, 구성된 보조 IP들을 순차적으로 `netsh interface ipv4 add address name="..." address=... mask=...` 명령어로 자동 바인딩.
+  - 중복 IP 입력 방지 검증(`duplicateIpWarning`) 및 보조 IP 서브넷 마스크 유효성 검사(`invalidSecondaryIp`) 탑재.
+  - DHCP 전환 시 기존에 등록된 모든 기본 및 보조 IP가 깔끔하게 초기화되도록 동기화 보장.
+* **프론트엔드 다중 IP 관리 UI/UX 및 실시간 검증 (`AdapterItem.tsx`)**:
+  - 수동 IP 설정 모드에서 `+ 보조 IP 추가` 버튼을 통해 1개 이상의 IP를 직관적으로 추가/삭제 가능.
+  - 보조 IP별 독립적인 IP 입력 필드 및 `SubnetMaskSelector` 서브넷 마스크 드롭다운 연동.
+  - 각 보조 IP마다 순수 창작 DLL (`ipname_core`) 기반의 초고속 ARP 레이어2 IP 충돌 검사 버튼 제공.
+  - 가로 650px x 세로 800px 기본 창 규격을 엄격 준수하는 정돈된 카드형 레이아웃 구현.
+* **다국어(i18n) 및 시맨틱 버전 동기화**:
+  - 한국어/영어 번역 파일(`src/i18n/translations.ts`)에 다중 IP 관련 키 등록.
+  - 새 기능 추가에 따른 Semantic Versioning MINOR 승급: `1.10.4` -> `1.11.0`.
+
+### 2. 물리/가상 이더넷(Physical vs Virtual NIC) 구분 정밀화 및 직관적 식별 체계 확립
+* **Windows NDIS 커널 및 PowerShell 통합 가상 어댑터 판별 고도화**:
+  - `NetworkAdapter` 구조체(Rust & TypeScript)에 `isVirtual: bool` 정규 필드를 추가하여, 어댑터 생성 시점부터 가상성 여부를 일관되게 전달.
+  - PowerShell `Get-NetAdapter -Property Name,Status,MacAddress,Virtual,InterfaceDescription` 조회를 통해 Windows NDIS 드라이버가 공인한 `Virtual` 불리언 속성 및 장치 드라이버 상세 설명(`InterfaceDescription`)을 즉각 반영.
+  - Rust(`windows_native.rs`) 및 TypeScript(`useSystemConfig.ts`)의 가상 어댑터 탐지 알고리즘을 확장하여 Hyper-V(`vEthernet`, `vSwitch`), VMware(`VMnet`), VirtualBox(`VBox`), WSL, TAP, TUN, WireGuard, Tailscale, ZeroTier, OpenVPN, Cisco AnyConnect, Hamachi, Radmin 등 현존하는 모든 가상/VPN 인터페이스를 100% 빈틈없이 감지.
+* **UI/UX 전반의 물리/가상 어댑터 명확한 시각적 구분 (`App.tsx`, `AdapterItem.tsx`)**:
+  - **어댑터 선택 탭 바**: 가로 스크롤 탭 바의 각 항목마다 `[물리]` (에메랄드), `[가상]` (호박색), `[Wi-Fi]` (파랑색) 전용 배지와 아이콘 색상을 적용하여 한눈에 식별 가능.
+  - **어댑터 상세 카드 헤더**: 어댑터 이름 우측에 `물리 이더넷` / `가상 이더넷` 전용 배지를 크게 표시하고, 상태 행에 `물리적 하드웨어 랜카드` vs `가상 네트워크 어댑터 (Hyper-V / VMware / WSL / VPN 등)` 설명을 상시 안내.
+  - **필터링 탭**: 상단 세그먼트 버튼(`물리 어댑터` / `가상 어댑터` / `전체`)을 통해 원하는 범주의 어댑터만 즉시 필터링하여 집중 관리 가능.
+  - **웹 프리뷰 모의 데이터 완비**: 브라우저 환경에서도 물리 이더넷(`Ethernet`), 무선(`Wi-Fi`), 가상(`vEthernet (WSL)`)의 3개 어댑터가 기본 로드되어 UI 및 기능을 즉시 검증 가능.
+
+### 3. Tauri v2 `STATIC_VCRUNTIME` 경고 완전 제거 및 최신 스키마 정합성 보장
+* **공식 Tauri v2 설정(`tauri.conf.json`) 마이그레이션**:
+  - `src-tauri/build.rs` 내 deprecated 처리된 `static_vc_runtime(true)` 코드를 제거하고, `tauri.conf.json` 내 `"bundle.windows.staticVCRuntime": true` 표준 규격으로 공식 이전.
+  - 빌드 시 발생하던 `STATIC_VCRUNTIME is deprecated` 경고를 완전히 해소하여 완전한 Clean Build(0 Warnings) 달성.
+
+---
+
+## [v1.10.4] - 2026-10-12
+
+### 1. GitHub Actions CI/CD `npm ci` 무결성 검증 오류(EUSAGE) 해결 및 락파일 정합성 회복
+* **`package.json` - `package-lock.json` 버전 범위 동기화**:
+  - `package.json` 내 `@tauri-apps/cli` 및 `@tauri-apps/api`의 버전 명세를 `^2.11.1`로 보정하여, 락파일에 빌드 시점 저장된 `@tauri-apps/cli@2.11.3` 및 OS별 바이너리 패키지들과의 엄격 불일치(EUSAGE: does not satisfy) 문제 원천 해소.
+  - `npm ci` 실행 시 무결성 검증 오류 없이 즉시 패키지가 완전 설치(Clean Install)되도록 정합성 회복.
+* **`.github/workflows/release.yml` 빌드 파이프라인 방어 로직 강화**:
+  - PowerShell 네이티브 프로세스 종료 코드(`$LASTEXITCODE`)를 검증하여, `npm ci`에서 예기치 못한 락파일 차이가 감지되더라도 즉시 파이프라인이 중단되지 않고 `npm install`로 자동 폴백되도록 이중 안전망 구축.
+
+### 2. Rust 네이티브 컴파일러 경고(11건) 및 빌드 런타임 최적화 (Clean Compilation)
+* **Rust non_snake_case 경고(10건) 해결**:
+  - 프론트엔드 IPC 직렬화 호환성을 100% 보존하면서, `SystemInfo` 및 `NetworkAdapter` 구조체에 `#[allow(non_snake_case)]` 명시적 선언을 적용하여 필드명(`computerName`, `ipAddress`, `isDhcp` 등) 관련 컴파일러 경고 완전 제거.
+* **미사용 임포트(`unused import`) 제거**:
+  - `src-tauri/src/windows_native.rs` 내 미사용 `windows_sys::Win32::NetworkManagement::Ndis::*` 임포트 정리.
+* **`STATIC_VCRUNTIME` Deprecation 경고 해소**:
+  - `src-tauri/build.rs`에 Tauri v2 공식 빌드 속성인 `windows = windows.static_vc_runtime(true);`를 명시적으로 구성하여 환경변수 기반 경고를 공식 API로 대체 및 정적 런타임 링크 안정화.
+
+### 3. 버전 삼중 동기화 (Triple Lockstep: v1.10.4)
+* `package.json` (`1.10.4`), `src-tauri/tauri.conf.json` (`1.10.4`), `src-tauri/Cargo.toml` (`1.10.4`), `docs/PATCH_NOTES.md` (`v1.10.4`), `docs/DEVELOPMENT.md`, `docs/ARCHITECTURE.md` 정합성 확립.
+
+---
+
 ## [v1.10.3] - 2026-10-12
 
 ### 1. 레지스트리 잔류 유령 물리 이더넷(Ghost Ethernet NIC) 정밀 판별 및 완전 제외

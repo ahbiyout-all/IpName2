@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 #[derive(Serialize, Clone, Debug)]
+#[allow(non_snake_case)]
 pub struct SystemInfo {
     pub computerName: String,
     pub workgroup: String,
@@ -11,6 +12,14 @@ pub struct SystemInfo {
 }
 
 #[derive(Serialize, Clone, Debug)]
+#[allow(non_snake_case)]
+pub struct SecondaryIp {
+    pub ipAddress: String,
+    pub subnetMask: String,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[allow(non_snake_case)]
 pub struct NetworkAdapter {
     pub id: String,
     pub name: String,
@@ -24,6 +33,9 @@ pub struct NetworkAdapter {
     pub macAddress: String,
     pub isDhcp: bool,
     pub isEnabled: bool,
+    pub isVirtual: bool,
+    pub description: String,
+    pub additionalIps: Vec<SecondaryIp>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -100,6 +112,65 @@ unsafe fn read_registry_string(hkey: windows_sys::Win32::System::Registry::HKEY,
             s.pop();
         }
         Some(s.trim().to_string())
+    } else {
+        None
+    }
+}
+
+#[cfg(windows)]
+unsafe fn read_registry_strings(hkey: windows_sys::Win32::System::Registry::HKEY, subkey: &str, value_name: &str) -> Option<Vec<String>> {
+    use windows_sys::Win32::System::Registry::*;
+    use std::os::windows::ffi::OsStrExt;
+    
+    let subkey_w: Vec<u16> = std::ffi::OsStr::new(subkey).encode_wide().chain(std::iter::once(0)).collect();
+    let value_w: Vec<u16> = std::ffi::OsStr::new(value_name).encode_wide().chain(std::iter::once(0)).collect();
+    
+    let mut hsub_key: HKEY = 0;
+    if RegOpenKeyExW(hkey, subkey_w.as_ptr(), 0, KEY_READ, &mut hsub_key) != 0 {
+        return None;
+    }
+    
+    let mut val_type: u32 = 0;
+    let mut len: u32 = 0;
+    if RegQueryValueExW(hsub_key, value_w.as_ptr(), std::ptr::null_mut(), &mut val_type, std::ptr::null_mut(), &mut len) != 0 || len == 0 {
+        RegCloseKey(hsub_key);
+        return None;
+    }
+    
+    let mut buffer = vec![0u8; len as usize];
+    if RegQueryValueExW(hsub_key, value_w.as_ptr(), std::ptr::null_mut(), &mut val_type, buffer.as_mut_ptr(), &mut len) != 0 {
+        RegCloseKey(hsub_key);
+        return None;
+    }
+    
+    RegCloseKey(hsub_key);
+    
+    if val_type == REG_MULTI_SZ {
+        let u16_slice = std::slice::from_raw_parts(buffer.as_ptr() as *const u16, len as usize / 2);
+        let mut result = Vec::new();
+        let mut curr = Vec::new();
+        for &ch in u16_slice {
+            if ch == 0 {
+                if !curr.is_empty() {
+                    let s = String::from_utf16_lossy(&curr).trim().to_string();
+                    if !s.is_empty() && s != "0.0.0.0" {
+                        result.push(s);
+                    }
+                    curr.clear();
+                }
+            } else {
+                curr.push(ch);
+            }
+        }
+        Some(result)
+    } else if val_type == REG_SZ || val_type == REG_EXPAND_SZ {
+        let u16_slice = std::slice::from_raw_parts(buffer.as_ptr() as *const u16, len as usize / 2);
+        let s = String::from_utf16_lossy(u16_slice).trim_end_matches('\0').trim().to_string();
+        if !s.is_empty() && s != "0.0.0.0" {
+            Some(vec![s])
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -217,7 +288,6 @@ pub fn get_system_info_native() -> Result<SystemInfo, String> {
 pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
     use windows_sys::Win32::NetworkManagement::IpHelper::*;
     use windows_sys::Win32::Networking::WinSock::*;
-    use windows_sys::Win32::NetworkManagement::Ndis::*;
     use std::ptr;
     
     unsafe {
@@ -293,6 +363,9 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 || addr.IfType == 23 // IF_TYPE_PPP
                 || addr.IfType == 28 // IF_TYPE_SLIP
                 || addr.IfType == 142 // IF_TYPE_IPHTTPS
+                || name_lower.starts_with("vswitch")
+                || name_lower.contains("vswitch")
+                || desc_lower.contains("vswitch")
                 || name_lower.contains("-wfp")
                 || name_lower.contains("-npc")
                 || name_lower.contains("-qos")
@@ -325,20 +398,87 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 continue;
             }
 
+            // Extract MAC Address early for Hypervisor OUI and hardware validity checks
+            let mut mac_parts = Vec::new();
+            let mut is_all_zero_mac = true;
+            for i in 0..addr.PhysicalAddressLength as usize {
+                if addr.PhysicalAddress[i] != 0 {
+                    is_all_zero_mac = false;
+                }
+                mac_parts.push(format!("{:02X}", addr.PhysicalAddress[i]));
+            }
+            let mac_address = mac_parts.join(":");
+            let mac_upper = mac_address.to_uppercase();
+
             // 3. Interface type (Ethernet / Wi-Fi / Virtual)
-            let is_virtual = name_lower.starts_with("vethernet") 
-                || name_lower.starts_with("vswitch") 
-                || name_lower.contains("hyper-v") 
-                || name_lower.contains("vmware") 
-                || name_lower.contains("virtualbox")
+            // A. Hypervisor IEEE MAC OUI prefixes
+            let is_hypervisor_mac = mac_upper.starts_with("00:15:5D") // Microsoft Hyper-V
+                || mac_upper.starts_with("00:05:69") // VMware
+                || mac_upper.starts_with("00:0C:29") // VMware
+                || mac_upper.starts_with("00:50:56") // VMware
+                || mac_upper.starts_with("08:00:27") // Oracle VirtualBox
+                || mac_upper.starts_with("52:54:00") // QEMU / KVM
+                || mac_upper.starts_with("00:16:3E") // Xen
+                || mac_upper.starts_with("00:1C:42"); // Parallels
+
+            // B. NDIS Tunnel check
+            let is_tunnel = addr.TunnelType != 0 || addr.IfType == 131 || addr.IfType == 142;
+
+            // C. Multi-language (Korean '가상' + English) heuristic signature check
+            let is_virtual = is_tunnel
+                || is_hypervisor_mac
+                || name_lower.contains("가상")
+                || desc_lower.contains("가상")
+                || name_lower.contains("virtual")
+                || desc_lower.contains("virtual")
+                || name_lower.starts_with("vethernet")
+                || name_lower.starts_with("vswitch")
+                || desc_lower.starts_with("vswitch")
+                || name_lower.contains("hyper-v")
                 || desc_lower.contains("hyper-v")
-                || desc_lower.contains("virtual ethernet")
+                || name_lower.contains("vmware")
+                || desc_lower.contains("vmware")
+                || name_lower.contains("vmnet")
+                || desc_lower.contains("vmnet")
+                || name_lower.contains("virtualbox")
                 || desc_lower.contains("virtualbox")
-                || desc_lower.contains("vmware");
+                || name_lower.contains("vbox")
+                || desc_lower.contains("vbox")
+                || name_lower.contains("wsl")
+                || desc_lower.contains("wsl")
+                || name_lower.contains("tap")
+                || desc_lower.contains("tap")
+                || name_lower.contains("tun")
+                || desc_lower.contains("tun")
+                || name_lower.contains("wintun")
+                || desc_lower.contains("wintun")
+                || name_lower.contains("tailscale")
+                || desc_lower.contains("tailscale")
+                || name_lower.contains("zerotier")
+                || desc_lower.contains("zerotier")
+                || name_lower.contains("openvpn")
+                || desc_lower.contains("openvpn")
+                || name_lower.contains("wireguard")
+                || desc_lower.contains("wireguard")
+                || name_lower.contains("hamachi")
+                || desc_lower.contains("hamachi")
+                || name_lower.contains("radmin")
+                || desc_lower.contains("radmin")
+                || name_lower.contains("anyconnect")
+                || desc_lower.contains("anyconnect")
+                || desc_lower.contains("cisco")
+                || name_lower.contains("fortinet")
+                || desc_lower.contains("fortinet")
+                || name_lower.contains("globalprotect")
+                || desc_lower.contains("globalprotect")
+                || name_lower.contains("vpn")
+                || desc_lower.contains("vpn")
+                || desc_lower.contains("virtio")
+                || desc_lower.contains("ndis virtual");
 
             let r#type = if is_virtual {
                 "Virtual".to_string()
-            } else if addr.IfType == 71 || name_lower.contains("wi-fi") || name_lower.contains("wireless") || desc_lower.contains("wi-fi") || desc_lower.contains("wireless") {
+            } else if addr.IfType == 71 || name_lower.contains("wi-fi") || name_lower.contains("wireless") || desc_lower.contains("wi-fi") || desc_lower.contains("wireless") || name_lower.contains("와이파이") || name_lower.contains("무선") {
                 "Wi-Fi".to_string()
             } else {
                 "Ethernet".to_string()
@@ -369,9 +509,11 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 (is_ipv4_active, if is_ipv4_active { "Disconnected".to_string() } else { "Disabled".to_string() })
             };
             
-            // 5. IP Address and Subnet Mask
+            // 5. IP Address and Subnet Mask (Supporting multiple IPs per adapter)
             let mut ip_address = String::new();
             let mut subnet_mask = String::new();
+            let mut additional_ips: Vec<SecondaryIp> = Vec::new();
+            let mut is_first_ipv4 = true;
             
             let mut unicast = addr.FirstUnicastAddress;
             while !unicast.is_null() {
@@ -380,7 +522,7 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 if sa.sa_family == AF_INET {
                     let ipv4: *const SOCKADDR_IN = uaddr.Address.lpSockaddr as *const _;
                     let ip_bytes = (*ipv4).sin_addr.S_un.S_un_b;
-                    ip_address = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
+                    let curr_ip = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
                     
                     // Convert OnLinkPrefixLength to Subnet Mask
                     let prefix_len = uaddr.OnLinkPrefixLength;
@@ -389,14 +531,24 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                     } else {
                         0xFFFFFFFFu32 << (32 - prefix_len)
                     };
-                    subnet_mask = format!(
+                    let curr_mask = format!(
                         "{}.{}.{}.{}",
                         (mask_val >> 24) & 0xFF,
                         (mask_val >> 16) & 0xFF,
                         (mask_val >> 8) & 0xFF,
                         mask_val & 0xFF
                     );
-                    break;
+
+                    if is_first_ipv4 {
+                        ip_address = curr_ip;
+                        subnet_mask = curr_mask;
+                        is_first_ipv4 = false;
+                    } else if curr_ip != ip_address && !additional_ips.iter().any(|s| s.ipAddress == curr_ip) {
+                        additional_ips.push(SecondaryIp {
+                            ipAddress: curr_ip,
+                            subnetMask: curr_mask,
+                        });
+                    }
                 }
                 unicast = uaddr.Next;
             }
@@ -438,25 +590,84 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 dns = dns_addr.Next;
             }
             
-            // 8. MAC Address
-            let mut mac_parts = Vec::new();
-            let mut is_all_zero_mac = true;
-            for i in 0..addr.PhysicalAddressLength as usize {
-                if addr.PhysicalAddress[i] != 0 {
-                    is_all_zero_mac = false;
-                }
-                mac_parts.push(format!("{:02X}", addr.PhysicalAddress[i]));
-            }
-            let mac_address = mac_parts.join(":");
+            // 8. Ghost / Phantom physical hardware check (MAC already calculated above)
 
             // Exclude Ghost / Phantom / Detached physical adapters that only remain in the Windows registry:
             // A genuine physical network card (Ethernet or Wi-Fi) always possesses a valid manufacturer-assigned 6-byte MAC address.
             // If an adapter is physical (!is_virtual) and has 0-length MAC, all-zero MAC (00:00:00:00:00:00), or empty MAC,
             // it is definitively an obsolete registry remnant (phantom NIC) whose hardware does not exist in the system.
-            // Even if its registry name contains "이더넷" or "Ethernet", it must be strictly excluded.
-            if !is_virtual && (addr.PhysicalAddressLength < 6 || is_all_zero_mac || mac_address == "00:00:00:00:00:00" || mac_address.is_empty()) {
+            // CRITICAL: An active connected adapter (OperStatus == 1) or adapter with assigned IP is active hardware and must NEVER be excluded!
+            if !is_virtual && addr.OperStatus != 1 && ip_address.is_empty() && (addr.PhysicalAddressLength < 6 || is_all_zero_mac || mac_address == "00:00:00:00:00:00" || mac_address.is_empty()) {
                 curr = addr.Next;
                 continue;
+            }
+            
+            // 8. Multi-IP Sequence Alignment: Ensure Main IP and Secondary IPs are in correct order
+            let mut all_ips: Vec<(String, String)> = Vec::new();
+            if !ip_address.is_empty() {
+                all_ips.push((ip_address.clone(), subnet_mask.clone()));
+            }
+            for sec in &additional_ips {
+                if !sec.ipAddress.is_empty() {
+                    all_ips.push((sec.ipAddress.clone(), sec.subnetMask.clone()));
+                }
+            }
+
+            if all_ips.len() > 1 {
+                let mut reordered = false;
+
+                // Priority A: Check Windows Tcpip Registry for official IPAddress order
+                use windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE;
+                let subkey = format!("SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{}", id);
+                if let Some(reg_list) = read_registry_strings(HKEY_LOCAL_MACHINE, &subkey, "IPAddress") {
+                    if let Some(first_reg_ip) = reg_list.first() {
+                        if let Some(pos) = all_ips.iter().position(|(ip, _)| ip == first_reg_ip) {
+                            if pos != 0 {
+                                let item = all_ips.remove(pos);
+                                all_ips.insert(0, item);
+                                reordered = true;
+                            }
+                        }
+                    }
+                }
+
+                // Priority B: If Gateway is defined, the IP matching Gateway's subnet MUST be the Main IP
+                if !reordered && !gateway.is_empty() {
+                    let matches_gw = |ip_str: &str, mask_str: &str| -> bool {
+                        use std::net::Ipv4Addr;
+                        use std::str::FromStr;
+                        if let (Ok(ip_a), Ok(gw_a), Ok(mask_a)) = (
+                            Ipv4Addr::from_str(ip_str),
+                            Ipv4Addr::from_str(&gateway),
+                            Ipv4Addr::from_str(mask_str),
+                        ) {
+                            let m = u32::from(mask_a);
+                            (u32::from(ip_a) & m) == (u32::from(gw_a) & m)
+                        } else {
+                            false
+                        }
+                    };
+
+                    if !matches_gw(&all_ips[0].0, &all_ips[0].1) {
+                        if let Some(pos) = all_ips.iter().position(|(ip, mask)| matches_gw(ip, mask)) {
+                            let item = all_ips.remove(pos);
+                            all_ips.insert(0, item);
+                        }
+                    }
+                }
+
+                // Re-apply sorted Main IP and Secondary IPs
+                if let Some((main_ip, main_mask)) = all_ips.first() {
+                    ip_address = main_ip.clone();
+                    subnet_mask = main_mask.clone();
+                    additional_ips = all_ips[1..]
+                        .iter()
+                        .map(|(ip, mask)| SecondaryIp {
+                            ipAddress: ip.clone(),
+                            subnetMask: mask.clone(),
+                        })
+                        .collect();
+                }
             }
             
             // 9. DHCP status (Dhcpv4Enabled is bit 2 of addr.Anonymous2.Flags)
@@ -475,6 +686,9 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 macAddress: mac_address,
                 isDhcp: is_dhcp,
                 isEnabled: is_enabled,
+                isVirtual: is_virtual,
+                description: desc,
+                additionalIps: additional_ips,
             });
             
             curr = addr.Next;
@@ -505,7 +719,7 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
     Ok(vec![
         NetworkAdapter {
             id: "eth0-mock-uuid".to_string(),
-            name: "eth0 (Ethernet)".to_string(),
+            name: "이더넷 2".to_string(),
             r#type: "Ethernet".to_string(),
             status: "Connected".to_string(),
             ipAddress: "192.168.1.150".to_string(),
@@ -513,23 +727,49 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             gateway: "192.168.1.1".to_string(),
             primaryDns: "8.8.8.8".to_string(),
             secondaryDns: "8.8.4.4".to_string(),
-            macAddress: "52:54:00:12:34:56".to_string(),
-            isDhcp: true,
+            macAddress: "74:D4:35:12:34:56".to_string(),
+            isDhcp: false,
             isEnabled: true,
+            isVirtual: false,
+            description: "Realtek Gaming GbE Family Controller".to_string(),
+            additionalIps: vec![SecondaryIp {
+                ipAddress: "192.168.2.150".to_string(),
+                subnetMask: "255.255.255.0".to_string(),
+            }],
         },
         NetworkAdapter {
-            id: "wlan0-mock-uuid".to_string(),
-            name: "wlan0 (Wi-Fi)".to_string(),
-            r#type: "Wi-Fi".to_string(),
-            status: "Disconnected".to_string(),
-            ipAddress: "".to_string(),
-            subnetMask: "".to_string(),
+            id: "eth3-mock-uuid".to_string(),
+            name: "이더넷 3".to_string(),
+            r#type: "Virtual".to_string(),
+            status: "Connected".to_string(),
+            ipAddress: "192.168.56.1".to_string(),
+            subnetMask: "255.255.255.0".to_string(),
             gateway: "".to_string(),
             primaryDns: "".to_string(),
             secondaryDns: "".to_string(),
-            macAddress: "52:54:00:65:43:21".to_string(),
+            macAddress: "0A:00:27:00:00:0F".to_string(),
+            isDhcp: false,
+            isEnabled: true,
+            isVirtual: true,
+            description: "VirtualBox Host-Only Ethernet Adapter".to_string(),
+            additionalIps: vec![],
+        },
+        NetworkAdapter {
+            id: "veth-mock-uuid".to_string(),
+            name: "vEthernet (Default Switch)".to_string(),
+            r#type: "Virtual".to_string(),
+            status: "Connected".to_string(),
+            ipAddress: "172.28.16.1".to_string(),
+            subnetMask: "255.255.240.0".to_string(),
+            gateway: "".to_string(),
+            primaryDns: "".to_string(),
+            secondaryDns: "".to_string(),
+            macAddress: "00:15:5D:8A:2B:3C".to_string(),
             isDhcp: true,
             isEnabled: true,
+            isVirtual: true,
+            description: "Hyper-V Virtual Ethernet Adapter".to_string(),
+            additionalIps: vec![],
         }
     ])
 }
@@ -692,7 +932,7 @@ pub fn classify_ip_native(ip_str: &str) -> Result<IpClassificationResult, String
 }
 
 #[cfg(windows)]
-pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>) -> Result<IpConflictResult, String> {
+pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>, own_mac: Option<&str>) -> Result<IpConflictResult, String> {
     use windows_sys::Win32::NetworkManagement::IpHelper::*;
     use std::net::Ipv4Addr;
     use std::str::FromStr;
@@ -722,10 +962,62 @@ pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>) -> Res
                 "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                 mac_buf[0], mac_buf[1], mac_buf[2], mac_buf[3], mac_buf[4], mac_buf[5]
             );
+
+            let clean_detected: String = mac_str
+                .chars()
+                .filter(|c| c.is_ascii_hexdigit())
+                .collect::<String>()
+                .to_uppercase();
+
+            // 1. Check against own_mac if provided by caller
+            if let Some(own) = own_mac {
+                let clean_own: String = own
+                    .chars()
+                    .filter(|c| c.is_ascii_hexdigit())
+                    .collect::<String>()
+                    .to_uppercase();
+
+                if clean_own.len() == 12 && clean_detected == clean_own {
+                    return Ok(IpConflictResult {
+                        is_conflict: false,
+                        conflicting_mac: mac_str,
+                        message: format!("✓ [현재 어댑터] 해당 IP({})는 현재 본인 랜카드(MAC: {})에 할당된 정상 주소이며, 외부 충돌이 없습니다.", target_ip, own),
+                    });
+                }
+            }
+
+            // 2. Check against all adapters currently configured on this machine
+            if let Ok(adapters) = get_adapters_native() {
+                for adapter in adapters {
+                    let clean_ad_mac: String = adapter.macAddress
+                        .chars()
+                        .filter(|c| c.is_ascii_hexdigit())
+                        .collect::<String>()
+                        .to_uppercase();
+
+                    if clean_ad_mac.len() == 12 && clean_detected == clean_ad_mac {
+                        return Ok(IpConflictResult {
+                            is_conflict: false,
+                            conflicting_mac: mac_str,
+                            message: format!("✓ [본인 기기] 해당 IP({})는 본 컴퓨터의 어댑터('{}', MAC: {})에 할당된 주소이며, 외부 기기와의 충돌이 없습니다.", target_ip, adapter.name, adapter.macAddress),
+                        });
+                    }
+
+                    // Also check if target_ip is already assigned as an IP on this adapter
+                    if adapter.ipAddress == target_ip || adapter.additionalIps.iter().any(|sec| sec.ipAddress == target_ip) {
+                        return Ok(IpConflictResult {
+                            is_conflict: false,
+                            conflicting_mac: mac_str,
+                            message: format!("✓ [현재 어댑터] 해당 IP({})는 이미 본 컴퓨터의 랜카드('{}')에 구성되어 있으며, 외부 기기와의 충돌이 없습니다.", target_ip, adapter.name),
+                        });
+                    }
+                }
+            }
+
             Ok(IpConflictResult {
                 is_conflict: true,
                 conflicting_mac: mac_str.clone(),
-                message: format!("⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 기기(MAC: {})가 로컬 네트워크에 존재합니다.", mac_str),
+                message: format!("⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: {})가 로컬 네트워크에 존재합니다.", mac_str),
             })
         } else {
             Ok(IpConflictResult {
@@ -738,12 +1030,23 @@ pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>) -> Res
 }
 
 #[cfg(not(windows))]
-pub fn check_ip_conflict_native(target_ip: &str, _source_ip: Option<&str>) -> Result<IpConflictResult, String> {
+pub fn check_ip_conflict_native(target_ip: &str, _source_ip: Option<&str>, own_mac: Option<&str>) -> Result<IpConflictResult, String> {
+    if let Some(own) = own_mac {
+        let clean_own: String = own.chars().filter(|c| c.is_ascii_hexdigit()).collect::<String>().to_uppercase();
+        if clean_own == "AABBCC112233" || clean_own == "18C04D7F6808" {
+            return Ok(IpConflictResult {
+                is_conflict: false,
+                conflicting_mac: own.to_string(),
+                message: format!("✓ [현재 어댑터] 해당 IP({})는 현재 본인 랜카드(MAC: {})에 할당된 정상 주소이며, 외부 충돌이 없습니다.", target_ip, own),
+            });
+        }
+    }
+
     if target_ip.ends_with(".99") {
         Ok(IpConflictResult {
             is_conflict: true,
             conflicting_mac: "AA:BB:CC:11:22:33".to_string(),
-            message: "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 기기(MAC: AA:BB:CC:11:22:33)가 로컬 네트워크에 존재합니다.".to_string(),
+            message: "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: AA:BB:CC:11:22:33)가 로컬 네트워크에 존재합니다.".to_string(),
         })
     } else {
         Ok(IpConflictResult {
@@ -778,6 +1081,171 @@ pub fn check_tcp_port_native(target_ip: &str, port: u16, timeout_ms: u32) -> Res
                 latency_ms: 0,
                 message: format!("포트 {} 연결 불가 또는 타임아웃 ({})", port, e),
             })
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[allow(non_snake_case)]
+pub struct AdapterDistinctionResult {
+    pub isVirtual: bool,
+    pub isWifi: bool,
+    pub isGhostOrFilter: bool,
+    pub category: String,
+    pub detectionReason: String,
+}
+
+pub fn distinguish_adapter_native(name: &str, desc: &str, mac: &str, if_type: u32, tunnel_type: u32) -> AdapterDistinctionResult {
+    let name_lower = name.to_lowercase();
+    let desc_lower = desc.to_lowercase();
+    let mac_upper = mac.to_uppercase();
+
+    let is_filter_or_pseudo = if_type == 24
+        || name_lower.contains("loopback")
+        || desc_lower.contains("loopback")
+        || name_lower.contains("-wfp")
+        || name_lower.contains("-npc")
+        || name_lower.contains("-qos")
+        || name_lower.contains("-virt")
+        || name_lower.contains("커널 디")
+        || name_lower.contains("kernel debug")
+        || desc_lower.contains("kernel debug")
+        || desc_lower.contains("lightweight filter")
+        || desc_lower.contains("native mac layer")
+        || desc_lower.contains("packet scheduler")
+        || desc_lower.contains("kdnic")
+        || desc_lower.contains("npcap")
+        || desc_lower.contains("winpcap")
+        || desc_lower.contains("wan miniport")
+        || desc_lower.contains("teredo")
+        || desc_lower.contains("isatap")
+        || desc_lower.contains("6to4")
+        || name_lower.contains("wi-fi direct")
+        || desc_lower.contains("wi-fi direct")
+        || name_lower.contains("bluetooth")
+        || desc_lower.contains("bluetooth");
+
+    if is_filter_or_pseudo {
+        return AdapterDistinctionResult {
+            isVirtual: true,
+            isWifi: false,
+            isGhostOrFilter: true,
+            category: "Pseudo Filter / Ghost".to_string(),
+            detectionReason: "Kernel filter driver, pseudo device or loopback".to_string(),
+        };
+    }
+
+    if tunnel_type != 0 || if_type == 131 || if_type == 142 {
+        return AdapterDistinctionResult {
+            isVirtual: true,
+            isWifi: false,
+            isGhostOrFilter: false,
+            category: "Virtual Tunnel".to_string(),
+            detectionReason: "NDIS Tunnel Interface (VPN/Tunnel Type)".to_string(),
+        };
+    }
+
+    let is_hypervisor_mac = mac_upper.starts_with("00:15:5D")
+        || mac_upper.starts_with("00:05:69")
+        || mac_upper.starts_with("00:0C:29")
+        || mac_upper.starts_with("00:50:56")
+        || mac_upper.starts_with("08:00:27")
+        || mac_upper.starts_with("52:54:00")
+        || mac_upper.starts_with("00:16:3E")
+        || mac_upper.starts_with("00:1C:42");
+
+    if is_hypervisor_mac {
+        return AdapterDistinctionResult {
+            isVirtual: true,
+            isWifi: false,
+            isGhostOrFilter: false,
+            category: "Virtual Ethernet".to_string(),
+            detectionReason: "Hypervisor Virtual MAC OUI Prefix".to_string(),
+        };
+    }
+
+    let is_virtual = name_lower.contains("가상")
+        || desc_lower.contains("가상")
+        || name_lower.contains("virtual")
+        || desc_lower.contains("virtual")
+        || name_lower.starts_with("vethernet")
+        || name_lower.starts_with("vswitch")
+        || desc_lower.starts_with("vswitch")
+        || name_lower.contains("hyper-v")
+        || desc_lower.contains("hyper-v")
+        || name_lower.contains("vmware")
+        || desc_lower.contains("vmware")
+        || name_lower.contains("vmnet")
+        || desc_lower.contains("vmnet")
+        || name_lower.contains("virtualbox")
+        || desc_lower.contains("virtualbox")
+        || name_lower.contains("vbox")
+        || desc_lower.contains("vbox")
+        || name_lower.contains("wsl")
+        || desc_lower.contains("wsl")
+        || name_lower.contains("tap")
+        || desc_lower.contains("tap")
+        || name_lower.contains("tun")
+        || desc_lower.contains("tun")
+        || name_lower.contains("wintun")
+        || desc_lower.contains("wintun")
+        || name_lower.contains("tailscale")
+        || desc_lower.contains("tailscale")
+        || name_lower.contains("zerotier")
+        || desc_lower.contains("zerotier")
+        || name_lower.contains("openvpn")
+        || desc_lower.contains("openvpn")
+        || name_lower.contains("wireguard")
+        || desc_lower.contains("wireguard")
+        || name_lower.contains("hamachi")
+        || desc_lower.contains("hamachi")
+        || name_lower.contains("radmin")
+        || desc_lower.contains("radmin")
+        || name_lower.contains("anyconnect")
+        || desc_lower.contains("anyconnect")
+        || desc_lower.contains("cisco")
+        || name_lower.contains("fortinet")
+        || desc_lower.contains("fortinet")
+        || name_lower.contains("globalprotect")
+        || desc_lower.contains("globalprotect")
+        || name_lower.contains("vpn")
+        || desc_lower.contains("vpn")
+        || desc_lower.contains("virtio")
+        || desc_lower.contains("ndis virtual");
+
+    if is_virtual {
+        return AdapterDistinctionResult {
+            isVirtual: true,
+            isWifi: false,
+            isGhostOrFilter: false,
+            category: "Virtual Ethernet".to_string(),
+            detectionReason: "Virtual / Software Adapter Signature Matched".to_string(),
+        };
+    }
+
+    let is_wifi = if_type == 71
+        || name_lower.contains("wi-fi")
+        || desc_lower.contains("wi-fi")
+        || name_lower.contains("wireless")
+        || desc_lower.contains("wireless")
+        || name_lower.contains("와이파이")
+        || name_lower.contains("무선");
+
+    if is_wifi {
+        AdapterDistinctionResult {
+            isVirtual: false,
+            isWifi: true,
+            isGhostOrFilter: false,
+            category: "Physical Wi-Fi".to_string(),
+            detectionReason: "Physical IEEE 802.11 Wireless LAN Hardware".to_string(),
+        }
+    } else {
+        AdapterDistinctionResult {
+            isVirtual: false,
+            isWifi: false,
+            isGhostOrFilter: false,
+            category: "Physical Ethernet".to_string(),
+            detectionReason: "Physical Dedicated Wired Ethernet Hardware NIC".to_string(),
         }
     }
 }

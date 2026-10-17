@@ -2,9 +2,14 @@
 # AhBiYout IpName2 - Official .gitignore
 # ======================================================================
 
-# Dependencies
+# AI Studio Internal Data & Scratch Artifacts
+.aistudio/
+.aistudio
+
+# Dependencies & Package Manager Locks
 node_modules/
 bun.lock
+package-lock.json.backup
 
 # Build & Distribution Artifacts
 dist/
@@ -13,16 +18,26 @@ dist-installer/
 build/
 Output/
 release/
+target/
 *.local
 *.zip
 *.tar.gz
 *.7z
+*.rar
+*.gz
+*.cab
+*.iso
+*.dmg
+*.app
+*.apk
+*.ipa
+*.aab
 
 # Tauri & Rust Compilation Cache
 src-tauri/target/
 src-tauri/Cargo.lock
 
-# Binaries & Executables (Installers published via GitHub Releases only)
+# Binaries & Executables (Binaries are distributed via GitHub Releases)
 *.exe
 *.msi
 *.dll
@@ -31,6 +46,7 @@ src-tauri/Cargo.lock
 *.pdb
 *.obj
 *.o
+*.a
 *.so
 *.dylib
 *.bundle
@@ -41,6 +57,10 @@ native/ipname_core/*.lib
 native/ipname_core/*.exp
 native/ipname_core/*.obj
 native/ipname_core/*.o
+native/ipname_core/*.a
+
+# Neutralino legacy binaries
+bin/neutralino*
 
 # Environment Variables & Sensitive Credentials
 .env
@@ -55,11 +75,18 @@ native/ipname_core/*.o
 .vscode/*
 !.vscode/extensions.json
 .idea/
+.fleet/
+.claude/
+.cursor/
 *.suo
+*.user
+*.userosv
+*.sln.docstates
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.code-workspace
 
 # OS & Filesystem Metadata
 .DS_Store
@@ -77,3 +104,29 @@ pnpm-debug.log*
 lerna-debug.log*
 tmp/
 temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+*.cache
+*.tsbuildinfo
+coverage/
+*.stackdump
+crash.dmp
+dump.rdb
+
+# One-off scratch scripts & artifacts
+icon_base64.txt
+convert.cjs
+extract-png.cjs
+get-b64.cjs
+make-icon.cjs
+make-strict-ico.cjs
+fix-icon.js
+download-icons.ts
+download-official-icons.js
+
+# Local Git push automation scripts (excluded from GitHub repository)
+git-push.bat
+scripts/git-push.bat
+

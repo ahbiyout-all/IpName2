@@ -1,6 +1,6 @@
 [package]
 name = "ipname2"
-version = "1.10.3"
+version = "1.12.4"
 description = "IpName2 - Windows System & Network Configuration Utility"
 authors = ["AhBiYout <https://github.com/AhBiYout-all>"]
 license = "MIT"

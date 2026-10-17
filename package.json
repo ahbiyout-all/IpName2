@@ -3,7 +3,7 @@
   "description": "IpName2",
   "author": "AhBiYout",
   "private": true,
-  "version": "1.10.3",
+  "version": "1.12.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
-    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@vitejs/plugin-react": "^5.0.4",
@@ -34,7 +34,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "2.11.1",
+    "@tauri-apps/cli": "^2.11.1",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",

@@ -101,40 +101,40 @@ const AppContent: React.FC = () => {
 
   // Categorize adapters
   const physicalAdapters = useMemo(() => {
-    return adapters.filter(a => a.type !== 'Virtual' && !isVirtualAdapter(a.name, a.type) && !isGhostOrInvalidAdapter(a));
+    return adapters.filter(a => a.type !== 'Virtual' && !a.isVirtual && !isVirtualAdapter(a.name, a.type, a.description, a.isVirtual, a.macAddress) && !isGhostOrInvalidAdapter(a));
   }, [adapters]);
 
   const virtualAdapters = useMemo(() => {
-    return adapters.filter(a => (a.type === 'Virtual' || isVirtualAdapter(a.name, a.type)) && !isGhostOrInvalidAdapter(a));
+    return adapters.filter(a => (a.type === 'Virtual' || a.isVirtual === true || isVirtualAdapter(a.name, a.type, a.description, a.isVirtual, a.macAddress)) && !isGhostOrInvalidAdapter(a));
   }, [adapters]);
 
-  // Determine displayed adapters based on filter (auto fallback to all if physical is empty)
+  // Determine displayed adapters based strictly on the user-selected filter (NO fallback to mixed adapters)
   const displayAdapters = useMemo(() => {
     if (adapterFilter === 'physical') {
-      return physicalAdapters.length > 0 ? physicalAdapters : adapters;
+      return physicalAdapters;
     }
     if (adapterFilter === 'virtual') {
-      return virtualAdapters.length > 0 ? virtualAdapters : adapters;
+      return virtualAdapters;
     }
-    return adapters;
+    return adapters.filter(a => !isGhostOrInvalidAdapter(a));
   }, [adapters, adapterFilter, physicalAdapters, virtualAdapters]);
 
-  useEffect(() => {
-    // Tauri window resizing is handled in tauri.conf.json or via Tauri API
-    // We can use @tauri-apps/api/window if needed
-  }, []);
-
-  useEffect(() => {
+  // Derive selectedAdapter strictly from displayAdapters so selecting 'physical' NEVER shows a virtual card!
+  const selectedAdapter = useMemo(() => {
     if (displayAdapters.length > 0) {
-      const currentExists = displayAdapters.some(a => a.id === selectedAdapterId || a.name === selectedAdapterId);
-      if (!currentExists) {
-        const connected = displayAdapters.find(a => a.status === 'Connected');
-        setSelectedAdapterId(connected ? connected.id : displayAdapters[0].id);
-      }
+      const current = displayAdapters.find(a => a.id === selectedAdapterId || a.name === selectedAdapterId);
+      if (current) return current;
+      const connected = displayAdapters.find(a => a.status === 'Connected');
+      return connected || displayAdapters[0];
     }
-  }, [displayAdapters, selectedAdapterId]);
+    return adapters[0];
+  }, [displayAdapters, selectedAdapterId, adapters]);
 
-  const selectedAdapter = adapters.find(a => a.id === selectedAdapterId || a.name === selectedAdapterId) || displayAdapters[0] || adapters[0];
+  useEffect(() => {
+    if (selectedAdapter && selectedAdapter.id !== selectedAdapterId) {
+      setSelectedAdapterId(selectedAdapter.id);
+    }
+  }, [selectedAdapter, selectedAdapterId]);
 
   const isTauriEnv = () => typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
 
@@ -255,7 +255,7 @@ const AppContent: React.FC = () => {
                   }`}
                   title={t('filterPhysical')}
                 >
-                  {t('filterPhysical')} {physicalAdapters.length > 0 && `(${physicalAdapters.length})`}
+                  {t('filterPhysical')} ({physicalAdapters.length})
                 </button>
                 {virtualAdapters.length > 0 && (
                   <button
@@ -292,12 +292,12 @@ const AppContent: React.FC = () => {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 px-0.5 no-scrollbar scroll-smooth">
               {displayAdapters.map(adapter => {
                 const isSelected = adapter.id === selectedAdapterId;
-                const isVirtual = adapter.type === 'Virtual' || isVirtualAdapter(adapter.name, adapter.type);
+                const isVirtual = adapter.type === 'Virtual' || adapter.isVirtual === true || isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual);
                 return (
                   <button
                     key={adapter.id}
                     onClick={() => setSelectedAdapterId(adapter.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg border transition-all duration-200 active:scale-95 cursor-pointer select-none shrink-0 ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold rounded-lg border transition-all duration-200 active:scale-95 cursor-pointer select-none shrink-0 ${
                       isSelected
                         ? 'bg-primary text-primary-foreground border-primary shadow-sm ring-1 ring-primary/40'
                         : 'bg-[var(--card)] text-foreground border-[var(--border)] hover:bg-[var(--card-hover)]'
@@ -308,9 +308,20 @@ const AppContent: React.FC = () => {
                     ) : isVirtual ? (
                       <Layers size={12} className={isSelected ? 'text-primary-foreground' : 'text-amber-500'} />
                     ) : (
-                      <Network size={12} className={isSelected ? 'text-primary-foreground' : 'text-primary'} />
+                      <Network size={12} className={isSelected ? 'text-primary-foreground' : 'text-emerald-500'} />
                     )}
-                    <span className="truncate max-w-[110px]" title={adapter.name}>{adapter.name}</span>
+                    <span className="truncate max-w-[100px]" title={adapter.name}>{adapter.name}</span>
+                    <span className={`text-[8px] px-1 py-0.2 rounded font-extrabold shrink-0 ${
+                      isSelected
+                        ? 'bg-white/20 text-white'
+                        : isVirtual
+                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20'
+                        : adapter.type === 'Wi-Fi'
+                        ? 'bg-blue-500/15 text-blue-500 border border-blue-500/20'
+                        : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                    }`}>
+                      {isVirtual ? t('virtual') : adapter.type === 'Wi-Fi' ? 'Wi-Fi' : t('physical')}
+                    </span>
                     {adapter.status === 'Connected' ? (
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-white' : 'bg-emerald-500'}`} title={t('connected')} />
                     ) : adapter.status === 'Disabled' || !adapter.isEnabled ? (

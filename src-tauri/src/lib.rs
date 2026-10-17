@@ -3,7 +3,7 @@ use std::process::Command;
 
 mod windows_native;
 
-use windows_native::{SystemInfo, NetworkAdapter, PingResult, SubnetDetails, IpConflictResult, TcpPortResult, IpClassificationResult};
+use windows_native::{SystemInfo, NetworkAdapter, PingResult, SubnetDetails, IpConflictResult, TcpPortResult, IpClassificationResult, AdapterDistinctionResult};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -19,7 +19,11 @@ pub struct CommandResponse {
 }
 
 fn encode_powershell_command(script: &str) -> String {
-    let utf16: Vec<u16> = script.encode_utf16().collect();
+    let utf8_script = format!(
+        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8;\n{}",
+        script
+    );
+    let utf16: Vec<u16> = utf8_script.encode_utf16().collect();
     let mut bytes = Vec::with_capacity(utf16.len() * 2);
     for word in utf16 {
         bytes.push((word & 0xFF) as u8);
@@ -99,8 +103,8 @@ async fn calculate_subnet(ip: String, mask: String) -> Result<SubnetDetails, Str
 }
 
 #[tauri::command]
-async fn check_ip_conflict(target_ip: String, source_ip: Option<String>) -> Result<IpConflictResult, String> {
-    windows_native::check_ip_conflict_native(&target_ip, source_ip.as_deref())
+async fn check_ip_conflict(target_ip: String, source_ip: Option<String>, own_mac: Option<String>) -> Result<IpConflictResult, String> {
+    windows_native::check_ip_conflict_native(&target_ip, source_ip.as_deref(), own_mac.as_deref())
 }
 
 #[tauri::command]
@@ -111,6 +115,11 @@ async fn check_tcp_port(target_ip: String, port: u16, timeout_ms: u32) -> Result
 #[tauri::command]
 async fn classify_ip(ip: String) -> Result<IpClassificationResult, String> {
     windows_native::classify_ip_native(&ip)
+}
+
+#[tauri::command]
+async fn distinguish_adapter(name: String, desc: String, mac: String, if_type: u32, tunnel_type: u32) -> Result<AdapterDistinctionResult, String> {
+    Ok(windows_native::distinguish_adapter_native(&name, &desc, &mac, if_type, tunnel_type))
 }
 
 pub fn run() {
@@ -125,7 +134,8 @@ pub fn run() {
         calculate_subnet,
         check_ip_conflict,
         check_tcp_port,
-        classify_ip
+        classify_ip,
+        distinguish_adapter
     ])
 
     .setup(|app| {

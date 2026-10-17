@@ -1,6 +1,6 @@
 # IpNameCore 순수 창작 DLL 명세서 (DLL Specification)
 
-본 문서는 **AhBiYout IpName2 v1.10.0**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
+본 문서는 **AhBiYout IpName2 v1.12.1**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
 
 ---
 
@@ -9,8 +9,8 @@
 | 항목 | 상세 내용 |
 | :--- | :--- |
 | **모듈 명칭** | `ipname_core.dll` (IpNameCore Native Engine) |
-| **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, Layer-2 ARP IP 충돌 감지, TCP 포트 진단 및 서브넷 연산 수행 |
-| **버전** | v1.0.0 (IpName2 v1.10.0 이상 정식 탑재) |
+| **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지, TCP 포트 진단 및 서브넷 연산 수행 |
+| **버전** | v1.12.1 (IpName2 v1.12.1 정식 탑재) |
 | **아키텍처** | Windows x64 / x86 호환 C-ABI (`__stdcall` / `__cdecl`) |
 | **표준 규격** | ISO C99 / Win32 Native API |
 | **의존성** | 독립 실행형 (Zero External Dependencies, Windows OS 표준 `ws2_32.dll`, `iphlpapi.dll`만 동적 링킹) |
@@ -222,6 +222,45 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_FormatMac(
 
 ---
 
+### 4.8. `IpName_DistinguishAdapter` (물리/가상 어댑터 정밀 판별 엔진)
+Windows NDIS 매개변수, IEEE 하이퍼바이저 OUI 및 다국어 휴리스틱을 종합 분석하여 물리 하드웨어 랜카드와 가상 어댑터를 확실하게 구분합니다.
+```c
+typedef struct {
+    uint32_t is_virtual;         /* 1 = 가상/소프트웨어 어댑터, 0 = 물리 하드웨어 NIC */
+    uint32_t is_wifi;            /* 1 = Wi-Fi 무선 LAN, 0 = 유선 이더넷 */
+    uint32_t is_ghost_or_filter; /* 1 = 필터 드라이버/루프백/유령 잔여물, 0 = 유효한 어댑터 */
+    char category[32];           /* "Physical Ethernet", "Physical Wi-Fi", "Virtual Ethernet", "Virtual Tunnel" */
+    char detection_reason[128];  /* 상세 판별 근거 (예: "Hyper-V Virtual MAC OUI", "Physical Dedicated NIC") */
+} IpNameAdapterDistinction;
+
+IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
+    const char* name,
+    const char* desc,
+    const char* mac,
+    uint32_t if_type,
+    uint32_t tunnel_type,
+    IpNameAdapterDistinction* out_result
+);
+```
+
+#### 동작 원리 (Operating Principle):
+1. **IEEE 하이퍼바이저 MAC OUI 식별**:
+   - `00:15:5D`: Microsoft Hyper-V Virtual NIC
+   - `00:05:69` / `00:0C:29` / `00:50:56`: VMware Workstation / ESXi
+   - `08:00:27`: Oracle VirtualBox Host-Only NIC
+   - `52:54:00`: QEMU / KVM Virtual NIC
+   - `00:16:3E`: Xen Hypervisor
+   - `00:1C:42`: Parallels Desktop
+2. **Windows NDIS 드라이버 속성 검사**:
+   - `TunnelType != 0` 또는 `IfType == 131 / 142`: 커널 레벨 가상 터널 인터페이스로 즉시 확정.
+   - `IfType == 24`: 소프트웨어 루프백(Loopback) 필터 제외.
+3. **다국어(한국어 + 영문) 휴리스틱 매칭**:
+   - 장치 명칭 및 드라이버 설명 내 `가상`, `virtual`, `vethernet`, `vswitch`, `hyper-v`, `vmware`, `vmnet`, `virtualbox`, `vbox`, `wsl`, `tap`, `wintun`, `tailscale`, `zerotier`, `openvpn`, `wireguard`, `cisco`, `anyconnect`, `vpn` 등 30여 개 이상의 전문 시그니처 정밀 대조.
+4. **완벽한 물리 어댑터 보존**:
+   - Intel, Realtek, Broadcom, Killer, Qualcomm, MediaTek 등 물리 하드웨어 NIC는 `is_virtual = 0`으로 확정되어, 상위 필터링 탭에서 가상 어댑터가 혼입되는 현상을 100% 방지.
+
+---
+
 ## 5. 기존 시스템 DLL 및 내부 DLL 오류 정밀 점검 & 개선 보고
 
 IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 C/Rust 계층의 호출 내역을 정밀 감사한 결과는 다음과 같습니다:
@@ -233,7 +272,7 @@ IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 
 | **`ipname_core.dll`** | `IpName_CalculateSubnet` | 255.0.255.0과 같은 불연속(Disjoint) 비정상 서브넷 마스크 입력 시 오동작 가능성 | `(~mask & (~mask + 1)) == 0` 비트 연산으로 연속 마스크 검증 로직 추가 |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 도커(Docker), Hyper-V, VPN 등 다중 가상 어댑터 환경에서 초기 버퍼(15KB) 부족 시 1회만 재할당하여 재실패 가능성 존재 | 초기 버퍼를 **32KB**로 2배 이상 증설하고 **최대 3회 점진적 크기 재할당 루프**로 전면 보강 |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 비활성화(Disabled) 어댑터는 NDIS 드라이버 차단으로 `PhysicalAddressLength = 0`으로 응답되어 유령 어댑터로 오판단되는 결함 | 합법적 어댑터("이더넷", "Wi-Fi" 등) 식별 방어 조건을 추가하여 비활성 랜카드 유실 방지 |
-| **`netapi32.dll`** | `NetGetJoinInformation` | 도메인/워크그룹 버퍼 할당 후 반환 | `NetApiBufferFree` 정상 호출 확인 및 Null 포인터 방어 검증 완료 |
+| **`ipname_core.dll`** | `IpName_DistinguishAdapter` | 물리 어댑터 필터 선택 시 가상 어댑터가 혼재되어 표시되거나 어댑터 목록이 불일치하는 현상 발생 | IEEE MAC OUI(Hyper-V, VMware, VirtualBox 등), NDIS TunnelType, 한글 '가상' 키워드 심층 검사로 물리/가상 100% 구분 (v1.12.0 신설) |
 | **`kernel32.dll`** | `GetComputerNameExW` | 컴퓨터 이름 조회 | 최대 버퍼 크기 계산 및 후행 널 문자 정리 정상 확인 |
 | **`advapi32.dll`** | `OpenProcessToken` | UAC 관리자 권한 조회 | 토큰 핸들 누수 방지(`CloseHandle`) 정상 확인 |
 

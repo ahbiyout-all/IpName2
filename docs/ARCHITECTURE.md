@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.10.3**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.12.4**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -14,7 +14,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 │   - Windows 11 Fluent Design System (Tailwind CSS, Lucide)      │
 │   - Real Public IP & ISP Real-Time Widget (RealIpSection)       │
 │   - Segmented Filter [Physical / Virtual / All] Tabs            │
-│   - Multi-Adapter Horizontal Scroll Tabs, Smart IP Helper       │
+│   - Multi-Adapter Tabs, Multi-IP (Secondary IPs) Manager        │
 │   - SubnetMaskSelector, ConfirmModal (Destructive Action Prev.) │
 │   - GitHub Releases Live Updater (UpdateModal, useGitHubUpdate) │
 └────────────────────────────────┬────────────────────────────────┘
@@ -134,4 +134,43 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
        │
        ▼
 [STEP 3~6: 안전 스테이징 & 푸시] (git add . ➔ v%APP_VER% 태그 ➔ GitHub 원격 저장소 푸시)
+```
+
+### 3.5. 다중 IP (한 개 이상의 IP) 바인딩 및 순차 Netsh 제어 흐름
+```
+[사용자 수동 IP 입력] ──> [+ 보조 IP 추가] ──> [보조 IP #1, #2 ... 서브넷 마스크 지정]
+                                                      │
+                                                      ▼
+[각 보조 IP별 SendARP 충돌 검사] ─────────────> [유효성 & 중복 IP 검증]
+                                                      │
+                                                      ▼ (저장 클릭)
+                                            [useSystemConfig.ts]
+                                                      │
+                       ┌──────────────────────────────┴──────────────────────────────┐
+                       ▼                                                             ▼
+         [기본 IP 설정: 초기화 & 바인딩]                              [보조 IP 순차 등록 (반복)]
+ netsh interface ipv4 set address "이더넷"                   netsh interface ipv4 add address "이더넷"
+ static 192.168.1.100 255.255.255.0 gw 192.168.1.1           192.168.2.100 255.255.255.0
+```
+
+### 3.6. 물리 vs 가상 이더넷 이중 식별 및 필터링 파이프라인
+```
+[어댑터 감지 트리거]
+        │
+        ├── [1단계: Win32 IP Helper] (windows_native.rs: GetAdaptersAddresses)
+        │      ├── OperStatus == 6 (Not Present) 유령 어댑터 즉시 차단
+        │      ├── 하드웨어 6바이트 MAC 유효성 검증
+        │      └── 어댑터명/설명 기반 1차 가상성 필터링 (Hyper-V, VMware, VirtualBox, WSL 등)
+        │
+        └── [2단계: Windows NDIS 커널 스택] (useSystemConfig.ts: PowerShell Get-NetAdapter)
+               ├── item.Virtual == true 공인 플래그 수집
+               ├── InterfaceDescription 하드웨어 제조사명 vs 가상 드라이버 교차 대조
+               └── 시스템 PnP 트리에 실존하는 장치명(physicallyPresentNames) 대조
+        │
+        ▼
+[NetworkAdapter { isVirtual: boolean, type: 'Ethernet'|'Wi-Fi'|'Virtual' }]
+        │
+        ├── UI 탭 바: [물리] (에메랄드) vs [가상] (호박색) vs [Wi-Fi] (파랑색)
+        ├── 어댑터 카드 헤더: "물리 이더넷" 배지 vs "가상 이더넷" 배지
+        └── 필터 세그먼트: [물리 어댑터] / [가상 어댑터] / [전체] 원클릭 분류
 ```

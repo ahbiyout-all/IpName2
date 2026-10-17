@@ -13,7 +13,9 @@
  * ============================================================================
  */
 
-#define IPNAME_CORE_EXPORTS
+#ifndef IPNAME_CORE_EXPORTS
+  #define IPNAME_CORE_EXPORTS
+#endif
 #include "../include/ipname_core.h"
 
 #include <stdio.h>
@@ -34,7 +36,24 @@
   #include <unistd.h>
 #endif
 
-#define IPNAME_VERSION "1.9.0"
+#define IPNAME_VERSION "1.12.4"
+
+/* Helper: case-insensitive substring search */
+static int str_contains_ci(const char* haystack, const char* needle) {
+    if (!haystack || !needle) return 0;
+    size_t hlen = strlen(haystack);
+    size_t nlen = strlen(needle);
+    if (nlen == 0) return 1;
+    if (hlen < nlen) return 0;
+    for (size_t i = 0; i <= hlen - nlen; i++) {
+        size_t j = 0;
+        while (j < nlen && tolower((unsigned char)haystack[i + j]) == tolower((unsigned char)needle[j])) {
+            j++;
+        }
+        if (j == nlen) return 1;
+    }
+    return 0;
+}
 
 /* Helper: parse IPv4 dotted-decimal string into 32-bit host order integer */
 static int parse_ipv4_string(const char* str, uint32_t* out_val) {
@@ -307,9 +326,10 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_FormatMac(
 /* New Creative Functions: ARP IP Conflict, TCP Port Probe, IP Classification */
 /* ========================================================================= */
 
-IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
+IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
     const char* target_ip,
     const char* source_ip,
+    const char* own_mac,
     IpNameConflictResult* out_result
 ) {
     if (!target_ip || !out_result) {
@@ -342,11 +362,41 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
     DWORD dwRet = SendARP(dest_ip, src_ip, mac_addr, &mac_addr_len);
 
     if (dwRet == NO_ERROR && mac_addr_len == 6) {
+        IpName_FormatMac((const uint8_t*)mac_addr, ':', out_result->conflicting_mac);
+
+        /* Check if the responding MAC is actually the local adapter's own MAC */
+        if (own_mac && strlen(own_mac) > 0) {
+            char clean_detected[16] = {0};
+            char clean_own[16] = {0};
+            int di = 0, oi = 0;
+
+            for (int i = 0; out_result->conflicting_mac[i] && di < 15; i++) {
+                char c = out_result->conflicting_mac[i];
+                if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+                    clean_detected[di++] = (char)toupper(c);
+                }
+            }
+            for (int i = 0; own_mac[i] && oi < 15; i++) {
+                char c = own_mac[i];
+                if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+                    clean_own[oi++] = (char)toupper(c);
+                }
+            }
+
+            if (di == 12 && oi == 12 && strcmp(clean_detected, clean_own) == 0) {
+                /* Same MAC address: The IP belongs to this local adapter! Not an external conflict! */
+                out_result->is_conflict = 0;
+                snprintf(out_result->message, sizeof(out_result->message),
+                    "✓ [현재 어댑터] 해당 IP(%s)는 현재 본인 랜카드(MAC: %s)에 할당된 정상 주소이며, 외부 충돌이 없습니다.",
+                    target_ip, out_result->conflicting_mac);
+                return IPNAME_OK;
+            }
+        }
+
         /* Another host on the LAN answered the ARP request! IP IS IN USE! */
         out_result->is_conflict = 1;
-        IpName_FormatMac((const uint8_t*)mac_addr, ':', out_result->conflicting_mac);
         snprintf(out_result->message, sizeof(out_result->message),
-            "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 기기(MAC: %s)가 발견되었습니다.",
+            "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: %s)가 발견되었습니다.",
             out_result->conflicting_mac);
         return IPNAME_ERR_IP_CONFLICT;
     } else {
@@ -360,11 +410,20 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
     }
 #else
     /* Non-Windows mock for preview environments */
+    if (own_mac && (str_contains_ci(own_mac, "AA:BB:CC:11:22:33") || str_contains_ci(own_mac, "18:C0:4D:7F:68:08"))) {
+        out_result->is_conflict = 0;
+        strncpy(out_result->conflicting_mac, own_mac, sizeof(out_result->conflicting_mac) - 1);
+        snprintf(out_result->message, sizeof(out_result->message),
+            "✓ [현재 어댑터] 해당 IP(%s)는 현재 본인 랜카드(MAC: %s)에 할당된 정상 주소이며, 외부 충돌이 없습니다.",
+            target_ip, out_result->conflicting_mac);
+        return IPNAME_OK;
+    }
+
     if (dest_host_val % 256 == 99) {
         out_result->is_conflict = 1;
         strncpy(out_result->conflicting_mac, "AA:BB:CC:11:22:33", sizeof(out_result->conflicting_mac) - 1);
         snprintf(out_result->message, sizeof(out_result->message),
-            "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 기기(MAC: AA:BB:CC:11:22:33)가 발견되었습니다.");
+            "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: AA:BB:CC:11:22:33)가 발견되었습니다.");
         return IPNAME_ERR_IP_CONFLICT;
     } else {
         out_result->is_conflict = 0;
@@ -374,6 +433,14 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
         return IPNAME_OK;
     }
 #endif
+}
+
+IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
+    const char* target_ip,
+    const char* source_ip,
+    IpNameConflictResult* out_result
+) {
+    return IpName_CheckIpConflictEx(target_ip, source_ip, NULL, out_result);
 }
 
 IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckTcpPort(
@@ -526,6 +593,176 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_ClassifyIp(
         strncpy(out_classification->category, "Public (공인 WAN IP)", sizeof(out_classification->category) - 1);
         strncpy(out_classification->scope_desc, "Global Internet Routable", sizeof(out_classification->scope_desc) - 1);
         out_classification->is_routable = 1;
+    }
+
+    return IPNAME_OK;
+}
+
+IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
+    const char* name,
+    const char* desc,
+    const char* mac,
+    uint32_t if_type,
+    uint32_t tunnel_type,
+    IpNameAdapterDistinction* out_result
+) {
+    if (!out_result) {
+        return IPNAME_ERR_INVALID_PARAM;
+    }
+
+    memset(out_result, 0, sizeof(IpNameAdapterDistinction));
+
+    const char* safe_name = name ? name : "";
+    const char* safe_desc = desc ? desc : "";
+    const char* safe_mac = mac ? mac : "";
+
+    /* 1. Check for Pseudo, Filter, Loopback, or Kernel Debug remnants */
+    if (if_type == 24 /* SOFTWARE_LOOPBACK */ ||
+        str_contains_ci(safe_name, "loopback") ||
+        str_contains_ci(safe_desc, "loopback") ||
+        str_contains_ci(safe_name, "-wfp") ||
+        str_contains_ci(safe_name, "-npc") ||
+        str_contains_ci(safe_name, "-qos") ||
+        str_contains_ci(safe_name, "-virt") ||
+        str_contains_ci(safe_name, "커널 디") ||
+        str_contains_ci(safe_name, "kernel debug") ||
+        str_contains_ci(safe_desc, "kernel debug") ||
+        str_contains_ci(safe_desc, "lightweight filter") ||
+        str_contains_ci(safe_desc, "native mac layer") ||
+        str_contains_ci(safe_desc, "packet scheduler") ||
+        str_contains_ci(safe_desc, "kdnic") ||
+        str_contains_ci(safe_desc, "npcap") ||
+        str_contains_ci(safe_desc, "winpcap") ||
+        str_contains_ci(safe_desc, "wan miniport") ||
+        str_contains_ci(safe_desc, "teredo") ||
+        str_contains_ci(safe_desc, "isatap") ||
+        str_contains_ci(safe_desc, "6to4") ||
+        str_contains_ci(safe_name, "wi-fi direct") ||
+        str_contains_ci(safe_desc, "wi-fi direct") ||
+        str_contains_ci(safe_name, "wifi direct") ||
+        str_contains_ci(safe_desc, "wifi direct") ||
+        str_contains_ci(safe_name, "bluetooth") ||
+        str_contains_ci(safe_desc, "bluetooth")) {
+        out_result->is_ghost_or_filter = 1;
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Pseudo Filter / Ghost", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "Kernel filter driver, pseudo device or loopback", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+
+    /* 2. Check NDIS Tunnel Type */
+    if (tunnel_type != 0 || if_type == 131 /* IF_TYPE_TUNNEL */ || if_type == 142 /* IF_TYPE_IPHTTPS */) {
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Virtual Tunnel", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "NDIS Tunnel Interface (VPN/Tunnel Type)", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+
+    /* 3. Check IEEE Hypervisor MAC OUI Prefixes */
+    /* Hyper-V: 00:15:5D */
+    if (str_contains_ci(safe_mac, "00:15:5D") || str_contains_ci(safe_mac, "00-15-5D")) {
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "Microsoft Hyper-V Virtual MAC OUI (00:15:5D)", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+    /* VMware: 00:05:69, 00:0C:29, 00:50:56 */
+    if (str_contains_ci(safe_mac, "00:05:69") || str_contains_ci(safe_mac, "00-05-69") ||
+        str_contains_ci(safe_mac, "00:0C:29") || str_contains_ci(safe_mac, "00-0C-29") ||
+        str_contains_ci(safe_mac, "00:50:56") || str_contains_ci(safe_mac, "00-50-56")) {
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "VMware Virtual MAC OUI (00:05:69/00:0C:29/00:50:56)", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+    /* VirtualBox: 08:00:27 */
+    if (str_contains_ci(safe_mac, "08:00:27") || str_contains_ci(safe_mac, "08-00-27")) {
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "Oracle VirtualBox MAC OUI (08:00:27)", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+    /* QEMU / KVM: 52:54:00 */
+    if (str_contains_ci(safe_mac, "52:54:00") || str_contains_ci(safe_mac, "52-54-00")) {
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "QEMU / KVM Virtual MAC OUI (52:54:00)", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+
+    /* 4. Comprehensive Keyword & Description Analysis (Korean '가상' & English) */
+    if (str_contains_ci(safe_name, "가상") ||
+        str_contains_ci(safe_desc, "가상") ||
+        str_contains_ci(safe_name, "virtual") ||
+        str_contains_ci(safe_desc, "virtual") ||
+        str_contains_ci(safe_name, "vethernet") ||
+        str_contains_ci(safe_desc, "vethernet") ||
+        str_contains_ci(safe_name, "vswitch") ||
+        str_contains_ci(safe_desc, "vswitch") ||
+        str_contains_ci(safe_name, "hyper-v") ||
+        str_contains_ci(safe_desc, "hyper-v") ||
+        str_contains_ci(safe_name, "vmware") ||
+        str_contains_ci(safe_desc, "vmware") ||
+        str_contains_ci(safe_name, "vmnet") ||
+        str_contains_ci(safe_desc, "vmnet") ||
+        str_contains_ci(safe_name, "virtualbox") ||
+        str_contains_ci(safe_desc, "virtualbox") ||
+        str_contains_ci(safe_name, "vbox") ||
+        str_contains_ci(safe_desc, "vbox") ||
+        str_contains_ci(safe_name, "wsl") ||
+        str_contains_ci(safe_desc, "wsl") ||
+        str_contains_ci(safe_name, "tap") ||
+        str_contains_ci(safe_desc, "tap") ||
+        str_contains_ci(safe_name, "wintun") ||
+        str_contains_ci(safe_desc, "wintun") ||
+        str_contains_ci(safe_name, "tailscale") ||
+        str_contains_ci(safe_desc, "tailscale") ||
+        str_contains_ci(safe_name, "zerotier") ||
+        str_contains_ci(safe_desc, "zerotier") ||
+        str_contains_ci(safe_name, "openvpn") ||
+        str_contains_ci(safe_desc, "openvpn") ||
+        str_contains_ci(safe_name, "wireguard") ||
+        str_contains_ci(safe_desc, "wireguard") ||
+        str_contains_ci(safe_name, "hamachi") ||
+        str_contains_ci(safe_desc, "hamachi") ||
+        str_contains_ci(safe_name, "radmin") ||
+        str_contains_ci(safe_desc, "radmin") ||
+        str_contains_ci(safe_name, "anyconnect") ||
+        str_contains_ci(safe_desc, "anyconnect") ||
+        str_contains_ci(safe_name, "cisco") ||
+        str_contains_ci(safe_desc, "cisco") ||
+        str_contains_ci(safe_name, "fortinet") ||
+        str_contains_ci(safe_desc, "fortinet") ||
+        str_contains_ci(safe_name, "globalprotect") ||
+        str_contains_ci(safe_desc, "globalprotect") ||
+        str_contains_ci(safe_name, "vpn") ||
+        str_contains_ci(safe_desc, "vpn") ||
+        str_contains_ci(safe_desc, "virtio") ||
+        str_contains_ci(safe_desc, "ndis virtual")) {
+        out_result->is_virtual = 1;
+        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "Virtual / Software Adapter Signature Matched", sizeof(out_result->detection_reason) - 1);
+        return IPNAME_OK;
+    }
+
+    /* 5. Physical Adapter Recognition (Wi-Fi vs Ethernet) */
+    out_result->is_virtual = 0;
+    if (if_type == 71 /* IF_TYPE_IEEE80211 */ ||
+        str_contains_ci(safe_name, "wi-fi") ||
+        str_contains_ci(safe_desc, "wi-fi") ||
+        str_contains_ci(safe_name, "wireless") ||
+        str_contains_ci(safe_desc, "wireless") ||
+        str_contains_ci(safe_name, "와이파이") ||
+        str_contains_ci(safe_desc, "와이파이") ||
+        str_contains_ci(safe_name, "무선") ||
+        str_contains_ci(safe_desc, "무선")) {
+        out_result->is_wifi = 1;
+        strncpy(out_result->category, "Physical Wi-Fi", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "Physical IEEE 802.11 Wireless LAN Hardware", sizeof(out_result->detection_reason) - 1);
+    } else {
+        out_result->is_wifi = 0;
+        strncpy(out_result->category, "Physical Ethernet", sizeof(out_result->category) - 1);
+        strncpy(out_result->detection_reason, "Physical Dedicated Wired Ethernet Hardware NIC", sizeof(out_result->detection_reason) - 1);
     }
 
     return IPNAME_OK;

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "project": "IpName2",
-  "version": "1.10.2",
+  "version": "1.12.4",
   "description": "Whitelist manifest of core files required to build, test, and package IpName2 for GitHub repository sync",
   "coreDirectories": [
     ".github/workflows",
@@ -33,7 +33,6 @@
     "build.bat",
     "build.ps1",
     "fix-icon.cjs",
-    "git-push.bat",
     "index.html",
     "IpName2.ico",
     "IpName2.png",
@@ -50,7 +49,6 @@
     "index.html",
     "fix-icon.cjs",
     "build.bat",
-    "git-push.bat",
     "installer/setup.iss",
     ".github/workflows/release.yml",
     "bin/postbuild-rename.cjs",
@@ -72,10 +70,16 @@
     "docs/DEVELOPMENT.md",
     "docs/DLL_SPECIFICATION.md",
     "docs/PATCH_NOTES.md",
+    "docs/ROADMAP.md",
     "docs/LICENSE_NOTICE.md",
     "docs/VERSIONING_POLICY.md"
   ],
+  "excludedFiles": [
+    "git-push.bat",
+    "scripts/git-push.bat"
+  ],
   "prohibitedPatterns": [
+    ".aistudio*",
     "bin/neutralino*",
     "*.apk",
     "*.ipa",

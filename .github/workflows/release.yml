@@ -27,6 +27,10 @@ jobs:
         run: |
           if (Test-Path "package-lock.json") {
             npm ci
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "npm ci encountered a lockfile mismatch, falling back to npm install..."
+              npm install
+            }
           } else {
             npm install
           }

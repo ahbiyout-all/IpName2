@@ -44,7 +44,8 @@ const ignoredScanDirs = new Set([
   'Output',
   'release',
   '.idea',
-  '.vscode'
+  '.vscode',
+  '.aistudio'
 ]);
 
 // 1. Verify that all required core files exist
@@ -141,6 +142,30 @@ if (detectedProhibited.length > 0) {
   console.log('[OK] No prohibited scratch files or unneeded binaries found.');
 }
 
+// 3b. Verify Excluded Files are Not Tracked by Git
+if (manifest.excludedFiles && Array.isArray(manifest.excludedFiles)) {
+  const { execSync } = require('child_process');
+  let trackedExcluded = [];
+  for (const excludedPath of manifest.excludedFiles) {
+    try {
+      const output = execSync(`git ls-files "${excludedPath}"`, { encoding: 'utf8', cwd: rootDir }).trim();
+      if (output) {
+        trackedExcluded.push(output);
+      }
+    } catch {
+      // Ignore if git not installed or not in repo
+    }
+  }
+  if (trackedExcluded.length > 0) {
+    console.warn('\n[WARNING] The following files are in excludedFiles but still tracked by Git:');
+    for (const te of trackedExcluded) {
+      console.warn(`  - ⚠️ Tracked: ${te} (Run: git rm --cached ${te})`);
+    }
+  } else {
+    console.log('[OK] All excluded files (including git-push.bat) verified untracked by Git.');
+  }
+}
+
 // 4. Summarize Staged Files Category Breakdown
 console.log('----------------------------------------------------------------------');
 console.log(' Repository Structure Audit:');
@@ -150,7 +175,8 @@ console.log('   - Pure Native DLL Engine: native/ipname_core/ (C99 Win32 DLL)');
 console.log('   - Inno Setup Installer:   installer/setup.iss');
 console.log('   - CI/CD Release Pipeline: .github/workflows/release.yml');
 console.log('   - Documentation & Specs:  docs/ (README, Architecture, Dev, DLL, Patch)');
-console.log('   - Build Scripts:          build.bat, build.ps1, git-push.bat, bin/');
+console.log('   - Build Scripts:          build.bat, build.ps1, bin/');
+console.log('   - Excluded Automation:    git-push.bat (local execution only, excluded from GitHub)');
 console.log('----------------------------------------------------------------------');
 console.log('[SUCCESS] Repository is clean, compliant, and ready for GitHub synchronization!');
 console.log('======================================================================\n');

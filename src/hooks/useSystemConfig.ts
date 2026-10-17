@@ -73,17 +73,143 @@ export function formatOsVersion(rawOs?: string): string {
   return os || 'Windows 11';
 }
 
-export function isVirtualAdapter(name: string, type?: string): boolean {
+export function isVirtualAdapter(name: string, type?: string, description?: string, isVirtualProp?: boolean, macAddress?: string): boolean {
+  if (isVirtualProp === true) return true;
   if (type === 'Virtual') return true;
-  const n = (name || '').toLowerCase();
+
+  // Hypervisor MAC OUI checks
+  if (macAddress) {
+    const cleanMac = macAddress.replace(/[:-]/g, '').toLowerCase();
+    if (
+      cleanMac.startsWith('00155d') || // Microsoft Hyper-V
+      cleanMac.startsWith('000569') || // VMware
+      cleanMac.startsWith('000c29') || // VMware
+      cleanMac.startsWith('005056') || // VMware
+      cleanMac.startsWith('080027') || // Oracle VirtualBox
+      cleanMac.startsWith('525400') || // QEMU / KVM
+      cleanMac.startsWith('00163e') || // Xen
+      cleanMac.startsWith('001c42')    // Parallels
+    ) {
+      return true;
+    }
+  }
+
+  const combined = `${name || ''} ${description || ''}`.toLowerCase();
   return (
-    n.startsWith('vethernet') ||
-    n.startsWith('vswitch') ||
-    n.includes('hyper-v') ||
-    n.includes('vmware') ||
-    n.includes('virtualbox') ||
-    n.includes('virtual')
+    combined.includes('가상') ||
+    combined.includes('virtual') ||
+    combined.startsWith('vethernet') ||
+    combined.startsWith('vswitch') ||
+    combined.includes('hyper-v') ||
+    combined.includes('vmware') ||
+    combined.includes('vmnet') ||
+    combined.includes('virtualbox') ||
+    combined.includes('vbox') ||
+    combined.includes('wsl') ||
+    combined.includes('tap') ||
+    combined.includes('wintun') ||
+    combined.includes('tunnel') ||
+    combined.includes('tailscale') ||
+    combined.includes('zerotier') ||
+    combined.includes('openvpn') ||
+    combined.includes('wireguard') ||
+    combined.includes('hamachi') ||
+    combined.includes('radmin') ||
+    combined.includes('anyconnect') ||
+    combined.includes('cisco') ||
+    combined.includes('fortinet') ||
+    combined.includes('globalprotect') ||
+    combined.includes('vpn') ||
+    combined.includes('virtio') ||
+    combined.includes('ndis virtual') ||
+    /(^|[^a-z0-9])tun(\d|[^a-z0-9]|$)/i.test(combined)
   );
+}
+
+function subnetMatches(ip: string, mask: string, gw: string): boolean {
+  if (!ip || !gw || !mask) return false;
+  try {
+    const parse = (s: string) => s.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+    const ipInt = parse(ip);
+    const gwInt = parse(gw);
+    const maskInt = parse(mask);
+    return (ipInt & maskInt) === (gwInt & maskInt);
+  } catch {
+    return false;
+  }
+}
+
+function isLinkLocal(ip: string): boolean {
+  return ip.startsWith('169.254.');
+}
+
+export function sortAdaptersAndEnforcePrimaryIp(adapters: NetworkAdapter[]): NetworkAdapter[] {
+  // 1. Enforce Primary status on DHCP-assigned or gateway-connected IPv4 addresses
+  const processed = adapters.map(adapter => {
+    const allIps: Array<{ ipAddress: string; subnetMask: string }> = [];
+    if (adapter.ipAddress && adapter.ipAddress.trim() !== '') {
+      allIps.push({ ipAddress: adapter.ipAddress.trim(), subnetMask: adapter.subnetMask || '255.255.255.0' });
+    }
+    if (adapter.additionalIps && Array.isArray(adapter.additionalIps)) {
+      for (const sec of adapter.additionalIps) {
+        if (sec.ipAddress && sec.ipAddress.trim() !== '' && !allIps.some(e => e.ipAddress === sec.ipAddress.trim())) {
+          allIps.push({ ipAddress: sec.ipAddress.trim(), subnetMask: sec.subnetMask || '255.255.255.0' });
+        }
+      }
+    }
+
+    if (allIps.length > 1) {
+      allIps.sort((a, b) => {
+        const aGw = subnetMatches(a.ipAddress, a.subnetMask, adapter.gateway);
+        const bGw = subnetMatches(b.ipAddress, b.subnetMask, adapter.gateway);
+        if (aGw && !bGw) return -1;
+        if (!aGw && bGw) return 1;
+
+        const aLink = isLinkLocal(a.ipAddress);
+        const bLink = isLinkLocal(b.ipAddress);
+        if (!aLink && bLink) return -1;
+        if (aLink && !bLink) return 1;
+
+        return 0;
+      });
+
+      return {
+        ...adapter,
+        ipAddress: allIps[0].ipAddress,
+        subnetMask: allIps[0].subnetMask,
+        additionalIps: allIps.slice(1).map(item => ({ ipAddress: item.ipAddress, subnetMask: item.subnetMask }))
+      };
+    }
+
+    return adapter;
+  });
+
+  // 2. Sort adapter list so gateway-connected / DHCP-assigned active adapters appear above secondary/disconnected/virtual
+  processed.sort((a, b) => {
+    const aConn = a.status === 'Connected';
+    const bConn = b.status === 'Connected';
+    const aHasIp = !!a.ipAddress;
+    const bHasIp = !!b.ipAddress;
+    const aHasGw = !!a.gateway;
+    const bHasGw = !!b.gateway;
+
+    const score = (conn: boolean, ip: boolean, gw: boolean) => {
+      if (conn && gw && ip) return 3;
+      if (conn && ip) return 2;
+      if (conn) return 1;
+      return 0;
+    };
+
+    const scoreA = score(aConn, aHasIp, aHasGw);
+    const scoreB = score(bConn, bHasIp, bHasGw);
+
+    if (scoreA !== scoreB) {
+      return scoreB - scoreA;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return processed;
 }
 
 export function useSystemConfig() {
@@ -100,7 +226,7 @@ export function useSystemConfig() {
   
   const [originalSystemInfo, setOriginalSystemInfo] = useState<SystemInfo | null>(null);
 
-  const [adapters, setAdapters] = useState<NetworkAdapter[]>([
+  const [adaptersState, setAdaptersState] = useState<NetworkAdapter[]>([
     {
       id: 'loading',
       name: t('loading'),
@@ -116,6 +242,15 @@ export function useSystemConfig() {
       isEnabled: true
     }
   ]);
+
+  const setAdapters = useCallback((action: NetworkAdapter[] | ((prev: NetworkAdapter[]) => NetworkAdapter[])) => {
+    setAdaptersState(prev => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      return sortAdaptersAndEnforcePrimaryIp(next);
+    });
+  }, []);
+
+  const adapters = adaptersState;
 
   const [originalAdapters, setOriginalAdapters] = useState<NetworkAdapter[]>([]);
 
@@ -139,13 +274,14 @@ export function useSystemConfig() {
           const adapterList = await invoke<NetworkAdapter[]>('get_adapters');
           
           // Query all physically present network adapters and disabled adapters from PowerShell
-          let disabledNetAdapters: Array<{ name: string; macAddress?: string }> = [];
+          let disabledNetAdapters: Array<{ name: string; macAddress?: string; isVirtual?: boolean; description?: string }> = [];
           const physicallyPresentNames = new Set<string>();
+          const virtualNetNames = new Set<string>();
           let hasPowerShellData = false;
 
           try {
             const psPresent = await executePowerShell(
-              `try { @(Get-NetAdapter -IncludeHidden:$false -ErrorAction SilentlyContinue | Select-Object -Property Name,Status,MacAddress) | ConvertTo-Json -Compress } catch { '[]' }`,
+              `try { @(Get-NetAdapter -IncludeHidden:$false -ErrorAction SilentlyContinue | Select-Object -Property Name,Status,MacAddress,Virtual,InterfaceDescription) | ConvertTo-Json -Compress } catch { '[]' }`,
               false
             );
             if (psPresent.stdout) {
@@ -163,8 +299,17 @@ export function useSystemConfig() {
                   if (item.Name) {
                     const nLower = String(item.Name).toLowerCase();
                     physicallyPresentNames.add(nLower);
+                    const isItemVirt = item.Virtual === true || isVirtualAdapter(item.Name, undefined, item.InterfaceDescription);
+                    if (isItemVirt) {
+                      virtualNetNames.add(nLower);
+                    }
                     if (item.Status === 'Disabled') {
-                      disabledNetAdapters.push({ name: item.Name, macAddress: item.MacAddress });
+                      disabledNetAdapters.push({ 
+                        name: item.Name, 
+                        macAddress: item.MacAddress,
+                        isVirtual: isItemVirt,
+                        description: item.InterfaceDescription
+                      });
                     }
                   }
                 }
@@ -179,37 +324,39 @@ export function useSystemConfig() {
               if (isFilterOrPseudoAdapter(adapter.name) || isGhostOrInvalidAdapter(adapter)) {
                 return false;
               }
-              // If PowerShell confirmed the list of physically present adapters in Windows,
-              // verify that physical Ethernet/Wi-Fi adapters are physically present:
-              if (hasPowerShellData && !isVirtualAdapter(adapter.name, adapter.type)) {
-                if (!physicallyPresentNames.has(adapter.name.toLowerCase())) {
-                  // Not physically present in Windows PnP stack -> exclude ghost registry physical adapter
-                  return false;
-                }
-              }
               return true;
             })
             .map((adapter, index) => {
-              const isVirt = isVirtualAdapter(adapter.name, adapter.type);
+              const isVirt = adapter.isVirtual === true ||
+                virtualNetNames.has(adapter.name.toLowerCase()) ||
+                isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual, adapter.macAddress);
               return {
                 ...adapter,
+                isVirtual: isVirt,
                 type: isVirt ? ('Virtual' as const) : adapter.type,
                 id: adapter.id || adapter.macAddress || adapter.name || `adapter-${index}`
               };
             });
 
-          setAdapters(prevAdapters => {
+          setAdapters(() => {
             const activeNames = new Set(activeParsed.map(a => a.name.toLowerCase()));
+            const activeMacs = new Set(activeParsed.map(a => (a.macAddress || '').replace(/[:-]/g, '').toLowerCase()).filter(Boolean));
             const merged = [...activeParsed];
 
-            // 1. Add verified disabled adapters discovered from Windows
+            // Add verified disabled adapters discovered from Windows that are not already present
             for (const dis of disabledNetAdapters) {
-              if (!activeNames.has(dis.name.toLowerCase()) && !isFilterOrPseudoAdapter(dis.name) && !isGhostOrInvalidAdapter(dis)) {
-                const isVirt = isVirtualAdapter(dis.name, 'Ethernet');
+              const cleanDisMac = (dis.macAddress || '').replace(/[:-]/g, '').toLowerCase();
+              if (
+                !activeNames.has(dis.name.toLowerCase()) &&
+                (!cleanDisMac || !activeMacs.has(cleanDisMac)) &&
+                !isFilterOrPseudoAdapter(dis.name) &&
+                !isGhostOrInvalidAdapter(dis)
+              ) {
+                const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
                 merged.push({
                   id: dis.macAddress || dis.name,
                   name: dis.name,
-                  type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') ? 'Wi-Fi' : 'Ethernet'),
+                  type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
                   status: 'Disabled',
                   ipAddress: '',
                   subnetMask: '',
@@ -218,25 +365,13 @@ export function useSystemConfig() {
                   secondaryDns: '',
                   macAddress: dis.macAddress || '',
                   isDhcp: true,
-                  isEnabled: false
+                  isEnabled: false,
+                  isVirtual: isVirt,
+                  description: dis.description,
+                  additionalIps: []
                 });
                 activeNames.add(dis.name.toLowerCase());
-              }
-            }
-
-            // 2. Only preserve previously known adapters if PowerShell data was unavailable,
-            // and ensure any preserved adapter is strictly not a ghost/invalid adapter
-            if (!hasPowerShellData) {
-              for (const prev of prevAdapters) {
-                if (prev.id === 'loading' || prev.id === 'error') continue;
-                if (!activeNames.has(prev.name.toLowerCase()) && !isGhostOrInvalidAdapter(prev)) {
-                  merged.push({
-                    ...prev,
-                    isEnabled: false,
-                    status: 'Disabled'
-                  });
-                  activeNames.add(prev.name.toLowerCase());
-                }
+                if (cleanDisMac) activeMacs.add(cleanDisMac);
               }
             }
 
@@ -284,13 +419,17 @@ export function useSystemConfig() {
             type: 'Ethernet',
             status: 'Connected',
             isEnabled: true,
+            isVirtual: false,
             ipAddress: '192.168.1.100',
             subnetMask: '255.255.255.0',
             gateway: '192.168.1.1',
             primaryDns: '8.8.8.8',
             secondaryDns: '8.8.4.4',
             macAddress: '00:1A:2B:3C:4D:5E',
-            isDhcp: false
+            isDhcp: false,
+            additionalIps: [
+              { ipAddress: '192.168.2.100', subnetMask: '255.255.255.0' }
+            ]
           },
           {
             id: 'mock-wifi-1',
@@ -298,13 +437,31 @@ export function useSystemConfig() {
             type: 'Wi-Fi',
             status: 'Disconnected',
             isEnabled: true,
+            isVirtual: false,
             ipAddress: '',
             subnetMask: '',
             gateway: '',
             primaryDns: '',
             secondaryDns: '',
             macAddress: 'A1:B2:C3:D4:E5:F6',
-            isDhcp: true
+            isDhcp: true,
+            additionalIps: []
+          },
+          {
+            id: 'mock-veth-1',
+            name: 'vEthernet (WSL)',
+            type: 'Virtual',
+            status: 'Connected',
+            isEnabled: true,
+            isVirtual: true,
+            ipAddress: '172.28.16.1',
+            subnetMask: '255.255.240.0',
+            gateway: '',
+            primaryDns: '',
+            secondaryDns: '',
+            macAddress: '00:15:5D:8A:2B:3C',
+            isDhcp: true,
+            additionalIps: []
           }
         ];
         setAdapters(mockAdapters);
@@ -474,6 +631,28 @@ export function useSystemConfig() {
               setIsSaving(false);
               return;
             }
+
+            if (adapter.additionalIps && adapter.additionalIps.length > 0) {
+              const seenIps = new Set<string>([adapter.ipAddress]);
+              for (const sec of adapter.additionalIps) {
+                if (!sec.ipAddress || !isValidIPv4(sec.ipAddress)) {
+                  showToast(t('invalidSecondaryIp'), 'error');
+                  setIsSaving(false);
+                  return;
+                }
+                if (!sec.subnetMask || !isValidIPv4(sec.subnetMask)) {
+                  showToast(t('invalidSecondaryIp'), 'error');
+                  setIsSaving(false);
+                  return;
+                }
+                if (seenIps.has(sec.ipAddress)) {
+                  showToast(t('duplicateIpWarning'), 'error');
+                  setIsSaving(false);
+                  return;
+                }
+                seenIps.add(sec.ipAddress);
+              }
+            }
           }
 
           if (adapter.isDhcp) {
@@ -482,6 +661,16 @@ export function useSystemConfig() {
           } else {
             const gw = adapter.gateway ? ` gateway=${adapter.gateway}` : '';
             script += `netsh interface ipv4 set address name="${adapter.name}" source=static address=${adapter.ipAddress} mask=${adapter.subnetMask}${gw}\n`;
+            
+            // Add secondary / multiple IP addresses
+            if (adapter.additionalIps && adapter.additionalIps.length > 0) {
+              for (const sec of adapter.additionalIps) {
+                if (sec.ipAddress && sec.subnetMask) {
+                  script += `netsh interface ipv4 add address name="${adapter.name}" address=${sec.ipAddress} mask=${sec.subnetMask}\n`;
+                }
+              }
+            }
+
             if (adapter.primaryDns) {
               script += `netsh interface ipv4 set dns name="${adapter.name}" source=static address=${adapter.primaryDns} validate=no\n`;
               if (adapter.secondaryDns) {

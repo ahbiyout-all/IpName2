@@ -1,3 +1,8 @@
+export interface SecondaryIp {
+  ipAddress: string;
+  subnetMask: string;
+}
+
 export interface NetworkAdapter {
   id: string;
   name: string;
@@ -11,6 +16,9 @@ export interface NetworkAdapter {
   macAddress: string;
   isDhcp: boolean;
   isEnabled: boolean;
+  isVirtual?: boolean;
+  description?: string;
+  additionalIps?: SecondaryIp[];
 }
 
 export interface SystemInfo {

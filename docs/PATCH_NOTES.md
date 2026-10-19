@@ -2,6 +2,18 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.12.6] - 2026-10-19
+
+### 1. GitHub Actions CI/CD 워크플로 Node.js 24 런타임 전면 마이그레이션
+* **GitHub Actions 워크플로 현대화 (`.github/workflows/release.yml`)**:
+  - GitHub Actions 러너의 Node.js 20 공식 EOL 및 강제 전환 경고(Annotations: `Node.js 20 is deprecated... forced to run on Node.js 24`)를 원천 해결.
+  - 리포지토리 체크아웃 액션 승급: `actions/checkout@v4` ➔ `actions/checkout@v5` (Node 24 네이티브 런타임).
+  - Node 환경 설정 액션 승급: `actions/setup-node@v4` ➔ `actions/setup-node@v5` (Node 24 네이티브 런타임).
+  - GitHub Releases 자산 배포 액션 승급: `softprops/action-gh-release@v2` ➔ `softprops/action-gh-release@v3` (Node 24 네이티브 런타임).
+  - 작업 레벨 환경 변수 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true`를 명시하여 차세대 Actions 런타임과의 100% 호환성 확보 및 경고 완전 제거.
+
+---
+
 ## [v1.12.5] - 2026-10-18
 
 ### 1. GitHub 업로드 파일 전수 점검 및 빌드 핵심 소스 화이트리스트 최적화

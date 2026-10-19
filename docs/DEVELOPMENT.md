@@ -1,12 +1,12 @@
 # IpName2 개발 명세서 (Development Specifications)
 
-본 문서는 **IpName2 v1.12.5**의 설계 구조, 기술 스택, 빌드 파이프라인, 순수 창작 DLL, 실시간 업데이트 및 GitHub 패키징 자동화를 기록한 개발 지침서입니다. AI 및 개발자가 본 프로젝트를 유지보수하거나 확장할 때 참고할 수 있도록 상세히 기술되었습니다.
+본 문서는 **IpName2 v1.12.6**의 설계 구조, 기술 스택, 빌드 파이프라인, 순수 창작 DLL, 실시간 업데이트 및 GitHub 패키징 자동화를 기록한 개발 지침서입니다. AI 및 개발자가 본 프로젝트를 유지보수하거나 확장할 때 참고할 수 있도록 상세히 기술되었습니다.
 
 ---
 
 ## 1. 프로젝트 개요
-- **프로젝트명**: AhBiYout IpName2 v1.12.5
-- **버전**: v1.12.5 (v1.12-STABLE)
+- **프로젝트명**: AhBiYout IpName2 v1.12.6
+- **버전**: v1.12.6 (v1.12-STABLE)
 - **개발자**: AhBiYout (GitHub: [https://github.com/AhBiYout-all](https://github.com/AhBiYout-all))
 - **공식 저장소**: [https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2)
 - **공식 구글 블로그**: [https://ahbiyoutvibe.blogspot.com/](https://ahbiyoutvibe.blogspot.com/)
@@ -170,7 +170,8 @@ GitHub 저장소에 소스 코드를 동기화할 때, 빌드에 필요한 핵�
 - **원클릭 자동화**: 추출된 버전(`v1.12.5`)으로 커밋 생성, Git 릴리스 태그 생성, 원격 저장소(`main` 브랜치 및 `--tags`) 푸시 완결.
 
 ### 5.5. GitHub Actions 릴리스 배포 워크플로 (`.github/workflows/release.yml`)
-- **Node.js 22 LTS 전환**: GitHub 클라우드 러너의 Node 20 EOL 공식 수명 종료 정책에 맞춰 최신 LTS 환경으로 완전 전환.
+- **Node.js 24 런타임 전면 마이그레이션**: GitHub Actions 러너의 Node 20 EOL 정책에 따라 `actions/checkout@v5`, `actions/setup-node@v5`, `softprops/action-gh-release@v3`로 전면 승급하고 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true`를 선언하여 런타임 경고 완전 해소.
+- **Node.js 22 LTS 앱 빌드 환경**: 프로젝트 소스 빌드는 안정적인 Node.js 22 LTS 환경에서 안전하게 수행.
 - **인스톨 파일 전용 배포 정책**: 소스 압축본, 디버그 산출물, 포터블 폴더를 제외하고 Inno Setup 순수 설치 프로그램(`IpName2_v*_Setup.exe`)만 GitHub Releases 자산으로 등록.
 
 ---

@@ -1,0 +1,157 @@
+# ======================================================================
+# AhBiYout IpName2 - Official .gitignore
+# ======================================================================
+# Whitelist & exclusion policy: Only essential source codes, configs,
+# build scripts, icons, and official documents are tracked in GitHub.
+# ======================================================================
+
+# AI Studio Internal Metadata & Ephemeral Artifacts
+.aistudio/
+.aistudio
+.dev.env.json
+.dev.pid
+cloud_sql_proxy*
+control-plane-api*
+
+# Dependencies & Lockfiles (npm package-lock.json is the sole standard)
+node_modules/
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+deno.lock
+package-lock.json.backup
+
+# Local Git Push Automation Scripts (Local execution only - EXCLUDED from GitHub)
+git-push.bat
+scripts/git-push.bat
+*git-push*.bat
+*.push.bat
+
+# Build, Bundler & Distribution Output Directories
+dist/
+dist-ssr/
+dist-installer/
+build/
+Output/
+installer/Output/
+release/
+target/
+*.local
+
+# Archive & Packaging Binaries
+*.zip
+*.tar.gz
+*.7z
+*.rar
+*.gz
+*.cab
+*.iso
+*.dmg
+*.app
+*.apk
+*.ipa
+*.aab
+
+# Tauri & Rust Compilation Artifacts
+src-tauri/target/
+src-tauri/Cargo.lock
+Cargo.lock
+
+# Compiled Binaries, Libraries & Debug Symbols (Distributed via GitHub Releases only)
+*.exe
+*.msi
+*.dll
+*.lib
+*.exp
+*.pdb
+*.obj
+*.o
+*.a
+*.so
+*.dylib
+*.bundle
+*.ilk
+
+# Preserve Source Files while Excluding Compilation Outputs in Native Directory
+native/ipname_core/*.dll
+native/ipname_core/*.lib
+native/ipname_core/*.exp
+native/ipname_core/*.obj
+native/ipname_core/*.o
+native/ipname_core/*.a
+native/ipname_core/*.pdb
+native/ipname_core/*.ilk
+
+# Legacy & Neutralino Binaries
+bin/neutralino*
+
+# Environment Variables, Secrets & Certificates
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+*.crt
+
+# IDE, Editor & Tooling Local Configurations
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.fleet/
+.claude/
+.cursor/
+*.suo
+*.user
+*.userosv
+*.sln.docstates
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swo
+*.swp
+*~
+*.code-workspace
+
+# OS & Filesystem Metadata
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs, Diagnostic Dumps & Caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.orig
+*.rej
+*.cache
+*.tsbuildinfo
+coverage/
+*.stackdump
+crash.dmp
+dump.rdb
+
+# One-Off Scratch Scripts & Generation Artifacts
+icon_base64.txt
+convert.cjs
+extract-png.cjs
+get-b64.cjs
+make-icon.cjs
+make-strict-ico.cjs
+fix-icon.js
+download-icons.ts
+download-official-icons.js

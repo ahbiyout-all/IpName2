@@ -2,6 +2,8 @@ name: Release & Packaging Pipeline
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -79,7 +81,7 @@ jobs:
 
       - name: Upload Installer Assets to GitHub Release
         uses: softprops/action-gh-release@v3
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
           name: "IpName2 v${{ steps.extract_version.outputs.version }}"
           tag_name: "v${{ steps.extract_version.outputs.version }}"

@@ -1,6 +1,6 @@
 # IpNameCore 순수 창작 DLL 명세서 (DLL Specification)
 
-본 문서는 **AhBiYout IpName2 v1.12.1**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
+본 문서는 **AhBiYout IpName2 v1.12.7**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
 
 ---
 
@@ -9,8 +9,8 @@
 | 항목 | 상세 내용 |
 | :--- | :--- |
 | **모듈 명칭** | `ipname_core.dll` (IpNameCore Native Engine) |
-| **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지, TCP 포트 진단 및 서브넷 연산 수행 |
-| **버전** | v1.12.1 (IpName2 v1.12.1 정식 탑재) |
+| **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지 및 자체 MAC 오탐 방지(Whitelist), TCP 포트 진단 및 서브넷 연산 수행 |
+| **버전** | v1.12.7 (IpName2 v1.12.7 정식 탑재) |
 | **아키텍처** | Windows x64 / x86 호환 C-ABI (`__stdcall` / `__cdecl`) |
 | **표준 규격** | ISO C99 / Win32 Native API |
 | **의존성** | 독립 실행형 (Zero External Dependencies, Windows OS 표준 `ws2_32.dll`, `iphlpapi.dll`만 동적 링킹) |
@@ -25,21 +25,24 @@
 1. **수동 IP 설정 시 IP 충돌(Address Collision) 사전 방지 불가**:
    - 관리자가 고정 IP를 부여할 때 동일 네트워크 대역 내 다른 PC, 스마트폰, 프린터가 해당 IP를 이미 점유 중인지 사전에 알지 못하여 네트워크 충돌 장애 발생.
    - 윈도우 방화벽이 켜진 기기는 ICMP Ping을 차단하므로 단순 Ping으로는 충돌을 감지할 수 없음.
-2. **DNS 및 게이트웨이 Ping 테스트의 무거운 오버헤드**:
+2. **현재 본인 랜카드 IP 재적용 시 자기 자신 충돌 오탐 (Self-Conflict False Alarm)**:
+   - 현재 랜카드가 점유하고 있는 IP를 수정하거나 점검할 때, `SendARP`가 자기 자신의 MAC 주소로 응답하여 충돌 오류로 잘못 표시되는 현상 발생.
+   - ➡️ **해결**: 자체 MAC 화이트리스트 필터링이 포함된 확장 함수 `IpName_CheckIpConflictEx` 도입.
+3. **DNS 및 게이트웨이 Ping 테스트의 무거운 오버헤드**:
    - `cmd.exe /k ping -t <IP>`를 외부 검은색 명령 프롬프트 창으로 실행하여 프로세스 생성 오버헤드(300ms~500ms) 발생.
    - 앱 UI 내부에서 지연 시간(RTT) 및 패킷 응답을 정밀하게 표시 불가.
-3. **포트(TCP 53, 80, 443) 서비스 활성화 확인 불가**:
+4. **포트(TCP 53, 80, 443) 서비스 활성화 확인 불가**:
    - 게이트웨이 웹 GUI나 DNS 포트(53)가 실제 패킷을 수신하고 있는지 앱 내에서 확인하기 어려움.
-4. **서브넷 마스크 및 IP 대역 연산**:
+5. **서브넷 마스크 및 IP 대역 연산**:
    - JavaScript 레벨 파싱 시 대량 연산 오버헤드 및 비표준 불연속 서브넷 마스크 예외 처리 미흡.
 
-➡️ **해결책**: 순수 창작 DLL인 `ipname_core.dll`을 설계하여 **마이크로초(μs) 단위의 인프로세스 직접 실행**과 **Layer-2 ARP 기반 IP 충돌 탐지**를 완벽하게 구현했습니다.
+➡️ **해결책**: 순수 창작 DLL인 `ipname_core.dll`을 설계하여 **마이크로초(μs) 단위의 인프로세스 직접 실행**과 **Layer-2 ARP 기반 IP 충돌 탐지 및 자기 자신 MAC 화이트리스트 필터링**을 완벽하게 구현했습니다.
 
 ---
 
 ## 3. 핵심 동작 원리 (Operating Principles)
 
-### 3.1. Layer-2 ARP 기반 초고속 IP 충돌 감지 (`IpName_CheckIpConflict`)
+### 3.1. Layer-2 ARP 기반 초고속 IP 충돌 감지 및 자기 자신 MAC 필터링 (`IpName_CheckIpConflictEx`)
 ```
 [React UI] ──(Tauri IPC)──> [Rust Native] ──(C-ABI)──> [ipname_core.dll]
                                                                │
@@ -52,12 +55,18 @@
            [동일 IP 기기 존재]                                                     [미사용 IP / 빈 IP]
         ARP Reply (MAC 반환: NO_ERROR)                                          Timeout (ERROR_GEN_FAILURE)
                     │                                                                     │
-       ⚠️ out_result->is_conflict = 1                                         ✓ out_result->is_conflict = 0
-       MAC 주소: "AA:BB:CC:11:22:33"                                         "사용 가능한 안전한 IP"
+     ┌──────────────┴──────────────┐                                                      │
+     ▼                             ▼                                                      │
+[응답 MAC == own_mac]     [응답 MAC != own_mac]                                           │
+(자기 자신의 현재 점유 IP)     (타 기기 IP 충돌!)                                                │
+     │                             │                                                      │
+✓ out_result->is_conflict = 0  ⚠️ out_result->is_conflict = 1                             ✓ out_result->is_conflict = 0
+"현재 기기가 사용 중인 정상 IP"   MAC: "AA:BB:CC:11:22:33"                                "사용 가능한 안전한 IP"
 ```
 1. **방화벽 무시 (Firewall-Bypass)**: ICMP Ping은 윈도우 방화벽이나 보안 소프트웨어에 의해 드롭(차단)될 수 있지만, **ARP(Address Resolution Protocol)는 OSI 2계층 데이터링크 프로토콜이므로 로컬 네트워크 세그먼트에서 방화벽에 의해 차단되지 않습니다.**
 2. **인프로세스 실행**: `iphlpapi.dll`의 `SendARP` API를 내부 스레드에서 직접 호출하여, 외부 명령줄 실행 없이 10~50ms 이내에 대상 IP를 점유한 기기의 6바이트 물리 하드웨어 MAC 주소를 추출합니다.
-3. **충돌 식별**: 응답이 있으면 해당 기기의 MAC 주소를 포맷하여 충돌 경고(`is_conflict = 1`)를 띄우고, 응답이 없으면 사용 가능한 안전한 IP(`is_conflict = 0`)로 확정합니다.
+3. **자체 MAC 화이트리스트 필터링**: `IpName_CheckIpConflictEx`는 로컬 어댑터의 고유 MAC 주소(`own_mac`)를 전달받아 대조합니다. 만약 ARP 응답 MAC과 `own_mac`이 일치하면, 타 기기와의 충돌이 아닌 현재 본인 어댑터가 정상 점유 중인 IP로 판정하여 충돌 플래그를 해제(`is_conflict = 0`)합니다.
+4. **타 기기 충돌 식별**: 응답 MAC이 `own_mac`과 다르면 해당 기기의 MAC 주소를 포맷하여 충돌 경고(`is_conflict = 1`)를 띄우고, 응답이 없으면 즉시 사용 가능한 안전한 IP(`is_conflict = 0`)로 확정합니다.
 
 ---
 
@@ -139,6 +148,27 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflict(
   - `IPNAME_OK` (0): 검사 성공 (충돌 여부는 `out_result->is_conflict`로 판별)
   - `IPNAME_ERR_IP_CONFLICT` (7): 충돌 기기 발견
   - `IPNAME_ERR_INVALID_PARAM` (1): IP 형식 오류
+
+---
+
+### 4.1b. `IpName_CheckIpConflictEx` (자체 MAC 화이트리스트 확장형)
+로컬 어댑터의 고유 물리 MAC 주소(`own_mac`)를 인자로 전달받아, 대상 IP가 로컬 네트워크 상에서 점유 중이더라도 응답 MAC이 로컬 어댑터의 MAC과 일치하면 자기 자신의 정상 점유로 판별하여 충돌 오탐을 방지합니다.
+```c
+IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
+    const char* target_ip,
+    const char* source_ip,
+    const char* own_mac,
+    IpNameConflictResult* out_result
+);
+```
+- **매개변수**:
+  - `target_ip`: 검사할 대상 IPv4 주소 (예: `"192.168.1.100"`)
+  - `source_ip`: 로컬 송신 IP (선택 사항, `NULL` 허용)
+  - `own_mac`: 현재 어댑터의 물리 MAC 주소 (예: `"AA:BB:CC:11:22:33"`, `NULL` 허용)
+  - `out_result`: 결과를 전달받을 `IpNameConflictResult` 구조체 포인터
+- **특징 및 개선**:
+  - 현재 랜카드의 IP를 갱신하거나 재점검할 때, `SendARP`가 본인의 MAC 주소로 응답하여 `is_conflict = 1`로 오탐지되던 문제를 100% 해소.
+  - 응답 MAC이 `own_mac`과 일치하면 `is_conflict = 0` 및 `"현재 어댑터가 사용 중인 정상 IP입니다."` 메시지 반환.
 
 ---
 
@@ -265,7 +295,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
 
 IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 C/Rust 계층의 호출 내역을 정밀 감사한 결과는 다음과 같습니다:
 
-| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0) |
+| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.12.7) |
 | :--- | :--- | :--- | :--- |
 | **`ipname_core.dll`** | `IpName_PingIpv4` | 64비트 Windows 환경에서 `ICMP_ECHO_REPLY` 버퍼 크기 부족 시 커널 드라이버가 버퍼 오버플로우 또는 힙 손상 유발 가능 | 최소 1024바이트의 안전 정렬 버퍼를 기본 할당하도록 개선 |
 | **`ipname_core.dll`** | `inet_addr` 호출부 | `inet_addr`는 최신 MSVC에서 사용 중단(Deprecated C4996) 경고 및 255.255.255.255 예외 처리 취약 | 호스트 정수를 `htonl()`로 직접 변환하여 경고 제거 및 주소 파싱 안정화 |
@@ -273,6 +303,8 @@ IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 도커(Docker), Hyper-V, VPN 등 다중 가상 어댑터 환경에서 초기 버퍼(15KB) 부족 시 1회만 재할당하여 재실패 가능성 존재 | 초기 버퍼를 **32KB**로 2배 이상 증설하고 **최대 3회 점진적 크기 재할당 루프**로 전면 보강 |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 비활성화(Disabled) 어댑터는 NDIS 드라이버 차단으로 `PhysicalAddressLength = 0`으로 응답되어 유령 어댑터로 오판단되는 결함 | 합법적 어댑터("이더넷", "Wi-Fi" 등) 식별 방어 조건을 추가하여 비활성 랜카드 유실 방지 |
 | **`ipname_core.dll`** | `IpName_DistinguishAdapter` | 물리 어댑터 필터 선택 시 가상 어댑터가 혼재되어 표시되거나 어댑터 목록이 불일치하는 현상 발생 | IEEE MAC OUI(Hyper-V, VMware, VirtualBox 등), NDIS TunnelType, 한글 '가상' 키워드 심층 검사로 물리/가상 100% 구분 (v1.12.0 신설) |
+| **`ipname_core.dll`** | `IpName_CheckIpConflictEx` | 현재 어댑터가 이미 점유 중인 정상 IP를 검사할 때 본인의 MAC 응답으로 인해 충돌로 오탐지되는 문제 | 로컬 어댑터 MAC 주소(`own_mac`) 화이트리스트 대조 알고리즘 도입으로 자기 자신 IP 오탐 원천 차단 (v1.12.3 신설) |
+| **`src/utils/network.ts`** | `sortAdaptersAndEnforcePrimaryIp` | 다중 IP 바인딩 어댑터에서 0.0.0.0 또는 APIPA가 대표 IP로 표시되거나 목록 정렬이 불안정한 현상 | 유효한 라우팅 가능 IPv4 주소를 우선 탐색하여 `primaryIp`로 강제 승격 및 상태별 결정론적 정렬 보장 (v1.12.2 신설) |
 | **`kernel32.dll`** | `GetComputerNameExW` | 컴퓨터 이름 조회 | 최대 버퍼 크기 계산 및 후행 널 문자 정리 정상 확인 |
 | **`advapi32.dll`** | `OpenProcessToken` | UAC 관리자 권한 조회 | 토큰 핸들 누수 방지(`CloseHandle`) 정상 확인 |
 

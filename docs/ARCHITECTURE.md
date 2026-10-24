@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.12.6**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.12.7**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -40,7 +40,8 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ┌────────────────────────────────▼────────────────────────────────┐
 │             Packaging & Distribution Pipeline                   │
 │   - Inno Setup Professional (installer/setup.iss)               │
-│   - GitHub Actions CI/CD (Node.js 22 LTS, Installer-Only Asset) │
+│   - GitHub Actions CI/CD (Node 24 Actions, Node 22 LTS Build)   │
+│   - Dual Push Triggers (branches: main & tags: v*)              │
 │   - Core Files Validator (scripts/github/verify-core-files.cjs) │
 │   - Dynamic Version Git Pusher (git-push.bat)                   │
 └─────────────────────────────────────────────────────────────────┘
@@ -60,28 +61,30 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 * `src/components/SubnetMaskSelector.tsx`: `/24`, `/25`, `/26`, `/29`, `/16` 서브넷 마스크 프리셋 오버레이 셀렉터.
 * `src/components/ConfirmModal.tsx`: 네트워크 단절 등 파괴적 작업 시 사용자 실수를 방지하는 안전 확인 모달.
 * `src/components/QuickDnsSettings.tsx`: KT, SKB, LGU+, Google DNS 원클릭 프리셋 주입 컨트롤.
-* `src/hooks/useSystemConfig.ts`: 통합 시스템 상태 머신 (어댑터 목록, IP/DNS, 컴퓨터 이름, 저장/토글 핸들러).
+* `src/hooks/useSystemConfig.ts`: 통합 시스템 상태 머신 (어댑터 목록, IP/DNS, 컴퓨터 이름, 저장/토글 핸들러, IPv4 Primary 강제 정렬).
 
 ### 2.2. 백엔드 및 Native 계층 (`/src-tauri`)
 * `src-tauri/src/lib.rs`: Tauri IPC 커맨드 라우팅 (`get_system_info`, `get_adapters`, `ping_ipv4`, `calculate_subnet`, `check_ip_conflict`, `check_tcp_port`, `classify_ip`).
-* `src-tauri/src/windows_native.rs`: Windows Win32 API FFI 바인딩. `GetAdaptersAddresses`를 호출하여 어댑터 상태, IP, MAC, 활성화 여부를 마이크로초 단위로 쿼리.
+* `src-tauri/src/windows_native.rs`: Windows Win32 API FFI 바인딩. `GetAdaptersAddresses`를 호출하여 어댑터 상태, IP, MAC, 활성화 여부를 마이크로초 단위로 쿼리 (`#[allow(non_snake_case)]` 적용으로 0 Warnings 달성).
 * `src-tauri/tauri.conf.json`: 고정 창 크기(650x800), 단일 인스턴스 락, NSIS 타깃 번들 설정.
+* `src-tauri/build.rs`: `tauri_build::WindowsAttributes::new().static_vc_runtime(true)`를 통한 무의존성 정적 런타임 링크.
 
 ### 2.3. 순수 창작 네이티브 DLL (`/native/ipname_core`)
 * `native/ipname_core/include/ipname_core.h`: 순수 C-ABI 헤더. 결과 코드 열거형, 결과 구조체 및 함수 원형 정의.
 * `native/ipname_core/src/ipname_core.c`: Win32 Native 소스코드.
-  - `IpName_CheckIpConflict`: Layer-2 ARP `SendARP` 브로드캐스트 기반 IP 충돌 탐지.
-  - `IpName_PingIpv4`: Windows NDIS ICMP Echo 커널 파일 직접 제어.
+  - `IpName_CheckIpConflictEx`: Layer-2 ARP `SendARP` 기반 IP 충돌 탐지 및 `own_mac` 하드웨어 화이트리스트 기반 자가 충돌(Self-Conflict) 오탐 원천 차단.
+  - `IpName_PingIpv4`: Windows NDIS ICMP Echo 커널 파일 직접 제어 (인프로세스 초고속 Ping).
   - `IpName_CheckTcpPort`: 넌블로킹 소켓 `select` 기반 포트 응답 시간 계측.
   - `IpName_CalculateSubnet` / `IpName_ClassifyIp`: 32비트 고속 비트마스크 연산기.
 * `native/ipname_core/build.bat`: MSVC `cl.exe` 및 MinGW `gcc.exe` 감지 기반 순차 컴파일 스크립트.
 
-### 2.4. 패키징 및 GitHub 관리 파이프라인 (`/installer`, `/.github`, `/scripts`)
+### 2.4. 패키징, GitHub 관리 및 표준화 파이프라인 (`/installer`, `/.github`, `/scripts`, `/docs`)
 * `installer/setup.iss`: Inno Setup 프로페셔널 스크립트 (Unpacked Multi-File, 기존 버전 감지 및 덮어쓰기, 무인 설치, Windows 방화벽 기본명/버전명 듀얼 사전 등록).
-* `.github/workflows/release.yml`: Node.js 22 LTS 환경 기반 릴리스 자동화 (Inno Setup 순수 인스톨러 `IpName2_v*_Setup.exe` 파일만 단독 배포 첨부).
-* `scripts/github/core-manifest.json`: 28개 빌드 필수 파일 화이트리스트 및 금지 파일 패턴 정의.
+* `.github/workflows/release.yml`: Node.js 24 런타임(`checkout@v5`, `setup-node@v5`, `action-gh-release@v3`) 및 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` 기반 릴리스 자동화 (AI Studio Web Sync 및 Git Tag 듀얼 트리거).
+* `scripts/github/core-manifest.json`: 32개 빌드 필수 파일 화이트리스트 및 금지 파일 패턴 정의.
 * `scripts/github/verify-core-files.cjs`: 작업 트리 실시간 감사 및 스크래치 파일 자동 청소 도구.
-* `git-push.bat`: 다단 동적 버전 자동 추출 및 STEP 2.5 사전 무결성 감사 연동 푸시 파이프라인.
+* `git-push.bat`: 다단 동적 버전 자동 추출 및 STEP 3 사전 무결성 감사 연동 푸시 파이프라인 (GitHub 원격 업로드 격리).
+* `docs/UPDATE_WORK_INSTRUCTION.md`: 타 IP Name 시리즈 및 신규 파생 데스크톱 앱을 최신 표준으로 일괄 업그레이드하기 위한 AI 전용 작업 지시 프롬프트.
 
 ---
 
@@ -115,7 +118,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
                                      ▼                                                           ▼
                            [remoteVer > currentVer]                                    [최신 버전 유지 중]
                         UpdateModal 팝업 창 자동 실행                                   최신 상태 안내 배너
-                        - 버전 차이(v1.10.0 vs vX.Y.Z)
+                        - 버전 차이(v1.12.7 vs vX.Y.Z)
                         - 전용 인스톨러 직접 다운로드
                         - 이번 버전 건너뛰기
 ```
@@ -128,12 +131,15 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 [STEP 1: 다단 동적 버전 추출] (package.json ➔ PowerShell ➔ PATCH_NOTES.md) ➔ %APP_VER%
        │
        ▼
-[STEP 2.5: 핵심 파일 정밀 감사] (scripts/github/verify-core-files.cjs --clean)
-       ├── 28개 필수 빌드 파일 존재 확인
-       └── 스크래치 파일 및 레거시 바이너리 자동 제거
+[STEP 3: 핵심 파일 정밀 감사] (scripts/github/verify-core-files.cjs --clean)
+       ├── 32개 필수 빌드 파일 존재 확인
+       └── 스크래치 파일 및 비표준 락파일(bun.lock 등) 자동 제거
        │
        ▼
-[STEP 3~6: 안전 스테이징 & 푸시] (git add . ➔ v%APP_VER% 태그 ➔ GitHub 원격 저장소 푸시)
+[STEP 4: 푸시 스크립트 자체 격리] (git rm --cached git-push.bat)
+       │
+       ▼
+[STEP 5~7: 안전 스테이징 & 푸시] (git add . ➔ v%APP_VER% 태그 ➔ GitHub 원격 저장소 푸시)
 ```
 
 ### 3.5. 다중 IP (한 개 이상의 IP) 바인딩 및 순차 Netsh 제어 흐름
@@ -173,4 +179,32 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
         ├── UI 탭 바: [물리] (에메랄드) vs [가상] (호박색) vs [Wi-Fi] (파랑색)
         ├── 어댑터 카드 헤더: "물리 이더넷" 배지 vs "가상 이더넷" 배지
         └── 필터 세그먼트: [물리 어댑터] / [가상 어댑터] / [전체] 원클릭 분류
+```
+
+### 3.7. 게이트웨이 및 DHCP 기반 IPv4 Primary IP 강제 정렬 흐름
+```
+[다중 IP 수집 완료] (기본 IP + 보조 IP 목록)
+        │
+        ▼
+[sortAdaptersAndEnforcePrimaryIp 알고리즘]
+        ├── 1순위: 기본 게이트웨이(Default Gateway)와 서브넷이 일치하는 IPv4 탐색
+        ├── 2순위: 169.254.x.x (APIPA 링크 로컬)가 아닌 유효 사설/공인 IPv4 탐색
+        └── 3순위: DHCP로 임대받은 주소 우선 배정
+        │
+        ▼
+[Primary IP ('ipAddress') 강제 치환 & 나머지 IP는 Secondary 목록으로 자동 재배치]
+```
+
+### 3.8. AI 작업 지시서 기반 멀티 프로젝트 표준 전파 아키텍처
+```
+[docs/UPDATE_WORK_INSTRUCTION.md] (8대 엔지니어링 표준 프롬프트)
+        │
+        ├── 불변 사양 보장 (창 크기 650x800, 포트 3030, 공식 메타데이터)
+        ├── 순수 창작 C DLL (Layer-2 ARP SendARP 본인 MAC 오탐 방어)
+        ├── 어댑터 Primary IP 정렬 & 물리/가상 NIC 엄격 필터링
+        ├── Tauri v2 클린 컴파일 & GitHub Actions Node 24 런타임 승급
+        └── 32종 필수 빌드 파일 화이트리스트 & 버전 삼중 동기화
+        │
+        ▼
+[타 IP Name 애플리케이션 AI 어시스턴트에 원클릭 전달 ➔ 100% 동일 규격 업그레이드 완료]
 ```

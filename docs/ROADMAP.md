@@ -91,3 +91,37 @@ This document tracks high-priority features, reliability fixes, and architecture
   4. Native C DLL provides `IpName_CheckIpConflictEx` with `own_mac` filtering.
 - **Validation**: `compile_applet` and `lint_applet` passed cleanly; frontend and backend types synchronized; zero compiler warnings.
 
+#### [ROADMAP-010] Core Files Audit Whitelist & Local Git Script Tracking Isolation (v1.12.5)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `scripts/github/core-manifest.json`, `scripts/github/verify-core-files.cjs`, `scripts/github/prepare-github-sync.bat`, `git-push.bat`, `.gitignore`
+- **Description**: Establish a strict 32-file core repository manifest to ensure zero untracked scratch files, temp build artifacts, or prohibited scripts enter GitHub. Ensure `git-push.bat` is strictly retained locally for automated one-click pushing but excluded from remote Git synchronization.
+- **Acceptance Criteria**:
+  1. `verify-core-files.cjs` strictly audits all 32 build-critical files and purges untracked files with `--clean`.
+  2. `git-push.bat` operates locally without being committed to git tracking.
+  3. Windows CMD syntax handles special characters (`&`) without premature execution errors.
+- **Validation**: Executed `node scripts/github/verify-core-files.cjs --clean` passing with 0 warnings and all 32 files intact.
+
+#### [ROADMAP-011] Node 24 GitHub Actions Runner Migration & Dual Push Triggers (v1.12.6)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `.github/workflows/release.yml`, `git-push.bat`
+- **Description**: Upgrade GitHub Actions workflow to eliminate Node 20 deprecation warnings on GitHub Actions runners, and configure dual push triggers (`branches: [ main ]` and `tags: [ 'v*' ]`) plus `workflow_dispatch` so CI/CD compiles Windows installers regardless of whether changes are pushed via AI Studio web sync or local `git-push.bat`.
+- **Acceptance Criteria**:
+  1. Action steps use Node 24 native versions (`actions/checkout@v5`, `actions/setup-node@v5`, `softprops/action-gh-release@v3`).
+  2. Job environment variable `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` applied.
+  3. CI/CD workflow triggers on both `main` branch pushes and semantic version tags `v*`.
+  4. `git-push.bat` uses label-based error handling (`goto :push_failed`) to prevent CMD parenthesis parsing crashes.
+- **Validation**: Workflow syntax verified; batch script executed without command parsing errors.
+
+#### [ROADMAP-012] AI Multi-Project Migration Work Instruction Specification (v1.12.7)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `docs/UPDATE_WORK_INSTRUCTION.md`, `docs/README.md`, `scripts/github/core-manifest.json`
+- **Description**: Author comprehensive, copy-pasteable work instructions and AI prompt templates enabling any AI coding assistant to apply the exact v1.12.x architectural upgrades (Layer-2 ARP SendARP with MAC whitelisting, C99 C-ABI DLL engine, Node 24 dual-trigger CI/CD, 32-file core whitelist) to other legacy IP Name applications.
+- **Acceptance Criteria**:
+  1. Create standalone `docs/UPDATE_WORK_INSTRUCTION.md` with 8 core engineering principles, complete copy-pasteable AI system prompt, and exact C / Rust / TypeScript / YAML code implementations.
+  2. Register document in `docs/README.md` index and `scripts/github/core-manifest.json`.
+  3. Update all cross-referenced documents in `docs/` (`ARCHITECTURE.md`, `DEVELOPMENT.md`, `DLL_SPECIFICATION.md`, `PATCH_NOTES.md`, `ROADMAP.md`, `VERSIONING_POLICY.md`, `LICENSE_NOTICE.md`).
+- **Validation**: Document audited and registered in 32-file core manifest; build and linting clean.
+

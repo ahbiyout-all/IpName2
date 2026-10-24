@@ -2,6 +2,22 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.12.7] - 2026-10-23
+
+### 1. 타 IP Name 앱 패밀리 표준 업그레이드를 위한 AI 작업 지시서 수립 (`docs/UPDATE_WORK_INSTRUCTION.md`)
+* **타 AI 모델 및 신규 파생 프로젝트에 즉시 전달 가능한 7대 핵심 원칙 통합 프롬프트 작성**:
+  - **불변 사양 보장**: 창 크기 650x800 고정, 통신 포트 3030 통일, 공식 메타데이터 및 브랜드 규격 명시.
+  - **순수 창작 C DLL (`ipname_core.dll`)**: Layer-2 ARP `SendARP` 기반 본인 MAC 오탐(Self-Conflict) 방어, 인프로세스 ICMP Echo Ping, 넌블로킹 TCP 진단 및 서브넷 연산기 아키텍처 수립.
+  - **스마트 어댑터 & IP 강제 정렬**: 게이트웨이 및 DHCP 일치 IPv4 Primary 강제 우선순위 알고리즘 이식 가이드.
+  - **물리 vs 가상 이중 판별 필터링**: NDIS 및 OUI 기반 클린 세그먼트 탭 필터링 엄격화.
+  - **Tauri v2 빌드 최적화**: `build.rs` 기반 staticVCRuntime 처리 및 컴파일러 경고 0건 달성 가이드.
+  - **GitHub Actions Node 24 마이그레이션**: EOL 경고 없는 최신 액션(`checkout@v5`, `setup-node@v5`, `action-gh-release@v3`)과 AI Studio 웹 Sync 연동 듀얼 트리거(`branches: [ main ]`, `tags: [ 'v*' ]`) 표준화.
+  - **31종 핵심 빌드 파일 화이트리스트 및 로컬 푸시 스크립트 격리**: `.gitignore`, `core-manifest.json`, `verify-core-files.cjs`, `git-push.bat` 자동화 파이프라인.
+* **문서 색인 및 화이트리스트 매니페스트 동기화**:
+  - `docs/README.md` 테이블 색인 등록 및 `scripts/github/core-manifest.json` 필수 파일 목록 등록 완료.
+
+---
+
 ## [v1.12.6] - 2026-10-19
 
 ### 1. GitHub Actions CI/CD 워크플로 Node.js 24 런타임 전면 마이그레이션

@@ -1,11 +1,11 @@
 # 오픈소스 라이선스 고지사항 (Open Source License Notice)
 
-본 소프트웨어(**AhBiYout IpName2 v1.10.0**)는 다양한 오픈소스 소프트웨어 라이브러리를 기반으로 개발되었으며, 설치 및 배포 시 아래의 라이선스 규정을 준수합니다.
+본 소프트웨어(**AhBiYout IpName2 v1.12.7**)는 다양한 오픈소스 소프트웨어 라이브러리를 기반으로 개발되었으며, 설치 및 배포 시 아래의 라이선스 규정을 준수합니다.
 
 ---
 
 ## 1. 프로젝트 및 개발자 정보
-* **프로젝트명**: AhBiYout IpName2 v1.10.0
+* **프로젝트명**: AhBiYout IpName2 v1.12.7
 * **개발자**: AhBiYout (GitHub: [https://github.com/AhBiYout-all](https://github.com/AhBiYout-all))
 * **공식 저장소**: [https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2)
 * **공식 블로그**: [ahbiyoutvibe.blogspot.com](https://ahbiyoutvibe.blogspot.com/)
@@ -48,6 +48,11 @@
 ### 3.6. Jimp (아이콘 보정 및 이미지 처리 라이브러리)
 * **License**: MIT License
 * **Copyright**: (c) 2018 Oliver Moran
+
+### 3.7. IpNameCore Native Engine (ipname_core.dll)
+* **License**: MIT License
+* **Copyright**: (c) 2026 AhBiYout (GitHub: [https://github.com/AhBiYout-all](https://github.com/AhBiYout-all))
+* **설명**: 순수 창작 C99 네이티브 동적 링크 라이브러리 (Layer-2 ARP SendARP IP 충돌 감지 및 자체 MAC 화이트리스트, ICMP Ping, TCP 소켓 진단, 서브넷 연산).
 
 ---
 

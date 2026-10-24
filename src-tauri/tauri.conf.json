@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "IpName2 v1.12.6",
-  "version": "1.12.6",
+  "productName": "IpName2 v1.12.7",
+  "version": "1.12.7",
   "identifier": "com.ipname2.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "IpName2 v1.12.6",
+        "title": "IpName2 v1.12.7",
         "width": 650,
         "height": 800,
         "resizable": true,

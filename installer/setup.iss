@@ -8,7 +8,7 @@
 ; ======================================================================
 
 #define MyAppName "IpName2"
-#define MyAppVersion "1.11.0"
+#define MyAppVersion "1.12.7"
 #define MyAppPublisher "AhBiYout"
 #define MyAppURL "https://github.com/AhBiYout-all/IpName2"
 #define MyAppBlogURL "https://ahbiyoutvibe.blogspot.com/"
@@ -58,6 +58,8 @@ Source: "..\native\ipname_core\ipname_core.dll"; DestDir: "{app}"; Flags: ignore
 ; Application Icons
 Source: "..\IpName2.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\app-icon.png"; DestDir: "{app}"; Flags: ignoreversion
+; Open Source License
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\..\LICENSE'))
 
 [Icons]
 Name: "{group}\{#MyAppName} v{#MyAppVersion}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\IpName2.ico"

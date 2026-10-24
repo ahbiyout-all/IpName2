@@ -4,7 +4,7 @@ export const translations = {
   ko: {
     adminMode: '시스템 관리자 모드',
     standardMode: '일반 사용자 모드',
-    appTitle: 'IpName2 v1.11.0',
+    appTitle: 'IpName2 v1.12.7',
     appDesc: '고급 윈도우 시스템 및 네트워크 구성 유틸리티',
     realIp: '리얼 IP (공인 IP)',
     realIpShort: '리얼 IP',
@@ -146,7 +146,7 @@ export const translations = {
   en: {
     adminMode: 'System Administrator Mode',
     standardMode: 'Standard User Mode',
-    appTitle: 'IpName2 v1.11.0',
+    appTitle: 'IpName2 v1.12.7',
     appDesc: 'Advanced Windows System & Network Configuration Utility',
     realIp: 'Real Public IP',
     realIpShort: 'Real IP',

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export const CURRENT_VERSION = '1.11.0';
+export const CURRENT_VERSION = '1.12.7';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;

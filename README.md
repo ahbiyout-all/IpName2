@@ -101,4 +101,5 @@ build.bat
 
 ## 📄 라이선스 (License)
 
-This project is licensed under the MIT License - see the [LICENSE_NOTICE.md](docs/LICENSE_NOTICE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file and [LICENSE_NOTICE.md](docs/LICENSE_NOTICE.md) for details.
+Copyright (c) 2026 AhBiYout. All rights reserved.

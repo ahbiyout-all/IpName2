@@ -23,6 +23,14 @@
   - 블로거 HTML 편집기 모드에 바로 붙여넣을 수 있는 반응형 스타일 완성형 HTML 블록 제공.
   - `scripts/github/core-manifest.json` 및 `docs/README.md`에 공식 연동 등록.
 
+### 3. 루트 디렉터리 표준 MIT 라이선스 파일 신설 (`LICENSE`)
+* **표준 오픈소스 라이선스 파일 배치 및 저작권 명시**:
+  - 프로젝트 루트에 GitHub 표준 `LICENSE` 파일 생성.
+  - 저작권 소유자: `AhBiYout`
+  - 저작권 연도: 개발 시작 및 현재 연도인 `2026` 반영 (`Copyright (c) 2026 AhBiYout`).
+  - Inno Setup 패키징 스크립트(`installer/setup.iss`)의 설치 파일 목록(`[Files]`) 및 버전 정의(`MyAppVersion 1.12.7`) 동기화.
+  - `core-manifest.json` 화이트리스트에 루트 파일 및 필수 파일로 정식 등록.
+
 ---
 
 ## [v1.12.6] - 2026-10-19

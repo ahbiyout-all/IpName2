@@ -110,7 +110,7 @@ IpName2는 악성코드나 광고가 일절 포함되지 않은 100% 클린 오�
 ### 🌐 공식 링크 및 문의 채널
 
 * **공식 블로그**: [AhBiYout Vibe (https://ahbiyoutvibe.blogspot.com/)](https://ahbiyoutvibe.blogspot.com/)
-* **공식 웹사이트**: [CisNet (https://cisnet.co.kr)](https://cisnet.co.kr)
+* **소속**: [CisNet (https://cisnet.co.kr)](https://cisnet.co.kr)
 * **GitHub 저장소**: [https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2)
 * **제작자**: AhBiYout (`ahbiyout@gmail.com`)
 
@@ -260,7 +260,7 @@ IpName2는 악성코드나 광고가 일절 포함되지 않은 100% 클린 오�
         💻 GitHub 소스코드 보기
       </a>
       <a href="https://cisnet.co.kr" target="_blank" rel="noopener noreferrer" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; text-decoration: none; font-weight: 700; font-size: 14px; padding: 9px 18px; border-radius: 8px;">
-        🏢 CisNet 공식 웹사이트
+        🏢 소속
       </a>
     </div>
   </div>

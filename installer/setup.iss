@@ -71,12 +71,12 @@ Name: "{autodesktop}\{#MyAppName} v{#MyAppVersion}"; Filename: "{app}\{#MyAppExe
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""IpName2"" dir=in action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Windows 방화벽 인바운드 규칙 등록 중..."
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""IpName2"" dir=out action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Windows 방화벽 아웃바운드 규칙 등록 중..."
 
-; 2. Silently pre-register Windows Firewall Inbound/Outbound Rules (Versioned Name: IpName2 v1.10.0)
+; 2. Silently pre-register Windows Firewall Inbound/Outbound Rules (Versioned Name: IpName2 v{#MyAppVersion})
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""IpName2 v{#MyAppVersion}"" dir=in action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Windows 방화벽 버전 인바운드 규칙 등록 중..."
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""IpName2 v{#MyAppVersion}"" dir=out action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Windows 방화벽 버전 아웃바운드 규칙 등록 중..."
 
-; Optional Launch after installation
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Optional Launch after installation (shellexec required for UAC elevated executables to prevent CreateProcess 740 error)
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent shellexec
 
 [UninstallRun]
 ; Silently delete registered Windows Firewall Rules on uninstallation

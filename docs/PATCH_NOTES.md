@@ -31,6 +31,11 @@
   - Inno Setup 패키징 스크립트(`installer/setup.iss`)의 설치 파일 목록(`[Files]`) 및 버전 정의(`MyAppVersion 1.12.7`) 동기화.
   - `core-manifest.json` 화이트리스트에 루트 파일 및 필수 파일로 정식 등록.
 
+### 4. Inno Setup 설치 완료 후 앱 실행 시 UAC 권한 상승 오류 (코드 740) 해결
+* **인스톨러 `[Run]` 실행 플래그 보강 (`installer/setup.iss`)**:
+  - 관리자 권한(UAC Elevation)을 요구하는 `IpName2.exe` 실행 파일이 Inno Setup 설치 완료 직후 자동 실행될 때, 기본 `CreateProcess` 호출로 인해 발생하는 `CreateProcess 실패; 코드 740. 요청한 작업을 수행하려면 권한 상승이 필요합니다` 오류 교정.
+  - `[Run]` 섹션의 실행 플래그에 `shellexec`를 추가하여 `ShellExecuteEx` 호출로 전환함으로 UAC 권한 승급을 정상적으로 처리하도록 개선 (`Flags: nowait postinstall skipifsilent shellexec`).
+
 ---
 
 ## [v1.12.6] - 2026-10-19

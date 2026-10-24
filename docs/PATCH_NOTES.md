@@ -16,6 +16,13 @@
 * **문서 색인 및 화이트리스트 매니페스트 동기화**:
   - `docs/README.md` 테이블 색인 등록 및 `scripts/github/core-manifest.json` 필수 파일 목록 등록 완료.
 
+### 2. 구글 블로거(Google Blogger) 공식 배포 포스팅 문서 수립 (`docs/BLOGGER_POST.md`)
+* **공식 블로그 [AhBiYout Vibe](https://ahbiyoutvibe.blogspot.com/) 발행용 콘텐츠 완비**:
+  - 권장 포스트 제목, 맞춤 퍼머링크(`ahbiyout-ipname2-network-manager-v1-12`), 검색 메타 설명, 태그 목록 구성.
+  - 8대 핵심 기능, 윈도우 기본 제어판과의 상세 비교표, 다운로드 및 설치 가이드 수록.
+  - 블로거 HTML 편집기 모드에 바로 붙여넣을 수 있는 반응형 스타일 완성형 HTML 블록 제공.
+  - `scripts/github/core-manifest.json` 및 `docs/README.md`에 공식 연동 등록.
+
 ---
 
 ## [v1.12.6] - 2026-10-19

@@ -8,7 +8,7 @@
 
 | 문서명 | 설명 | 주요 내용 |
 | :--- | :--- | :--- |
-| **[UPDATE_WORK_INSTRUCTION.md](./UPDATE_WORK_INSTRUCTION.md)** | 타 IP Name 앱 업데이트 작업 지시서 | 다른 AI 및 프로젝트에 즉시 전달 가능한 7대 핵심 원칙 통합 프롬프트, 모듈별 구현 코드, 31종 핵심 파일 검증표 |
+| **[UPDATE_WORK_INSTRUCTION.md](./UPDATE_WORK_INSTRUCTION.md)** | 타 IP Name 앱 업데이트 작업 지시서 | 다른 AI 및 프로젝트에 즉시 전달 가능한 7대 핵심 원칙 통합 프롬프트, 모듈별 구현 코드, 34종 핵심 파일 검증표 |
 | **[BLOGGER_POST.md](./BLOGGER_POST.md)** | 구글 블로거 공식 배포 소개 글 | 공식 블로그([AhBiYout Vibe](https://ahbiyoutvibe.blogspot.com/)) 발행용 메타데이터, 마크다운 본문 및 완성형 HTML 소스 코드 |
 | **[DEVELOPMENT.md](./DEVELOPMENT.md)** | 개발 및 빌드 가이드 | 환경 설정, 빌드 스크립트(`build.bat`/`ps1`), 데스크톱 규격(650x800), 포트(3030), GitHub 핵심 파일 관리(`scripts/github/`), 실시간 자동 업데이트 |
 | **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.12.7` 상세 변경 내역, GitHub Actions Node 24 런타임 승급, 릴리스 워크플로 최적화 |

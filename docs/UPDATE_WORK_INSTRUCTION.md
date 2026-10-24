@@ -88,7 +88,7 @@
    - `package.json`에서 버전을 동적 추출하고, `git branch -M main` 보정, author 자동 설정(`AhBiYout`), 스테이징 전 자체 캐시 제거(`git rm --cached git-push.bat`), 커밋, `v%APP_VER%` 태그 생성 및 푸시 완결.
    - 배치 파일 내 앰퍼샌드는 반드시 `^&`로 이스케이프하고, 괄호 충돌을 방지하기 위해 라벨 분기(`goto :push_failed`)를 사용할 것.
 3. **핵심 파일 감사 도구**:
-   - `scripts/github/core-manifest.json` 및 `scripts/github/verify-core-files.cjs`를 통해 31개 필수 빌드 파일 무결성 및 금지 파일 자동 정화(`--clean`) 체계를 구축할 것.
+   - `scripts/github/core-manifest.json` 및 `scripts/github/verify-core-files.cjs`를 통해 34개 필수 빌드 파일 무결성 및 금지 파일 자동 정화(`--clean`) 체계를 구축할 것.
 
 ---
 
@@ -243,7 +243,7 @@ IpName/
 │   ├── build.bat
 │   └── Makefile
 ├── scripts/github/                      # GitHub 핵심 파일 감사 및 동기화 도구
-│   ├── core-manifest.json               # 31개 필수 빌드 파일 화이트리스트
+│   ├── core-manifest.json               # 34개 필수 빌드 파일 화이트리스트
 │   ├── prepare-github-sync.bat          # 원클릭 감사 및 푸시 연동 스크립트
 │   └── verify-core-files.cjs            # 스크래치 파일 자동 정화 및 무결성 검증기
 ├── src/                                 # React 19 프론트엔드 소스
@@ -254,6 +254,7 @@ IpName/
 ├── build.bat / build.ps1                # 포트 3030 통합 원클릭 빌드 스크립트
 ├── fix-icon.cjs                         # Windows 아이콘 규격 보정 스크립트
 ├── git-push.bat                         # 로컬 전용 동적 버전 자동 푸시 유틸리티 (Git 제외)
+├── LICENSE                              # 루트 MIT 표준 라이선스 파일
 ├── package.json / package-lock.json     # Node.js 패키지 설정
 ├── README.md                            # GitHub 저장소 공식 루트 설명서
 └── vite.config.ts / tsconfig.json       # 빌드 설정
@@ -264,7 +265,7 @@ IpName/
 ## ✅ 4. 최종 무결성 검증 체크리스트
 
 1. [ ] `npm run build` 및 `npm run lint` (`tsc --noEmit`) 에러 0건 확인.
-2. [ ] `node scripts\github\verify-core-files.cjs --clean` 실행 시 31개 필수 파일 100% 정상 통과.
+2. [ ] `node scripts\github\verify-core-files.cjs --clean` 실행 시 34개 필수 파일 100% 정상 통과.
 3. [ ] `git-push.bat` 및 `scripts/git-push.bat`이 `.gitignore`에 의해 Git 추적에서 제외되어 있는지 확인 (`git check-ignore -v git-push.bat`).
 4. [ ] `package.json`, `tauri.conf.json`, `Cargo.toml`, `ipname_core.c`, `PATCH_NOTES.md` 버전 삼중 동기화 완료.
 5. [ ] GitHub Actions 워크플로가 Node.js 24 규격(`actions/checkout@v5`, `setup-node@v5`, `action-gh-release@v3`)으로 설정되어 있는지 확인.

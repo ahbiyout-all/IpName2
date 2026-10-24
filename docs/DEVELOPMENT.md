@@ -160,7 +160,7 @@
 
 ### 5.3. GitHub 핵심 빌드 파일 전용 관리 파이프라인 (`scripts/github/`)
 GitHub 저장소에 소스 코드를 동기화할 때, 빌드에 필요한 핵심 파일만 안전하게 선별하여 관리하는 전용 시스템입니다:
-- `scripts/github/core-manifest.json`: 빌드에 필수적인 32개 핵심 파일/폴더 화이트리스트 및 금지 파일 패턴 정의.
+- `scripts/github/core-manifest.json`: 빌드에 필수적인 34개 핵심 파일/폴더 화이트리스트 및 금지 파일 패턴 정의.
 - `scripts/github/verify-core-files.cjs`: 작업 디렉터리를 실시간 감사하여 스크래치 파일이나 불필요한 바이너리를 자동 감지/정리(`--clean`).
 - `scripts/github/prepare-github-sync.bat`: Windows 환경에서 사전 감사 및 인덱스 정리를 원클릭으로 수행.
 
@@ -177,9 +177,9 @@ GitHub 저장소에 소스 코드를 동기화할 때, 빌드에 필요한 핵�
 - **인스톨 파일 전용 배포 정책**: 소스 압축본, 디버그 산출물, 포터블 폴더를 제외하고 Inno Setup 순수 설치 프로그램(`IpName2_v*_Setup.exe`)만 GitHub Releases 자산으로 등록.
 
 ### 5.6. 타 IP Name 앱 표준 업그레이드를 위한 AI 작업 지시서 (`docs/UPDATE_WORK_INSTRUCTION.md`)
-- 다른 IP Name 시리즈 및 신규 파생 데스크톱 앱을 본 프로젝트의 최신 고성능 아키텍처(불변 규격, 순수 C DLL, IPv4 Primary 강제 정렬, 물리/가상 NIC 식별, Node 24 Actions CI/CD, 32종 핵심 파일 화이트리스트, 삼중 동기화)로 동일하게 일괄 업그레이드할 수 있는 복사 가능한 완성형 AI 프롬프트 및 구현 기술 지침을 제공합니다.
+- 다른 IP Name 시리즈 및 신규 파생 데스크톱 앱을 본 프로젝트의 최신 고성능 아키텍처(불변 규격, 순수 C DLL, IPv4 Primary 강제 정렬, 물리/가상 NIC 식별, Node 24 Actions CI/CD, 34종 핵심 파일 화이트리스트, 삼중 동기화)로 동일하게 일괄 업그레이드할 수 있는 복사 가능한 완성형 AI 프롬프트 및 구현 기술 지침을 제공합니다.
 
 ---
 
 ## 6. 라이선스 및 배포 고지사항 (License Notice)
-본 소프트웨어는 포터블 단일 실행 파일 및 인스톨러 형태로 자유롭게 복제 및 배포할 수 있으며, 이와 관련된 오픈소스 라이선스 고지사항은 `/docs/LICENSE_NOTICE.md`에 자세히 기술되어 있습니다. (MIT License 기반)
+본 소프트웨어는 포터블 단일 실행 파일 및 인스톨러 형태로 자유롭게 복제 및 배포할 수 있으며, 이와 관련된 오픈소스 라이선스 고지사항은 루트 디렉터리의 `/LICENSE` 및 `/docs/LICENSE_NOTICE.md`에 자세히 기술되어 있습니다. (MIT License 기반)

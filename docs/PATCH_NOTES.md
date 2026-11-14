@@ -2,6 +2,35 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.12.10] - 2026-11-14
+
+### 1. Tailwind CSS v4 테마 토큰 누락 및 UI 대비·호버 결함 수정 (`src/index.css`)
+* **미정의 테마 토큰 일괄 복구**:
+  - `src/index.css` 내 `:root`, `[data-theme="dark"]`, `[data-theme="emerald"]`, `[data-theme="sunset"]` 및 `@theme` 블록에 `--primary-foreground`, `--primary-hover`, `--foreground`, `--background`, `--card-hover`, `--muted`, `--muted-foreground`, `--secondary`, `--input-bg` 매핑을 추가.
+  - 선택된 어댑터 탭/필터 배지(`text-primary-foreground`), 카드 호버(`hover:bg-[var(--card-hover)]`), 모달 내부 섹션(`bg-secondary/30`, `bg-card-hover/20`) 및 닫기 버튼이 모든 테마에서 의도된 고대비 색상으로 렌더링되도록 교정.
+
+### 2. Tauri CMD 쉘 인자·Ping 경합·비동기 언마운트 안전성 보강 (`App.tsx`, `AdapterItem.tsx`, `useRealIp.ts`)
+* **Windows `cmd /c start` 인자 파싱 오류 수정 (`src/App.tsx`)**:
+  - `handleOpenCmd` 및 `handlePingDns` 폴백에서 `start` 명령에 명시적 창 제목(`IpName2 CMD`, `IpName2 Ping`)을 부여하고 `'ping', '-t', dnsTarget`을 개별 인자로 분리 전달하여 Windows `cmd.exe` 따옴표 오작동 원천 차단.
+* **비동기 Ping/충돌 검사·공인 IP 조회 경합(Race Condition) 및 타이머 누수 제거**:
+  - `App.tsx`: `pingRequestIdRef`, `mockPingTimerRef`, `isMountedRef`를 도입하여 어댑터 탭 전환 중 이전 Ping 응답이 새 어댑터 상태를 덮어쓰는 현상 차단.
+  - `AdapterItem.tsx`: 언마운트/전환 시 모의 타이머 일괄 정리(`mockTimersRef`) 및 저장 중(`isSaving`) 보조 IP·서브넷 마스크 입력 잠금 적용; `isVirtual` 아이콘 우선순위(`App.tsx`·`AdapterItem.tsx`)를 배지/색상과 일관화.
+  - `useRealIp.ts`: `AbortController` 기반 타임아웃 폴백 및 `isMountedRef` 언마운트 상태 보호 추가.
+
+### 3. 네트워크/시스템 저장 엣지 케이스 및 Rust·C99·Inno Setup 안전성 강화
+* **공백 입력·단독 보조 DNS·작업 그룹 변경 배너 교정 (`src/hooks/useSystemConfig.ts`)**:
+  - `saveNetworkConfig` 진입 시 모든 IP/마스크/게이트웨이/DNS 입력을 선행 `.trim()` 처리하여 공백만 있는 선택 항목이 형식 오류로 오탐지되지 않도록 개선.
+  - `primaryDns`가 비어 있고 `secondaryDns`만 입력된 경우 DHCP로 초기화되던 문제를 수정하여 `secondaryDns`를 주 DNS로 정상 등록(`netsh`).
+  - `saveSystemInfo`에서 작업 그룹(Workgroup)만 변경한 경우 `"다음 부팅 시 컴퓨터 이름이 변경됩니다"` 배너(`pendingComputerName`)가 불필요하게 표시되지 않도록 조건 분리.
+* **Rust Win32 포인터 NULL 가드 및 엄격한 IPv4 파서 (`src-tauri/src/windows_native.rs`)**:
+  - `get_adapters_native`에서 `addr.AdapterName` / `addr.FriendlyName` 순회 전 `.is_null()` 검사를 추가하여 인터페이스 리셋 중 발생할 수 있는 미정의 동작(UB) 차단.
+  - `calculate_subnet_native`, `classify_ip_native`를 `std::net::Ipv4Addr::from_str`로 교체하여 선행 `0`·부호 포함 문자열 차단 및 `distinguish_adapter_native` 필터(`로컬 영역 연결*`, `wifi direct`, `desc` 무선 키워드) 동기화.
+* **C99 DLL & Inno Setup 인스톨러 보강 (`native/ipname_core/src/ipname_core.c`, `installer/setup.iss`)**:
+  - `ipname_core.c`: `IPNAME_VERSION "1.12.10"` 갱신 및 `로컬 영역 연결*` / `local area connection*` 필터 동기화.
+  - `setup.iss`: `[UninstallRun]` 방화벽 규칙 삭제에 `waituntilterminated` 적용 및 `InitializeSetup` 내 `FileExists(sUninstPath)` 사전 검사 추가.
+
+---
+
 ## [v1.12.9] - 2026-11-14
 
 ### 1. C99 네이티브 DLL (`native/ipname_core/src/ipname_core.c`) 엄격한 파싱 및 안전성 강화

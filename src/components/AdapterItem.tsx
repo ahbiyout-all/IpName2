@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import { Network, Wifi, Save, RefreshCw, Sparkles, Power, PowerOff, Layers, ShieldCheck, AlertTriangle, CheckCircle2, Plus, PlusCircle, Trash2 } from 'lucide-react';
 import { NetworkAdapter, NativeIpConflictResult } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -36,6 +36,17 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
   // Pure Native DLL (ipname_core) ARP IP Conflict state
   const [isCheckingConflict, setIsCheckingConflict] = useState(false);
   const [conflictResult, setConflictResult] = useState<NativeIpConflictResult | null>(null);
+  const isMountedRef = useRef(true);
+  const mockTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      mockTimersRef.current.forEach(clearTimeout);
+      mockTimersRef.current.clear();
+    };
+  }, []);
 
   const handleCheckConflict = async () => {
     if (!adapter.ipAddress || isCheckingConflict) return;
@@ -53,6 +64,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           sourceIp: null,
           ownMac: ownMac || null
         });
+        if (!isMountedRef.current) return;
 
         // Filter out own MAC address if ARP resolved to the local interface
         if (res.is_conflict && ownMac && isSameMac(res.conflicting_mac, ownMac)) {
@@ -65,17 +77,22 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           setConflictResult(res);
         }
       } catch (err: any) {
+        if (!isMountedRef.current) return;
         setConflictResult({
           is_conflict: false,
           conflicting_mac: '',
           message: err?.message || '검사 완료'
         });
       } finally {
-        setIsCheckingConflict(false);
+        if (isMountedRef.current) {
+          setIsCheckingConflict(false);
+        }
       }
     } else {
       // Mock for web preview
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        mockTimersRef.current.delete(timer);
+        if (!isMountedRef.current) return;
         const isConflict = targetIp.endsWith('.99');
         if (ownMac && (isSameMac(ownMac, 'AA:BB:CC:11:22:33') || isSameMac(ownMac, '18:C0:4D:7F:68:08'))) {
           setConflictResult({
@@ -94,6 +111,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
         }
         setIsCheckingConflict(false);
       }, 350);
+      mockTimersRef.current.add(timer);
     }
   };
 
@@ -157,6 +175,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           sourceIp: null,
           ownMac: ownMac || null
         });
+        if (!isMountedRef.current) return;
 
         // Filter out own MAC address if ARP resolved to the local interface
         if (res.is_conflict && ownMac && isSameMac(res.conflicting_mac, ownMac)) {
@@ -175,6 +194,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           setSecConflictStates(prev => ({ ...prev, [index]: { checking: false, result: res } }));
         }
       } catch (err: any) {
+        if (!isMountedRef.current) return;
         setSecConflictStates(prev => ({
           ...prev,
           [index]: {
@@ -189,7 +209,9 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
       }
     } else {
       // Mock for web preview
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        mockTimersRef.current.delete(timer);
+        if (!isMountedRef.current) return;
         const isConflict = trimmedIp.endsWith('.99');
         if (ownMac && (isSameMac(ownMac, 'AA:BB:CC:11:22:33') || isSameMac(ownMac, '18:C0:4D:7F:68:08'))) {
           setSecConflictStates(prev => ({
@@ -219,6 +241,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           }));
         }
       }, 350);
+      mockTimersRef.current.add(timer);
     }
   };
 
@@ -329,10 +352,10 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                 : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
               : 'bg-[var(--border)] text-[var(--text-muted)]'
           }`}>
-            {adapter.type === 'Wi-Fi' ? (
-              <Wifi size={16} />
-            ) : isVirtual ? (
+            {isVirtual ? (
               <Layers size={16} className="text-amber-500" />
+            ) : adapter.type === 'Wi-Fi' ? (
+              <Wifi size={16} />
             ) : (
               <Network size={16} className="text-emerald-600 dark:text-emerald-400" />
             )}
@@ -673,6 +696,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                           type="text"
                           value={sec.ipAddress}
                           onChange={(e) => handleUpdateSecondaryIp(idx, 'ipAddress', e.target.value)}
+                          disabled={isSaving}
                           placeholder="192.168.2.100"
                           className={`input-field font-mono py-1 px-2 text-[10px] w-full ${
                             secConflict?.result?.is_conflict ? 'border-red-500 bg-red-500/5' : ''
@@ -685,7 +709,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                         <SubnetMaskSelector
                           value={sec.subnetMask}
                           onChange={(val) => handleUpdateSecondaryIp(idx, 'subnetMask', val)}
-                          disabled={false}
+                          disabled={isSaving}
                           placeholder="255.255.255.0"
                         />
                       </div>

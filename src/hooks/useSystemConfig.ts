@@ -554,6 +554,7 @@ export function useSystemConfig() {
       let script = '';
       let requiresRestart = false;
 
+      let nameChanged = false;
       if (originalSystemInfo) {
         const trimmedName = (systemInfo.computerName || '').trim();
         const trimmedWorkgroup = (systemInfo.workgroup || '').trim();
@@ -592,6 +593,7 @@ export function useSystemConfig() {
         if (trimmedName !== (originalSystemInfo.computerName || '').trim()) {
           script += `Rename-Computer -NewName "${escapePsDoubleQuoted(trimmedName)}" -Force\n`;
           requiresRestart = true;
+          nameChanged = true;
         }
       }
 
@@ -622,7 +624,9 @@ export function useSystemConfig() {
           showToast(t('applyError'), 'error');
         } else {
           if (requiresRestart) {
-            setPendingComputerName(systemInfo.computerName.trim());
+            if (nameChanged) {
+              setPendingComputerName(systemInfo.computerName.trim());
+            }
             showToast(`${t('saveSuccess')} ${t('restartRequired')}`, 'success');
           } else {
             showToast(t('saveSuccess'), 'success');
@@ -634,7 +638,9 @@ export function useSystemConfig() {
         // Web Preview Mock
         console.log("Mock saveSystemInfo executed with script:", script);
         if (requiresRestart) {
-          setPendingComputerName(systemInfo.computerName.trim());
+          if (nameChanged) {
+            setPendingComputerName(systemInfo.computerName.trim());
+          }
           showToast(`${t('saveSuccess')} ${t('restartRequired')}`, 'success');
         } else {
           showToast(t('saveSuccess'), 'success');
@@ -672,57 +678,65 @@ export function useSystemConfig() {
 
         // Only process IP settings if the adapter is enabled
         if (adapter.isEnabled) {
+          const primaryIp = (adapter.ipAddress || '').trim();
+          const subnetMask = (adapter.subnetMask || '').trim();
+          const gateway = (adapter.gateway || '').trim();
+          const dns1 = (adapter.primaryDns || '').trim();
+          const dns2 = (adapter.secondaryDns || '').trim();
+
           if (!adapter.isDhcp) {
-            if (!adapter.ipAddress || !adapter.subnetMask) {
+            if (!primaryIp || !subnetMask) {
               showToast(t('ipRequired'), 'error');
               setIsSaving(false);
               return;
             }
-            if (!isValidHostIPv4(adapter.ipAddress)) {
+            if (!isValidHostIPv4(primaryIp)) {
               showToast(t('invalidIp'), 'error');
               setIsSaving(false);
               return;
             }
-            if (!isValidSubnetMask(adapter.subnetMask)) {
+            if (!isValidSubnetMask(subnetMask)) {
               showToast(t('invalidSubnet'), 'error');
               setIsSaving(false);
               return;
             }
-            if (adapter.gateway && !isValidHostIPv4(adapter.gateway)) {
+            if (gateway && !isValidHostIPv4(gateway)) {
               showToast(t('invalidGateway'), 'error');
               setIsSaving(false);
               return;
             }
-            if (adapter.primaryDns && !isValidHostIPv4(adapter.primaryDns)) {
+            if (dns1 && !isValidHostIPv4(dns1)) {
               showToast(t('invalidDns'), 'error');
               setIsSaving(false);
               return;
             }
-            if (adapter.secondaryDns && !isValidHostIPv4(adapter.secondaryDns)) {
+            if (dns2 && !isValidHostIPv4(dns2)) {
               showToast(t('invalidDns'), 'error');
               setIsSaving(false);
               return;
             }
 
             if (adapter.additionalIps && adapter.additionalIps.length > 0) {
-              const seenIps = new Set<string>([adapter.ipAddress.trim()]);
+              const seenIps = new Set<string>([primaryIp]);
               for (const sec of adapter.additionalIps) {
-                if (!sec.ipAddress || !isValidHostIPv4(sec.ipAddress)) {
+                const secIp = (sec.ipAddress || '').trim();
+                const secMask = (sec.subnetMask || '').trim();
+                if (!secIp || !isValidHostIPv4(secIp)) {
                   showToast(t('invalidSecondaryIp'), 'error');
                   setIsSaving(false);
                   return;
                 }
-                if (!sec.subnetMask || !isValidSubnetMask(sec.subnetMask)) {
+                if (!secMask || !isValidSubnetMask(secMask)) {
                   showToast(t('invalidSecondaryIp'), 'error');
                   setIsSaving(false);
                   return;
                 }
-                if (seenIps.has(sec.ipAddress.trim())) {
+                if (seenIps.has(secIp)) {
                   showToast(t('duplicateIpWarning'), 'error');
                   setIsSaving(false);
                   return;
                 }
-                seenIps.add(sec.ipAddress.trim());
+                seenIps.add(secIp);
               }
             }
           }
@@ -731,23 +745,27 @@ export function useSystemConfig() {
             script += `netsh interface ipv4 set address name="${safeAdapterName}" source=dhcp\n`;
             script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
           } else {
-            const gw = adapter.gateway ? ` gateway=${adapter.gateway.trim()}` : '';
-            script += `netsh interface ipv4 set address name="${safeAdapterName}" source=static address=${adapter.ipAddress.trim()} mask=${adapter.subnetMask.trim()}${gw}\n`;
+            const gw = gateway ? ` gateway=${gateway}` : '';
+            script += `netsh interface ipv4 set address name="${safeAdapterName}" source=static address=${primaryIp} mask=${subnetMask}${gw}\n`;
             
             // Add secondary / multiple IP addresses
             if (adapter.additionalIps && adapter.additionalIps.length > 0) {
               for (const sec of adapter.additionalIps) {
-                if (sec.ipAddress && sec.subnetMask) {
-                  script += `netsh interface ipv4 add address name="${safeAdapterName}" address=${sec.ipAddress.trim()} mask=${sec.subnetMask.trim()}\n`;
+                const secIp = (sec.ipAddress || '').trim();
+                const secMask = (sec.subnetMask || '').trim();
+                if (secIp && secMask) {
+                  script += `netsh interface ipv4 add address name="${safeAdapterName}" address=${secIp} mask=${secMask}\n`;
                 }
               }
             }
 
-            if (adapter.primaryDns) {
-              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${adapter.primaryDns.trim()} validate=no\n`;
-              if (adapter.secondaryDns) {
-                script += `netsh interface ipv4 add dns name="${safeAdapterName}" address=${adapter.secondaryDns.trim()} index=2 validate=no\n`;
+            if (dns1) {
+              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${dns1} validate=no\n`;
+              if (dns2 && dns2 !== dns1) {
+                script += `netsh interface ipv4 add dns name="${safeAdapterName}" address=${dns2} index=2 validate=no\n`;
               }
+            } else if (dns2) {
+              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${dns2} validate=no\n`;
             } else {
               script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
             }

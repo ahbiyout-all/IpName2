@@ -44,6 +44,14 @@ export function useRealIp() {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isFetchingRef = useRef<boolean>(false);
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const fetchRealIp = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -59,13 +67,16 @@ export function useRealIp() {
 
     // Helper for fetch with safe independent timeout
     const safeFetch = async (url: string, timeoutMs: number = 3500) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const signal = AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
-        const res = await fetch(url, { signal });
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) return null;
         return await res.json();
       } catch {
         return null;
+      } finally {
+        clearTimeout(timer);
       }
     };
 
@@ -138,6 +149,8 @@ export function useRealIp() {
         }
       }
 
+      if (!isMountedRef.current) return;
+
       if (resolvedIp) {
         const now = new Date();
         const updatedInfo: RealIpInfo = {
@@ -173,13 +186,17 @@ export function useRealIp() {
         }));
       }
     } catch {
-      setData(prev => ({
-        ...prev,
-        status: prev.ip ? 'success' : 'error',
-        errorMessage: '인터넷 연결 끊김'
-      }));
+      if (isMountedRef.current) {
+        setData(prev => ({
+          ...prev,
+          status: prev.ip ? 'success' : 'error',
+          errorMessage: '인터넷 연결 끊김'
+        }));
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, []);

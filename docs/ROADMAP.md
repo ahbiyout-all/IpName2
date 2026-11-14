@@ -147,3 +147,14 @@ This document tracks high-priority features, reliability fixes, and architecture
   3. Fix `build.bat` unsafe `.gitkeep-ignore` deletion loop, standardize `build.ps1` step counters/exit checks, and propagate non-zero errors in `fix-icon.cjs`.
 - **Validation**: Triple Lockstep version `1.12.9` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
 
+#### [ROADMAP-015] Round 3 Deep Audit: Theme Token Parity, CMD Shell Quoting & Async/Pointer Hardening (v1.12.10)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `src/index.css`, `src/App.tsx`, `src/components/AdapterItem.tsx`, `src/hooks/{useSystemConfig,useRealIp,useGitHubUpdate}.ts`, `src-tauri/src/windows_native.rs`, `native/ipname_core/src/ipname_core.c`, `installer/setup.iss`
+- **Description**: Resolve Round 3 deep audit defects across CSS theme tokens, Windows `cmd /c start` invocation arguments, async ping/Real-IP race conditions, whitespace/secondary-DNS/workgroup banner edge cases, Win32 NULL pointer checks, and Inno Setup uninstaller robustness.
+- **Acceptance Criteria**:
+  1. Complete Tailwind v4 `@theme` and per-theme CSS variables (`--primary-foreground`, `--card-hover`, `--foreground`, `--background`, `--secondary`, `--muted`, `--muted-foreground`) in `src/index.css`.
+  2. Pass explicit `start` window titles and separate `'ping', '-t', dnsTarget` args in `src/App.tsx`; guard async ping/Real-IP/conflict mock timers on unmount or adapter switch; trim optional network inputs and preserve standalone `secondaryDns` in `useSystemConfig.ts`.
+  3. Add Win32 `AdapterName`/`FriendlyName` `.is_null()` checks and `Ipv4Addr::from_str` strict parsing in `windows_native.rs`, align `ipname_core.c` filter parity, and add `FileExists`/`waituntilterminated` guards in `installer/setup.iss`.
+- **Validation**: Triple Lockstep version `1.12.10` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
+

@@ -36,7 +36,7 @@
   #include <unistd.h>
 #endif
 
-#define IPNAME_VERSION "1.12.9"
+#define IPNAME_VERSION "1.12.10"
 
 /* Helper: case-insensitive substring search */
 static int str_contains_ci(const char* haystack, const char* needle) {
@@ -697,6 +697,8 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         str_contains_ci(safe_desc, "wi-fi direct") ||
         str_contains_ci(safe_name, "wifi direct") ||
         str_contains_ci(safe_desc, "wifi direct") ||
+        str_contains_ci(safe_name, "로컬 영역 연결*") ||
+        str_contains_ci(safe_name, "local area connection*") ||
         str_contains_ci(safe_name, "bluetooth") ||
         str_contains_ci(safe_desc, "bluetooth")) {
         out_result->is_ghost_or_filter = 1;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useRef, ErrorInfo, ReactNode } from 'react';
 import { Network, Wifi, ShieldAlert, Terminal, Activity, Layers, Zap } from 'lucide-react';
 import { useSystemConfig, isVirtualAdapter, isGhostOrInvalidAdapter } from './hooks/useSystemConfig';
 import { Header } from './components/Header';
@@ -86,6 +86,19 @@ const AppContent: React.FC = () => {
   const [adapterFilter, setAdapterFilter] = useState<'all' | 'physical' | 'virtual'>('physical');
   const [pingStatus, setPingStatus] = useState<string | null>(null);
   const [isPinging, setIsPinging] = useState(false);
+  const pingRequestIdRef = useRef(0);
+  const mockPingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (mockPingTimerRef.current) {
+        clearTimeout(mockPingTimerRef.current);
+      }
+    };
+  }, []);
 
   // GitHub Releases Real-Time Auto-Update System
   const {
@@ -140,6 +153,12 @@ const AppContent: React.FC = () => {
   }, [selectedAdapter, selectedAdapterId]);
 
   useEffect(() => {
+    pingRequestIdRef.current += 1;
+    if (mockPingTimerRef.current) {
+      clearTimeout(mockPingTimerRef.current);
+      mockPingTimerRef.current = null;
+    }
+    setIsPinging(false);
     setPingStatus(null);
   }, [selectedAdapter?.id, selectedAdapter?.primaryDns]);
 
@@ -147,9 +166,10 @@ const AppContent: React.FC = () => {
     if (isTauriEnv()) {
       try {
         const { Command } = await import('@tauri-apps/plugin-shell');
-        await Command.create('cmd', ['/c', 'start', 'cmd.exe']).execute();
+        await Command.create('cmd', ['/c', 'start', 'IpName2 CMD', 'cmd.exe']).execute();
       } catch (e) {
         console.error("Failed to open CMD:", e);
+        showToast(t('applyError'), 'error');
       }
     } else {
       console.log("Mock CMD open");
@@ -159,6 +179,12 @@ const AppContent: React.FC = () => {
   const handlePingDns = async () => {
     const dnsTarget = selectedAdapter?.primaryDns?.trim();
     if (!dnsTarget) return;
+    const reqId = ++pingRequestIdRef.current;
+    if (mockPingTimerRef.current) {
+      clearTimeout(mockPingTimerRef.current);
+      mockPingTimerRef.current = null;
+    }
+
     setIsPinging(true);
     setPingStatus(t('checking'));
 
@@ -169,6 +195,7 @@ const AppContent: React.FC = () => {
           targetIp: dnsTarget,
           timeoutMs: 1500
         });
+        if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
         if (res.success) {
           const latencyStr = `${res.round_trip_time_ms}ms (TTL ${res.time_to_live})`;
           setPingStatus(latencyStr);
@@ -179,28 +206,35 @@ const AppContent: React.FC = () => {
         }
       } catch (e) {
         console.error("Native Ping failed, falling back to CMD:", e);
+        if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
         if (!/^[a-zA-Z0-9.:-]+$/.test(dnsTarget)) {
           setPingStatus('형식 오류');
           showToast(t('invalidDns'), 'error');
         } else {
           try {
             const { Command } = await import('@tauri-apps/plugin-shell');
-            await Command.create('cmd', ['/c', 'start', 'cmd.exe', '/k', `ping -t ${dnsTarget}`]).execute();
+            await Command.create('cmd', ['/c', 'start', 'IpName2 Ping', 'cmd.exe', '/k', 'ping', '-t', dnsTarget]).execute();
+            if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
             setPingStatus('CMD 실행됨');
           } catch {
+            if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
             setPingStatus('오류');
             showToast(t('applyError'), 'error');
           }
         }
       } finally {
-        setIsPinging(false);
+        if (isMountedRef.current && pingRequestIdRef.current === reqId) {
+          setIsPinging(false);
+        }
       }
     } else {
       // Web Preview Mock
-      setTimeout(() => {
+      mockPingTimerRef.current = setTimeout(() => {
+        mockPingTimerRef.current = null;
+        if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
         const mockLatency = '8ms (TTL 64)';
         setPingStatus(mockLatency);
-        showToast(`⚡ [IpNameCore 모의] ${selectedAdapter.primaryDns} Ping 성공: ${mockLatency}`, 'success');
+        showToast(`⚡ [IpNameCore 모의] ${dnsTarget} Ping 성공: ${mockLatency}`, 'success');
         setIsPinging(false);
       }, 400);
     }
@@ -319,10 +353,10 @@ const AppContent: React.FC = () => {
                         : 'bg-[var(--card)] text-foreground border-[var(--border)] hover:bg-[var(--card-hover)]'
                     }`}
                   >
-                    {adapter.type === 'Wi-Fi' ? (
-                      <Wifi size={12} className={isSelected ? 'text-primary-foreground' : 'text-primary'} />
-                    ) : isVirtual ? (
+                    {isVirtual ? (
                       <Layers size={12} className={isSelected ? 'text-primary-foreground' : 'text-amber-500'} />
+                    ) : adapter.type === 'Wi-Fi' ? (
+                      <Wifi size={12} className={isSelected ? 'text-primary-foreground' : 'text-primary'} />
                     ) : (
                       <Network size={12} className={isSelected ? 'text-primary-foreground' : 'text-emerald-500'} />
                     )}

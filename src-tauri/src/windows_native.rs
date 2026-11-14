@@ -347,20 +347,28 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             let addr = &*curr;
             
             // 1. Get ID (AdapterName)
-            let mut len = 0;
-            while *addr.AdapterName.add(len) != 0 {
-                len += 1;
-            }
-            let name_slice = std::slice::from_raw_parts(addr.AdapterName, len);
-            let id = String::from_utf8_lossy(name_slice).into_owned();
+            let id = if !addr.AdapterName.is_null() {
+                let mut len = 0;
+                while *addr.AdapterName.add(len) != 0 {
+                    len += 1;
+                }
+                let name_slice = std::slice::from_raw_parts(addr.AdapterName, len);
+                String::from_utf8_lossy(name_slice).into_owned()
+            } else {
+                String::new()
+            };
             
             // 2. Get Name (FriendlyName)
-            let mut len = 0;
-            while *addr.FriendlyName.add(len) != 0 {
-                len += 1;
-            }
-            let name_slice = std::slice::from_raw_parts(addr.FriendlyName, len);
-            let name = String::from_utf16_lossy(name_slice);
+            let name = if !addr.FriendlyName.is_null() {
+                let mut len = 0;
+                while *addr.FriendlyName.add(len) != 0 {
+                    len += 1;
+                }
+                let name_slice = std::slice::from_raw_parts(addr.FriendlyName, len);
+                String::from_utf16_lossy(name_slice)
+            } else {
+                id.clone()
+            };
 
             // Get Description (Description)
             let mut desc = String::new();
@@ -802,24 +810,15 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
 }
 
 pub fn calculate_subnet_native(ip_str: &str, mask_str: &str) -> Result<SubnetDetails, String> {
-    let parse_ip = |s: &str| -> Option<u32> {
-        let parts: Vec<&str> = s.split('.').collect();
-        if parts.len() != 4 { return None; }
-        let mut val = 0u32;
-        for p in parts {
-            let b: u32 = p.parse().ok()?;
-            if b > 255 { return None; }
-            val = (val << 8) | b;
-        }
-        Some(val)
-    };
+    use std::net::Ipv4Addr;
+    use std::str::FromStr;
 
     let fmt_ip = |v: u32| -> String {
         format!("{}.{}.{}.{}", (v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)
     };
 
-    let ip = parse_ip(ip_str.trim()).ok_or("Invalid IP address")?;
-    let mask = parse_ip(mask_str.trim()).ok_or("Invalid Subnet mask")?;
+    let ip = Ipv4Addr::from_str(ip_str.trim()).map(u32::from).map_err(|_| "Invalid IP address")?;
+    let mask = Ipv4Addr::from_str(mask_str.trim()).map(u32::from).map_err(|_| "Invalid Subnet mask")?;
     let inv_mask = !mask;
     if mask != 0 && (inv_mask & inv_mask.wrapping_add(1)) != 0 {
         return Err("Invalid non-contiguous subnet mask".to_string());
@@ -918,19 +917,10 @@ pub fn ping_ipv4_native(target_ip: &str, _timeout_ms: u32) -> Result<PingResult,
 }
 
 pub fn classify_ip_native(ip_str: &str) -> Result<IpClassificationResult, String> {
-    let parse_ip = |s: &str| -> Option<u32> {
-        let parts: Vec<&str> = s.split('.').collect();
-        if parts.len() != 4 { return None; }
-        let mut val = 0u32;
-        for p in parts {
-            let b: u32 = p.parse().ok()?;
-            if b > 255 { return None; }
-            val = (val << 8) | b;
-        }
-        Some(val)
-    };
+    use std::net::Ipv4Addr;
+    use std::str::FromStr;
 
-    let val = parse_ip(ip_str.trim()).ok_or("Invalid IPv4 address format")?;
+    let val = Ipv4Addr::from_str(ip_str.trim()).map(u32::from).map_err(|_| "Invalid IPv4 address format")?;
     let o1 = (val >> 24) & 0xFF;
     let o2 = (val >> 16) & 0xFF;
 
@@ -1147,6 +1137,10 @@ pub fn distinguish_adapter_native(name: &str, desc: &str, mac: &str, if_type: u3
         || desc_lower.contains("6to4")
         || name_lower.contains("wi-fi direct")
         || desc_lower.contains("wi-fi direct")
+        || name_lower.contains("wifi direct")
+        || desc_lower.contains("wifi direct")
+        || name_lower.starts_with("로컬 영역 연결*")
+        || name_lower.starts_with("local area connection*")
         || name_lower.contains("bluetooth")
         || desc_lower.contains("bluetooth");
 
@@ -1256,7 +1250,9 @@ pub fn distinguish_adapter_native(name: &str, desc: &str, mac: &str, if_type: u3
         || name_lower.contains("wireless")
         || desc_lower.contains("wireless")
         || name_lower.contains("와이파이")
-        || name_lower.contains("무선");
+        || desc_lower.contains("와이파이")
+        || name_lower.contains("무선")
+        || desc_lower.contains("무선");
 
     if is_wifi {
         AdapterDistinctionResult {

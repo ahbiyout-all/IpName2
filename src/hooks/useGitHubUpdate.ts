@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { safeStorage } from '../lib/storage';
 
-export const CURRENT_VERSION = '1.12.7';
+export const CURRENT_VERSION = '1.12.8';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -23,8 +24,8 @@ export interface GitHubReleaseInfo {
 
 // Compare semantic version numbers (e.g. "1.10.0" vs "1.9.0")
 export function isNewerVersion(remoteVer: string, currentVer: string): boolean {
-  const cleanRemote = remoteVer.replace(/^v/i, '').trim();
-  const cleanCurrent = currentVer.replace(/^v/i, '').trim();
+  const cleanRemote = remoteVer.replace(/^v/i, '').split('-')[0].trim();
+  const cleanCurrent = currentVer.replace(/^v/i, '').split('-')[0].trim();
 
   const rParts = cleanRemote.split('.').map(n => parseInt(n, 10) || 0);
   const cParts = cleanCurrent.split('.').map(n => parseInt(n, 10) || 0);
@@ -105,7 +106,7 @@ export function useGitHubUpdate() {
       if (hasNewVersion) {
         setUpdateAvailable(true);
         // Check if user skipped this specific version
-        const skippedVersion = localStorage.getItem('ipname_skipped_update_version');
+        const skippedVersion = safeStorage.getItem('ipname_skipped_update_version');
         if (manual || skippedVersion !== remoteVersion) {
           setIsModalOpen(true);
         }
@@ -130,7 +131,7 @@ export function useGitHubUpdate() {
   const dismissUpdate = useCallback((skipCurrent = false) => {
     setIsModalOpen(false);
     if (skipCurrent && latestRelease?.version) {
-      localStorage.setItem('ipname_skipped_update_version', latestRelease.version);
+      safeStorage.setItem('ipname_skipped_update_version', latestRelease.version);
     }
   }, [latestRelease]);
 

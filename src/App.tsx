@@ -127,14 +127,20 @@ const AppContent: React.FC = () => {
       const connected = displayAdapters.find(a => a.status === 'Connected');
       return connected || displayAdapters[0];
     }
-    return adapters[0];
-  }, [displayAdapters, selectedAdapterId, adapters]);
+    return undefined;
+  }, [displayAdapters, selectedAdapterId]);
 
   useEffect(() => {
     if (selectedAdapter && selectedAdapter.id !== selectedAdapterId) {
       setSelectedAdapterId(selectedAdapter.id);
+    } else if (!selectedAdapter && selectedAdapterId !== '') {
+      setSelectedAdapterId('');
     }
   }, [selectedAdapter, selectedAdapterId]);
+
+  useEffect(() => {
+    setPingStatus(null);
+  }, [selectedAdapter?.id, selectedAdapter?.primaryDns]);
 
   const isTauriEnv = () => typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
 
@@ -292,7 +298,7 @@ const AppContent: React.FC = () => {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 px-0.5 no-scrollbar scroll-smooth">
               {displayAdapters.map(adapter => {
                 const isSelected = adapter.id === selectedAdapterId;
-                const isVirtual = adapter.type === 'Virtual' || adapter.isVirtual === true || isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual);
+                const isVirtual = adapter.type === 'Virtual' || adapter.isVirtual === true || isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual, adapter.macAddress);
                 return (
                   <button
                     key={adapter.id}
@@ -341,6 +347,7 @@ const AppContent: React.FC = () => {
             </div>
           ) : selectedAdapter && (
             <AdapterItem 
+              key={selectedAdapter.id}
               adapter={selectedAdapter} 
               onUpdate={updateAdapter} 
               onSave={() => setConfirmAction({ type: 'network', id: selectedAdapter.id })}
@@ -357,7 +364,11 @@ const AppContent: React.FC = () => {
 
         {adapters.length > 0 && (
           <>
-            <QuickDnsSettings selectedAdapterId={selectedAdapterId} onApply={applyDns} />
+            <QuickDnsSettings 
+              selectedAdapterId={selectedAdapter?.id || ''} 
+              disabled={!selectedAdapter || !selectedAdapter.isEnabled || isSaving}
+              onApply={applyDns} 
+            />
             
             <div className="grid grid-cols-2 gap-2 mt-1">
               <button 

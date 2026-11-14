@@ -123,5 +123,16 @@ This document tracks high-priority features, reliability fixes, and architecture
   1. Create standalone `docs/UPDATE_WORK_INSTRUCTION.md` with 8 core engineering principles, complete copy-pasteable AI system prompt, and exact C / Rust / TypeScript / YAML code implementations.
   2. Register document in `docs/README.md` index and `scripts/github/core-manifest.json`.
   3. Update all cross-referenced documents in `docs/` (`ARCHITECTURE.md`, `DEVELOPMENT.md`, `DLL_SPECIFICATION.md`, `PATCH_NOTES.md`, `ROADMAP.md`, `VERSIONING_POLICY.md`, `LICENSE_NOTICE.md`).
-- **Validation**: Document audited and registered in 32-file core manifest; build and linting clean.
+- **Validation**: Document audited and registered in 34-file core manifest; build and linting clean.
+
+#### [ROADMAP-013] Full-Stack Self-Reflection Audit & Multi-Layer Bugfix (v1.12.8)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `native/ipname_core/src/ipname_core.c`, `native/ipname_core/build.bat`, `src-tauri/src/windows_native.rs`, `installer/setup.iss`, `.github/workflows/release.yml`, `bin/postbuild-rename.cjs`, `build.bat`, `src/hooks/useSystemConfig.ts`, `src/components/AdapterItem.tsx`, `src/App.tsx`, `src/components/Footer.tsx`, `src/components/Modal.tsx`, `src/components/QuickDnsSettings.tsx`, `src/hooks/useGitHubUpdate.ts`, `src/hooks/useRealIp.ts`, `src/i18n/translations.ts`
+- **Description**: Perform a comprehensive self-reflection audit across all layers (C99 DLL, Rust Win32 backend, Inno Setup & CI/CD pipeline, React/TypeScript frontend) and resolve memory safety, packaging, build failure masking, and React state-desync bugs.
+- **Acceptance Criteria**:
+  1. Fix `IpName_PingIpv4` use-after-free, `IpName_CheckTcpPort` missing `WSAStartup`/`WSACleanup`, `strncpy` NUL termination, MSVC `/utf-8` compilation, and `"tap"`/`"tun"` token-boundary matching in C99 & Rust.
+  2. Replace runtime `{src}` existence checks in `installer/setup.iss` with compile-time `#ifexist` directives so `ipname_core.dll` and `LICENSE` are properly packaged; propagate CI/CD exit codes in `release.yml` and `postbuild-rename.cjs`.
+  3. Stop re-sorting `primaryIp` during user typing, reset conflict/ping states cleanly on adapter/mode changes, enforce strict 4-octet/NetBIOS validation, and derive displayed versions dynamically from `CURRENT_VERSION`.
+- **Validation**: Triple Lockstep version `1.12.8` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
 

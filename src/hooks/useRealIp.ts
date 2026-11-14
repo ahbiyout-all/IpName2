@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RealIpInfo } from '../types';
 import { isTauriEnv, executePowerShell } from '../lib/powershell';
+import { safeStorage } from '../lib/storage';
 
 const CACHE_KEY = 'ipname2_real_ip_cache';
 
@@ -17,7 +18,7 @@ interface CachedRealIp {
 export function useRealIp() {
   const [data, setData] = useState<RealIpInfo>(() => {
     try {
-      const cached = localStorage.getItem(CACHE_KEY);
+      const cached = safeStorage.getItem(CACHE_KEY);
       if (cached) {
         const parsed: CachedRealIp = JSON.parse(cached);
         if (parsed.ip) {
@@ -69,8 +70,12 @@ export function useRealIp() {
     };
 
     try {
-      // 1. Try ipwho.is (fast, no key, full ISP and location)
-      const ipwhoData = await safeFetch('https://ipwho.is/', 4000);
+      // 1 & 2. Run ipwho.is and api.ipify.org in parallel for fast resolution
+      const [ipwhoData, ipifyData] = await Promise.all([
+        safeFetch('https://ipwho.is/', 4000),
+        safeFetch('https://api.ipify.org?format=json', 3000)
+      ]);
+
       if (ipwhoData && ipwhoData.success !== false && ipwhoData.ip) {
         resolvedIp = ipwhoData.ip;
         resolvedIsp = ipwhoData.connection?.isp || ipwhoData.connection?.org;
@@ -81,8 +86,6 @@ export function useRealIp() {
         }
       }
 
-      // 2. Try api.ipify.org for guaranteed IPv4
-      const ipifyData = await safeFetch('https://api.ipify.org?format=json', 3000);
       if (ipifyData && ipifyData.ip) {
         resolvedIpv4 = ipifyData.ip;
         // Prioritize IPv4 if resolvedIp is empty or IPv6
@@ -160,7 +163,7 @@ export function useRealIp() {
             asn: resolvedAsn,
             timestamp: now.getTime()
           };
-          localStorage.setItem(CACHE_KEY, JSON.stringify(toCache));
+          safeStorage.setItem(CACHE_KEY, JSON.stringify(toCache));
         } catch {}
       } else {
         setData(prev => ({

@@ -138,10 +138,15 @@ echo.
 :: ----------------------------------------------------------------------
 :: STEP 6: Build Pure Custom Native DLL (ipname_core.dll)
 :: ----------------------------------------------------------------------
+echo ======================================================================
+echo  [STEP 6/8] Compiling Pure Custom Native DLL (ipname_core.dll)
+echo ======================================================================
 if exist "native\ipname_core\build.bat" (
-    echo Compiling Pure Custom Native DLL [ipname_core.dll]...
     pushd "native\ipname_core"
     call build.bat
+    if errorlevel 1 (
+        echo [WARNING] Pure Custom Native DLL compilation returned an error. Using Rust native engine.
+    )
     popd
     echo [OK] Pure Custom Native DLL pipeline completed.
     echo.
@@ -151,7 +156,7 @@ if exist "native\ipname_core\build.bat" (
 :: STEP 7: Build Tauri Native Application
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 6/7] Compiling Tauri Native Executable (Rust)
+echo  [STEP 7/8] Compiling Tauri Native Executable (Rust)
 echo ======================================================================
 call npm run tauri build
 if errorlevel 1 (
@@ -167,7 +172,7 @@ echo.
 :: Auto-Versioning Executable Output
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 7/7] Auto-Versioning Executable Output
+echo  [STEP 8/8] Auto-Versioning Executable Output
 echo ======================================================================
 node bin\postbuild-rename.cjs
 if errorlevel 1 (
@@ -185,7 +190,7 @@ echo ======================================================================
 echo  BUILD COMPLETED SUCCESSFULLY!
 echo ======================================================================
 echo The versioned executable output has been generated in:
-echo   - Workspace Root: [e.g. IpName2 v1.10.2.exe]
+echo   - Workspace Root: [e.g. IpName2_v1.12.8.exe]
 echo   - Release Directory: src-tauri\target\release\
 echo ======================================================================
 echo [OK] Opening build output folder...

@@ -1,10 +1,12 @@
+import { CURRENT_VERSION } from '../hooks/useGitHubUpdate';
+
 export type Language = 'ko' | 'en';
 
 export const translations = {
   ko: {
     adminMode: '시스템 관리자 모드',
     standardMode: '일반 사용자 모드',
-    appTitle: 'IpName2 v1.12.7',
+    appTitle: `IpName2 v${CURRENT_VERSION}`,
     appDesc: '고급 윈도우 시스템 및 네트워크 구성 유틸리티',
     realIp: '리얼 IP (공인 IP)',
     realIpShort: '리얼 IP',
@@ -67,7 +69,10 @@ export const translations = {
     invalidGateway: '올바른 게이트웨이 형식이 아닙니다.',
     invalidDns: '올바른 DNS 형식이 아닙니다.',
     ipRequired: '수동 설정 시 IP 주소와 서브넷 마스크는 필수입니다.',
-    invalidComputerName: '컴퓨터 이름에 특수문자(\\/:*?"<>|)를 사용할 수 없습니다.',
+    invalidComputerName: '컴퓨터 이름에 특수문자(\\/:*?"<>|+=;, 공백)를 사용할 수 없습니다.',
+    invalidComputerNameLength: '컴퓨터 이름은 1~15자 이내로 입력해주세요.',
+    invalidComputerNameEdge: '컴퓨터 이름의 시작이나 끝에 하이픈(-) 또는 점(.)을 사용할 수 없습니다.',
+    invalidWorkgroup: '올바른 작업 그룹 이름을 입력해주세요. (1~15자, 특수문자 불가)',
     restartRequired: '시스템 변경사항을 적용하려면 PC를 다시 시작해야 합니다.',
     pendingComputerNameNotice: '다음 부팅 시 컴퓨터 이름이 변경됩니다:',
     enabled: '사용',
@@ -146,7 +151,7 @@ export const translations = {
   en: {
     adminMode: 'System Administrator Mode',
     standardMode: 'Standard User Mode',
-    appTitle: 'IpName2 v1.12.7',
+    appTitle: `IpName2 v${CURRENT_VERSION}`,
     appDesc: 'Advanced Windows System & Network Configuration Utility',
     realIp: 'Real Public IP',
     realIpShort: 'Real IP',
@@ -209,7 +214,10 @@ export const translations = {
     invalidGateway: 'Invalid Gateway format.',
     invalidDns: 'Invalid DNS format.',
     ipRequired: 'IP address and Subnet mask are required for manual setup.',
-    invalidComputerName: 'Computer name cannot contain special characters (\\/:*?"<>|).',
+    invalidComputerName: 'Computer name cannot contain special characters (\\/:*?"<>|+=;, space).',
+    invalidComputerNameLength: 'Computer name must be between 1 and 15 characters.',
+    invalidComputerNameEdge: 'Computer name cannot start or end with a hyphen (-) or dot (.).',
+    invalidWorkgroup: 'Please enter a valid workgroup name (1-15 characters, no special characters).',
     restartRequired: 'A restart is required to apply system changes.',
     pendingComputerNameNotice: 'Computer name will change on next boot:',
     enabled: 'Enabled',

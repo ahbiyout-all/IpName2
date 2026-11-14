@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { Network, Wifi, Save, RefreshCw, Sparkles, Power, PowerOff, Layers, ShieldCheck, AlertTriangle, CheckCircle2, Plus, PlusCircle, Trash2 } from 'lucide-react';
 import { NetworkAdapter, NativeIpConflictResult } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -6,6 +6,7 @@ import { CopyButton } from './CopyButton';
 import { SubnetMaskSelector } from './SubnetMaskSelector';
 import { isVirtualAdapter } from '../hooks/useSystemConfig';
 import { isTauriEnv } from '../lib/powershell';
+import { safeStorage } from '../lib/storage';
 
 interface AdapterItemProps {
   adapter: NetworkAdapter;
@@ -18,14 +19,10 @@ interface AdapterItemProps {
 export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onRequestToggleEnabled }: AdapterItemProps) => {
   const { t } = useLanguage();
 
-  // Smart IP helper enabled by default on app start, persisted in localStorage
+  // Smart IP helper enabled by default on app start, persisted in safeStorage
   const [smartHelperEnabled, setSmartHelperEnabled] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('ipname_smart_helper_enabled');
-      return saved === null ? true : saved === 'true';
-    } catch {
-      return true;
-    }
+    const saved = safeStorage.getItem('ipname_smart_helper_enabled');
+    return saved === null ? true : saved === 'true';
   });
 
   // Helper: check if two MAC addresses represent the same hardware address
@@ -102,6 +99,13 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
 
   // Secondary IPs ARP Conflict state map (index -> status)
   const [secConflictStates, setSecConflictStates] = useState<Record<number, { checking: boolean; result: NativeIpConflictResult | null }>>({});
+
+  // Reset per-adapter diagnostic states whenever selected adapter changes
+  useEffect(() => {
+    setConflictResult(null);
+    setIsCheckingConflict(false);
+    setSecConflictStates({});
+  }, [adapter.id]);
 
   const handleCheckSecondaryConflict = async (index: number, ip: string) => {
     const trimmedIp = ip.trim();
@@ -243,14 +247,26 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
   const handleRemoveSecondaryIp = (index: number) => {
     const current = (adapter.additionalIps || []).filter((_, i) => i !== index);
     onUpdate(adapter.id, 'additionalIps', current);
+    setSecConflictStates(prev => {
+      const reindexed: Record<number, { checking: boolean; result: NativeIpConflictResult | null }> = {};
+      for (const keyStr of Object.keys(prev)) {
+        const keyNum = Number(keyStr);
+        const state = prev[keyNum];
+        if (!state) continue;
+        if (keyNum < index) {
+          reindexed[keyNum] = state;
+        } else if (keyNum > index) {
+          reindexed[keyNum - 1] = state;
+        }
+      }
+      return reindexed;
+    });
   };
 
   const toggleSmartHelper = () => {
     const next = !smartHelperEnabled;
     setSmartHelperEnabled(next);
-    try {
-      localStorage.setItem('ipname_smart_helper_enabled', String(next));
-    } catch {}
+    safeStorage.setItem('ipname_smart_helper_enabled', String(next));
   };
 
   // C-Class automatic gateway synchronization logic
@@ -266,10 +282,10 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
     const trimmed = newIp.trim();
     const parts = trimmed.split('.');
 
-    // If user entered at least 3 octets (C-Class prefix)
-    if (parts.length >= 3) {
+    // If user entered 3 or 4 octets (C-Class prefix)
+    if (parts.length === 3 || parts.length === 4) {
       const [o1, o2, o3] = parts;
-      const isNum = (s: string) => s !== '' && !isNaN(Number(s)) && Number(s) >= 0 && Number(s) <= 255;
+      const isNum = (s: string) => /^\d{1,3}$/.test(s) && Number(s) >= 0 && Number(s) <= 255;
       
       if (isNum(o1) && isNum(o2) && isNum(o3)) {
         const cPrefix = `${Number(o1)}.${Number(o2)}.${Number(o3)}`;
@@ -298,7 +314,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
     }
   };
 
-  const isVirtual = adapter.type === 'Virtual' || adapter.isVirtual === true || isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual);
+  const isVirtual = adapter.type === 'Virtual' || adapter.isVirtual === true || isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual, adapter.macAddress);
 
   return (
     <div className="card p-3">
@@ -375,7 +391,11 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           {/* DHCP Auto / Manual Toggle */}
           <div className="flex p-0.5 bg-[var(--input-bg)] border border-[var(--border)] rounded-md shrink-0">
             <button 
-              onClick={() => onUpdate(adapter.id, 'isDhcp', true)}
+              onClick={() => {
+                setConflictResult(null);
+                setSecConflictStates({});
+                onUpdate(adapter.id, 'isDhcp', true);
+              }}
               disabled={!adapter.isEnabled || isSaving}
               className={`px-2 py-1 text-[9px] font-bold rounded transition-all ${adapter.isDhcp ? 'bg-[var(--card)] shadow-sm text-primary' : 'text-text-muted hover:text-foreground'} ${!adapter.isEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
             >

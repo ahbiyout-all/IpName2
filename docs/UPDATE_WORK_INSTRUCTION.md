@@ -219,22 +219,24 @@ jobs:
 
 ---
 
-## 🛠️ 3. 파일 매니페스트 및 디렉터리 레이아웃 표준 (31 Core Files)
+## 🛠️ 3. 파일 매니페스트 및 디렉터리 레이아웃 표준 (34 Core Files)
 
-다른 프로젝트 구성 시 아래 31개 필수 파일 구조를 정확하게 유지해야 합니다:
+다른 프로젝트 구성 시 아래 34개 필수 파일 구조를 정확하게 유지해야 합니다:
 
 ```
 IpName/
 ├── .github/workflows/release.yml         # CI/CD 자동 패키징 파이프라인
 ├── bin/postbuild-rename.cjs             # 빌드 후 실행파일 버전 명명 유틸리티
-├── docs/                                # 공식 기술 문서 모음 (8개 필수 문서)
+├── docs/                                # 공식 기술 문서 모음 (10개 필수 문서)
 │   ├── README.md                        # 문서 색인 허브
 │   ├── ARCHITECTURE.md                  # 시스템 아키텍처 명세서
+│   ├── BLOGGER_POST.md                  # 구글 블로거 공식 배포 소개 글
 │   ├── DEVELOPMENT.md                   # 개발 및 빌드 환경 가이드
 │   ├── DLL_SPECIFICATION.md             # 순수 창작 DLL C-ABI 명세서
 │   ├── LICENSE_NOTICE.md                # 라이선스 고지사항
 │   ├── PATCH_NOTES.md                   # 버전별 패치 노트 (Triple Lockstep)
 │   ├── ROADMAP.md                       # 로드맵
+│   ├── UPDATE_WORK_INSTRUCTION.md       # AI 표준 업그레이드 작업 지시서
 │   └── VERSIONING_POLICY.md             # 버전 관리 정책
 ├── installer/setup.iss                  # Inno Setup 6 전문 인스톨러 스크립트
 ├── native/ipname_core/                  # 순수 창작 C99 네이티브 DLL 소스

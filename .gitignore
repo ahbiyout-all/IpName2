@@ -8,6 +8,7 @@
 # AI Studio Internal Metadata & Ephemeral Artifacts
 .aistudio/
 .aistudio
+public/assets/aistudio/
 .dev.env.json
 .dev.pid
 cloud_sql_proxy*

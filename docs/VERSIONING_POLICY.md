@@ -42,9 +42,10 @@
   - 기본 개발/통신 포트 변경 (3030 표준화)
   - 유효 IPv4 주소 우선 탐색 및 `primaryIp` 강제 승격 (`sortAdaptersAndEnforcePrimaryIp`, v1.12.2)
   - 자체 어댑터 MAC 주소 대조를 통한 본인 IP 재적용 시 충돌 오탐 방지 (`IpName_CheckIpConflictEx`, v1.12.3)
-  - 32개 핵심 필수 파일 화이트리스트 감사 파이프라인 및 로컬 푸시 스크립트 Git 추적 격리 (v1.12.5)
+  - 34개 핵심 필수 파일 화이트리스트 감사 파이프라인 및 로컬 푸시 스크립트 Git 추적 격리 (v1.12.5)
   - GitHub Actions Node 24 러너 마이그레이션 및 웹/태그 듀얼 푸시 CI/CD 파이프라인 구축 (v1.12.6)
   - 타 IP Name 앱 대상 AI 통합 마이그레이션 작업지시서(`UPDATE_WORK_INSTRUCTION.md`) 수립 (v1.12.7)
+  - 전 계층(C99 DLL, Rust Win32, Inno Setup/CI-CD, React/TypeScript) 정밀 감사 및 결함 일괄 수정 (v1.12.8)
   - 배치 스크립트 특수문자(`&`) 구문 오류 방지 및 CMD 중첩 괄호 파싱 결함 해결
 
 ---

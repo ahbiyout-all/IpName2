@@ -2,6 +2,51 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.12.8] - 2026-11-14
+
+### 1. 순수 창작 C99 네이티브 DLL (`native/ipname_core/`) 메모리 안전성 및 소켓 초기화 결함 해결
+* **`IpName_PingIpv4` Use-After-Free 버그 수정 (`ipname_core.c`)**:
+  - `free(ReplyBuffer)` 호출 이후 해제된 메모리의 `pEchoReply->Status`를 역참조하던 Use-After-Free 결함을 `DWORD reply_status = pEchoReply->Status;` 선저장으로 원천 해결.
+* **`IpName_CheckTcpPort` Winsock 초기화 누락(`WSANOTINITIALISED`) 해결 (`ipname_core.c`)**:
+  - `WSAStartup(MAKEWORD(2, 2), &wsa_data)` 및 모든 종료 경로에서의 `WSACleanup()` 짝맞춤 처리를 추가하여 독립 호출 환경에서도 소켓 오류가 발생하지 않도록 개선.
+* **`IpName_ValidateNetBiosName` 문자열 절단 및 MSVC UTF-8 인코딩 보강 (`ipname_core.c`, `build.bat`)**:
+  - `strncpy` 사용 시 버퍼 절단 구간에서 NUL 종단 문자(`\0`)가 누락될 수 있던 취약점을 `snprintf(..., "%s", ...)`로 전면 교체.
+  - `native/ipname_core/build.bat`의 MSVC `cl.exe` 옵션에 `/utf-8` 플래그를 추가하여 한국어 UTF-8 문자열 리터럴 깨짐 방지 및 `IPNAME_VERSION`을 `1.12.8`로 동기화.
+* **어댑터 토큰 경계 정밀 매칭 (`str_contains_token_ci`)**:
+  - `"tap"` / `"tun"` 키워드가 `"tuning"`, `"taping"` 등 무관한 부분 문자열에 의해 가상 어댑터로 오탐되지 않도록 토큰/접두사 경계 검사 적용.
+
+### 2. Rust Win32 백엔드 (`src-tauri/src/windows_native.rs`) 안전성 및 서브넷 검증 보강
+* **64비트 `ICMP_ECHO_REPLY` 안전 버퍼 확보**:
+  - `ping_ipv4_native` 응답 버퍼 크기를 `.max(1024)`로 보장하여 64비트 Windows 커널 구조체 정렬 오버플로우 예방.
+* **비트 시프트 오버플로우 및 비정상 서브넷 마스크 차단**:
+  - `OnLinkPrefixLength` ➔ 서브넷 마스크 변환 시 `prefix_len >= 32` 경계 가드 추가.
+  - `calculate_subnet_native`에 연속 비트 마스크(`contiguous mask`) 유효성 검증 도입.
+* **물리/가상 판별 일관성 통일**:
+  - `contains_token_or_prefix` 헬퍼를 `get_adapters_native` 및 `distinguish_adapter_native` 양측에 일관 적용.
+
+### 3. Inno Setup 인스톨러, 빌드 스크립트 및 GitHub Actions CI/CD 무결성 개선
+* **Inno Setup 컴파일 타임 조건부 포함 교정 (`installer/setup.iss`)**:
+  - 기존 `[Files]` 섹션의 런타임 `Check: FileExists(ExpandConstant('{src}\..\bin\ipname_core.dll'))` 및 `LICENSE` 체크가 최종 사용자의 다운로드 폴더(`{src}`)를 검사하여 DLL과 라이선스가 설치본에 포함되지 않던 치명적 패키징 버그 해결.
+  - 컴파일 타임 전처리기 `#ifexist` 지시문으로 전면 교체하고, `IpName2.exe` 미존재 시 Cargo 원본 바이너리 `ipname2.exe` 폴백 및 `MyAppVersion "1.12.8"` 동기화.
+* **GitHub Actions 에러 마스킹 제거 (`.github/workflows/release.yml`)**:
+  - `build.bat`, `iscc.exe`, `dir /b dist-installer\*_Setup.exe` 단계 직후 `if errorlevel 1 exit /b 1`을 추가하여 빌드 실패가 후속 명령에 의해 성공(exit 0)으로 덮어써지는 현상 차단.
+* **빌드 후처리 및 배치 단계 정정 (`bin/postbuild-rename.cjs`, `build.bat`)**:
+  - `package.json` 우선 버전 추출, `ipname2.exe` / `IpName2.exe` 우선 매칭, `src-tauri/target/release/IpName2.exe` 상시 생성 및 오류 시 `process.exitCode = 1` 반환 보장.
+  - `build.bat`의 중복 `[STEP 6/7]` 라벨을 `6/8 ~ 8/8`로 교정하고 DLL 컴파일 실패 경고 및 `IpName2_v1.12.8.exe` 안내 문구 최신화.
+
+### 4. 프론트엔드 React / TypeScript (`src/`) 상태 동기화 및 UI 결함 수정
+* **입력 중 Primary IP 강제 재정렬 및 보조 IP 목록 꼬임 방지 (`useSystemConfig.ts`)**:
+  - `updateAdapter`, `applyDns`, `toggleAdapterEnabled` 등에서 키 입력/부분 수정 시마다 `sortAdaptersAndEnforcePrimaryIp`가 실행되어 입력 중이던 IP가 재배치되던 문제를 제거하고 `fetchInitialData` 초기 로드/갱신 시에만 정렬 수행.
+  - `originalAdapters` 상태가 재조회 시 비활성 어댑터 포함 최신 배열(`sortedMerged`)로 일관 갱신되도록 수정.
+  - `subnetMatches` 엄격한 4-옥텟 검증, `isGhostOrInvalidAdapter` ➔ `isVirtualAdapter` MAC 포함 5개 인자 전달, 데드 코드(`physicallyPresentNames`, `hasPowerShellData`) 제거, `toastTimerRef` 타이머 정리, `escapePsDoubleQuoted` 및 NetBIOS 1~15자/금지문자/선행·후행 기호 전체 검증 보강.
+* **어댑터 전환 및 모드 변경 시 잔여 상태 초기화 (`AdapterItem.tsx`, `App.tsx`)**:
+  - 어댑터 선택 변경(`adapter.id`) 및 DHCP 전환 시 `conflictResult`, `isCheckingConflict`, `secConflictStates` 상태가 이전 어댑터/모드에서 남아있지 않도록 초기화하고, 보조 IP 삭제 시 `secConflictStates` 인덱스 재정렬.
+  - 필터 결과(`displayAdapters`)가 비어 있을 때 `selectedAdapter`가 타 탭의 `adapters[0]`으로 잘못 폴백되던 문제 수정 및 `pingStatus` 자동 초기화, `<AdapterItem key={selectedAdapter.id}>` 부여, `<QuickDnsSettings>` 비활성화 가드 추가.
+* **공통 훅/컴포넌트/버전 동적화 (`useGitHubUpdate.ts`, `useRealIp.ts`, `Modal.tsx`, `Footer.tsx`, `translations.ts`)**:
+  - `safeStorage` 일원화, `useRealIp` `Promise.all` 병렬 조회, `isNewerVersion` 프리릴리스 접미사 처리, `ModalProps.title` 타입(`React.ReactNode`) 정합성 확보, `Footer` 및 번역 텍스트의 `CURRENT_VERSION` 동적 참조.
+
+---
+
 ## [v1.12.7] - 2026-10-23
 
 ### 1. 타 IP Name 앱 패밀리 표준 업그레이드를 위한 AI 작업 지시서 수립 (`docs/UPDATE_WORK_INSTRUCTION.md`)

@@ -1,6 +1,6 @@
 # IpNameCore 순수 창작 DLL 명세서 (DLL Specification)
 
-본 문서는 **AhBiYout IpName2 v1.12.7**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
+본 문서는 **AhBiYout IpName2 v1.12.8**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
 
 ---
 
@@ -10,7 +10,7 @@
 | :--- | :--- |
 | **모듈 명칭** | `ipname_core.dll` (IpNameCore Native Engine) |
 | **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지 및 자체 MAC 오탐 방지(Whitelist), TCP 포트 진단 및 서브넷 연산 수행 |
-| **버전** | v1.12.7 (IpName2 v1.12.7 정식 탑재) |
+| **버전** | v1.12.8 (IpName2 v1.12.8 정식 탑재) |
 | **아키텍처** | Windows x64 / x86 호환 C-ABI (`__stdcall` / `__cdecl`) |
 | **표준 규격** | ISO C99 / Win32 Native API |
 | **의존성** | 독립 실행형 (Zero External Dependencies, Windows OS 표준 `ws2_32.dll`, `iphlpapi.dll`만 동적 링킹) |
@@ -295,16 +295,18 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
 
 IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 C/Rust 계층의 호출 내역을 정밀 감사한 결과는 다음과 같습니다:
 
-| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.12.7) |
+| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.12.8) |
 | :--- | :--- | :--- | :--- |
-| **`ipname_core.dll`** | `IpName_PingIpv4` | 64비트 Windows 환경에서 `ICMP_ECHO_REPLY` 버퍼 크기 부족 시 커널 드라이버가 버퍼 오버플로우 또는 힙 손상 유발 가능 | 최소 1024바이트의 안전 정렬 버퍼를 기본 할당하도록 개선 |
+| **`ipname_core.dll`** | `IpName_PingIpv4` | 64비트 `ICMP_ECHO_REPLY` 버퍼 크기 부족 및 `free(ReplyBuffer)` 직후 해제 메모리(`pEchoReply->Status`) 역참조(Use-After-Free) 위험 | 최소 1024바이트 안전 정렬 버퍼 할당 및 메모리 해제 전 `reply_status` 선저장(v1.12.8)으로 Use-After-Free 원천 차단 |
+| **`ipname_core.dll`** | `IpName_CheckTcpPort` | Winsock 미초기화(`WSAStartup` 누락) 상태에서 독립 호출 시 `WSANOTINITIALISED` 실패 발생 | 함수 진입 시 `WSAStartup(MAKEWORD(2, 2))` 호출 및 모든 반환 경로에 `WSACleanup()` 정합성 보장(v1.12.8) |
+| **`ipname_core.dll`** | `IpName_ValidateNetBiosName` | `strncpy` 버퍼 절단 시 NUL 종단 누락 가능성 및 MSVC 빌드 시 UTF-8 한국어 문자열 깨짐 우려 | `snprintf(..., "%s", ...)` 전면 교체로 NUL 종단 보장 및 `cl.exe` `/utf-8` 컴파일 옵션 적용(v1.12.8) |
 | **`ipname_core.dll`** | `inet_addr` 호출부 | `inet_addr`는 최신 MSVC에서 사용 중단(Deprecated C4996) 경고 및 255.255.255.255 예외 처리 취약 | 호스트 정수를 `htonl()`로 직접 변환하여 경고 제거 및 주소 파싱 안정화 |
-| **`ipname_core.dll`** | `IpName_CalculateSubnet` | 255.0.255.0과 같은 불연속(Disjoint) 비정상 서브넷 마스크 입력 시 오동작 가능성 | `(~mask & (~mask + 1)) == 0` 비트 연산으로 연속 마스크 검증 로직 추가 |
+| **`ipname_core.dll`** | `IpName_CalculateSubnet` | 255.0.255.0과 같은 불연속(Disjoint) 비정상 서브넷 마스크 입력 시 오동작 가능성 | `(~mask & (~mask + 1)) == 0` 비트 연산으로 연속 마스크 검증 로직 추가 (Rust 네이티브 백엔드 동일 적용) |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 도커(Docker), Hyper-V, VPN 등 다중 가상 어댑터 환경에서 초기 버퍼(15KB) 부족 시 1회만 재할당하여 재실패 가능성 존재 | 초기 버퍼를 **32KB**로 2배 이상 증설하고 **최대 3회 점진적 크기 재할당 루프**로 전면 보강 |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 비활성화(Disabled) 어댑터는 NDIS 드라이버 차단으로 `PhysicalAddressLength = 0`으로 응답되어 유령 어댑터로 오판단되는 결함 | 합법적 어댑터("이더넷", "Wi-Fi" 등) 식별 방어 조건을 추가하여 비활성 랜카드 유실 방지 |
-| **`ipname_core.dll`** | `IpName_DistinguishAdapter` | 물리 어댑터 필터 선택 시 가상 어댑터가 혼재되어 표시되거나 어댑터 목록이 불일치하는 현상 발생 | IEEE MAC OUI(Hyper-V, VMware, VirtualBox 등), NDIS TunnelType, 한글 '가상' 키워드 심층 검사로 물리/가상 100% 구분 (v1.12.0 신설) |
+| **`ipname_core.dll`** | `IpName_DistinguishAdapter` | 물리 어댑터 필터 선택 시 가상 어댑터 혼재 및 `"tap"`/`"tun"` 부분 문자열 오탐 가능성 | IEEE MAC OUI, NDIS TunnelType, 토큰 경계 매칭(`str_contains_token_ci`) 적용으로 물리/가상 100% 정밀 구분(v1.12.0~v1.12.8) |
 | **`ipname_core.dll`** | `IpName_CheckIpConflictEx` | 현재 어댑터가 이미 점유 중인 정상 IP를 검사할 때 본인의 MAC 응답으로 인해 충돌로 오탐지되는 문제 | 로컬 어댑터 MAC 주소(`own_mac`) 화이트리스트 대조 알고리즘 도입으로 자기 자신 IP 오탐 원천 차단 (v1.12.3 신설) |
-| **`src/utils/network.ts`** | `sortAdaptersAndEnforcePrimaryIp` | 다중 IP 바인딩 어댑터에서 0.0.0.0 또는 APIPA가 대표 IP로 표시되거나 목록 정렬이 불안정한 현상 | 유효한 라우팅 가능 IPv4 주소를 우선 탐색하여 `primaryIp`로 강제 승격 및 상태별 결정론적 정렬 보장 (v1.12.2 신설) |
+| **`src/hooks/useSystemConfig.ts`** | `sortAdaptersAndEnforcePrimaryIp` | 다중 IP 바인딩 어댑터에서 0.0.0.0 또는 APIPA가 대표 IP로 표시되거나 입력 중 재정렬되는 현상 | 초기 조회 시에만 라우팅 가능 IPv4를 `primaryIp`로 강제 승격하고 사용자 입력 중 불필요한 재정렬 제거(v1.12.8) |
 | **`kernel32.dll`** | `GetComputerNameExW` | 컴퓨터 이름 조회 | 최대 버퍼 크기 계산 및 후행 널 문자 정리 정상 확인 |
 | **`advapi32.dll`** | `OpenProcessToken` | UAC 관리자 권한 조회 | 토큰 핸들 누수 방지(`CloseHandle`) 정상 확인 |
 

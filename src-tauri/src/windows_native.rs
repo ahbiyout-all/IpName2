@@ -77,6 +77,28 @@ pub struct IpClassificationResult {
     pub is_routable: bool,
 }
 
+fn contains_token_or_prefix(haystack_lower: &str, token: &str) -> bool {
+    let h_bytes = haystack_lower.as_bytes();
+    let t_bytes = token.as_bytes();
+    if t_bytes.is_empty() || h_bytes.len() < t_bytes.len() {
+        return false;
+    }
+    for i in 0..=(h_bytes.len() - t_bytes.len()) {
+        let start_ok = i == 0 || !h_bytes[i - 1].is_ascii_alphanumeric();
+        if !start_ok {
+            continue;
+        }
+        if &h_bytes[i..i + t_bytes.len()] == t_bytes {
+            let end_idx = i + t_bytes.len();
+            let end_ok = end_idx == h_bytes.len() || !h_bytes[end_idx].is_ascii_alphabetic();
+            if end_ok {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 #[cfg(windows)]
 unsafe fn read_registry_string(hkey: windows_sys::Win32::System::Registry::HKEY, subkey: &str, value_name: &str) -> Option<String> {
     use windows_sys::Win32::System::Registry::*;
@@ -446,10 +468,12 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 || desc_lower.contains("vbox")
                 || name_lower.contains("wsl")
                 || desc_lower.contains("wsl")
-                || name_lower.contains("tap")
-                || desc_lower.contains("tap")
-                || name_lower.contains("tun")
-                || desc_lower.contains("tun")
+                || contains_token_or_prefix(&name_lower, "tap")
+                || contains_token_or_prefix(&desc_lower, "tap")
+                || contains_token_or_prefix(&name_lower, "tun")
+                || contains_token_or_prefix(&desc_lower, "tun")
+                || name_lower.contains("tunnel")
+                || desc_lower.contains("tunnel")
                 || name_lower.contains("wintun")
                 || desc_lower.contains("wintun")
                 || name_lower.contains("tailscale")
@@ -524,10 +548,12 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                     let ip_bytes = (*ipv4).sin_addr.S_un.S_un_b;
                     let curr_ip = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
                     
-                    // Convert OnLinkPrefixLength to Subnet Mask
+                    // Convert OnLinkPrefixLength to Subnet Mask safely
                     let prefix_len = uaddr.OnLinkPrefixLength;
                     let mask_val: u32 = if prefix_len == 0 {
                         0
+                    } else if prefix_len >= 32 {
+                        0xFFFFFFFFu32
                     } else {
                         0xFFFFFFFFu32 << (32 - prefix_len)
                     };
@@ -793,8 +819,12 @@ pub fn calculate_subnet_native(ip_str: &str, mask_str: &str) -> Result<SubnetDet
 
     let ip = parse_ip(ip_str).ok_or("Invalid IP address")?;
     let mask = parse_ip(mask_str).ok_or("Invalid Subnet mask")?;
+    let inv_mask = !mask;
+    if mask != 0 && (inv_mask & inv_mask.wrapping_add(1)) != 0 {
+        return Err("Invalid non-contiguous subnet mask".to_string());
+    }
 
-    let wildcard = !mask;
+    let wildcard = inv_mask;
     let net = ip & mask;
     let bcast = ip | wildcard;
     let cidr = mask.count_ones();
@@ -831,7 +861,7 @@ pub fn ping_ipv4_native(target_ip: &str, timeout_ms: u32) -> Result<PingResult, 
         }
 
         let send_data = b"IpNameCore Probe";
-        let reply_size = std::mem::size_of::<ICMP_ECHO_REPLY>() + send_data.len() + 8;
+        let reply_size = (std::mem::size_of::<ICMP_ECHO_REPLY>() + send_data.len() + 64).max(1024);
         let mut reply_buf = vec![0u8; reply_size];
 
         let ret = IcmpSendEcho(
@@ -1183,10 +1213,12 @@ pub fn distinguish_adapter_native(name: &str, desc: &str, mac: &str, if_type: u3
         || desc_lower.contains("vbox")
         || name_lower.contains("wsl")
         || desc_lower.contains("wsl")
-        || name_lower.contains("tap")
-        || desc_lower.contains("tap")
-        || name_lower.contains("tun")
-        || desc_lower.contains("tun")
+        || contains_token_or_prefix(&name_lower, "tap")
+        || contains_token_or_prefix(&desc_lower, "tap")
+        || contains_token_or_prefix(&name_lower, "tun")
+        || contains_token_or_prefix(&desc_lower, "tun")
+        || name_lower.contains("tunnel")
+        || desc_lower.contains("tunnel")
         || name_lower.contains("wintun")
         || desc_lower.contains("wintun")
         || name_lower.contains("tailscale")

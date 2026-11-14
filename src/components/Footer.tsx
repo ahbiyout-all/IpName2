@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Settings, AlertCircle, User, Building, Globe, ShieldCheck, ExternalLink, FileText, Github } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Modal } from './Modal';
+import { CURRENT_VERSION } from '../hooks/useGitHubUpdate';
 
 interface FooterProps {
   onCheckUpdate?: () => void;
@@ -112,13 +113,13 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
               <Settings size={24} className="animate-spin-slow" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-base text-foreground leading-tight">IpName2 v1.12.7</h4>
+              <h4 className="font-bold text-base text-foreground leading-tight">IpName2 v{CURRENT_VERSION}</h4>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">{t('appDesc')}</p>
               
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 pt-2.5 border-t border-border/40 text-[11px]">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Settings size={12} className="text-primary/70 shrink-0" />
-                  <span>{t('version')}: <strong className="text-foreground font-medium">v1.12.7 (STABLE)</strong></span>
+                  <span>{t('version')}: <strong className="text-foreground font-medium">v{CURRENT_VERSION} (STABLE)</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <User size={12} className="text-primary/70 shrink-0" />

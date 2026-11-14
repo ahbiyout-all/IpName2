@@ -36,7 +36,7 @@
   #include <unistd.h>
 #endif
 
-#define IPNAME_VERSION "1.12.7"
+#define IPNAME_VERSION "1.12.8"
 
 /* Helper: case-insensitive substring search */
 static int str_contains_ci(const char* haystack, const char* needle) {
@@ -51,6 +51,29 @@ static int str_contains_ci(const char* haystack, const char* needle) {
             j++;
         }
         if (j == nlen) return 1;
+    }
+    return 0;
+}
+
+/* Helper: case-insensitive token/prefix search (prevents false-positive substring matches like "tap"/"tun") */
+static int str_contains_token_ci(const char* haystack, const char* token) {
+    if (!haystack || !token) return 0;
+    size_t hlen = strlen(haystack);
+    size_t tlen = strlen(token);
+    if (tlen == 0) return 1;
+    if (hlen < tlen) return 0;
+    for (size_t i = 0; i <= hlen - tlen; i++) {
+        int start_ok = (i == 0) || !isalnum((unsigned char)haystack[i - 1]);
+        if (!start_ok) continue;
+        size_t j = 0;
+        while (j < tlen && tolower((unsigned char)haystack[i + j]) == tolower((unsigned char)token[j])) {
+            j++;
+        }
+        if (j == tlen) {
+            size_t end_idx = i + tlen;
+            int end_ok = (end_idx == hlen) || !isalpha((unsigned char)haystack[end_idx]);
+            if (end_ok) return 1;
+        }
     }
     return 0;
 }
@@ -164,7 +187,8 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_PingIpv4(
 
     if (dwRetVal != 0) {
         PICMP_ECHO_REPLY pEchoReply = (PICMP_ECHO_REPLY)ReplyBuffer;
-        out_result->status_code = pEchoReply->Status;
+        DWORD reply_status = pEchoReply->Status;
+        out_result->status_code = reply_status;
         out_result->round_trip_time_ms = pEchoReply->RoundTripTime;
         out_result->time_to_live = (uint32_t)pEchoReply->Options.Ttl;
         out_result->bytes_received = (uint32_t)pEchoReply->DataSize;
@@ -172,9 +196,9 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_PingIpv4(
         free(ReplyBuffer);
         IcmpCloseHandle(hIcmpFile);
 
-        if (pEchoReply->Status == 0) {
+        if (reply_status == 0) {
             return IPNAME_OK;
-        } else if (pEchoReply->Status == 11010) { /* IP_REQ_TIMED_OUT */
+        } else if (reply_status == 11010) { /* IP_REQ_TIMED_OUT */
             return IPNAME_ERR_TIMEOUT;
         } else {
             return IPNAME_ERR_HOST_UNREACHABLE;
@@ -252,7 +276,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_ValidateNetBiosName(
 ) {
     if (!name) {
         if (out_err_msg && max_err_len > 0) {
-            strncpy(out_err_msg, "Name cannot be null", max_err_len - 1);
+            snprintf(out_err_msg, (size_t)max_err_len, "%s", "Name cannot be null");
         }
         return IPNAME_ERR_INVALID_PARAM;
     }
@@ -260,14 +284,14 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_ValidateNetBiosName(
     size_t len = strlen(name);
     if (len == 0) {
         if (out_err_msg && max_err_len > 0) {
-            strncpy(out_err_msg, "컴퓨터 이름을 입력해주세요. (빈 문자열 불가)", max_err_len - 1);
+            snprintf(out_err_msg, (size_t)max_err_len, "%s", "컴퓨터 이름을 입력해주세요. (빈 문자열 불가)");
         }
         return IPNAME_ERR_INVALID_PARAM;
     }
 
     if (len > 15) {
         if (out_err_msg && max_err_len > 0) {
-            snprintf(out_err_msg, max_err_len, "NetBIOS 컴퓨터 이름은 최대 15자까지만 허용됩니다. (현재 %zu자)", len);
+            snprintf(out_err_msg, (size_t)max_err_len, "NetBIOS 컴퓨터 이름은 최대 15자까지만 허용됩니다. (현재 %zu자)", len);
         }
         return IPNAME_ERR_INVALID_PARAM;
     }
@@ -278,7 +302,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_ValidateNetBiosName(
         char c = name[i];
         if (strchr(prohibited, c) != NULL || ((unsigned char)c < 32 && (unsigned char)c != 0)) {
             if (out_err_msg && max_err_len > 0) {
-                snprintf(out_err_msg, max_err_len, "특수문자 '%c'는 컴퓨터 이름에 사용할 수 없습니다.", c);
+                snprintf(out_err_msg, (size_t)max_err_len, "특수문자 '%c'는 컴퓨터 이름에 사용할 수 없습니다.", c);
             }
             return IPNAME_ERR_INVALID_PARAM;
         }
@@ -287,7 +311,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_ValidateNetBiosName(
     /* Cannot start or end with a hyphen or dot */
     if (name[0] == '-' || name[0] == '.' || name[len - 1] == '-' || name[len - 1] == '.') {
         if (out_err_msg && max_err_len > 0) {
-            strncpy(out_err_msg, "컴퓨터 이름의 시작이나 끝에는 하이픈(-)이나 점(.)을 사용할 수 없습니다.", max_err_len - 1);
+            snprintf(out_err_msg, (size_t)max_err_len, "%s", "컴퓨터 이름의 시작이나 끝에는 하이픈(-)이나 점(.)을 사용할 수 없습니다.");
         }
         return IPNAME_ERR_INVALID_PARAM;
     }
@@ -463,9 +487,16 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckTcpPort(
     }
 
 #ifdef _WIN32
+    WSADATA wsa_data;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
+        snprintf(out_result->message, sizeof(out_result->message), "Winsock 초기화 실패");
+        return IPNAME_ERR_SOCKET_INIT;
+    }
+
     SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s == INVALID_SOCKET) {
         snprintf(out_result->message, sizeof(out_result->message), "소켓 초기화 실패");
+        WSACleanup();
         return IPNAME_ERR_SOCKET_INIT;
     }
 
@@ -489,6 +520,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckTcpPort(
         out_result->latency_ms = elapsed;
         snprintf(out_result->message, sizeof(out_result->message), "포트 %u 연결 성공 (%lu ms)", port, elapsed);
         closesocket(s);
+        WSACleanup();
         return IPNAME_OK;
     }
 
@@ -512,18 +544,21 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckTcpPort(
             out_result->latency_ms = elapsed;
             snprintf(out_result->message, sizeof(out_result->message), "포트 %u 연결 성공 (%lu ms)", port, elapsed);
             closesocket(s);
+            WSACleanup();
             return IPNAME_OK;
         } else {
             out_result->is_open = 0;
             out_result->latency_ms = 0;
             snprintf(out_result->message, sizeof(out_result->message), "포트 %u 연결 불가 또는 타임아웃 (%u ms)", port, timeout_ms);
             closesocket(s);
+            WSACleanup();
             return IPNAME_ERR_TIMEOUT;
         }
     } else {
         out_result->is_open = 0;
         snprintf(out_result->message, sizeof(out_result->message), "포트 %u 연결 거부 (WSAError: %d)", port, err);
         closesocket(s);
+        WSACleanup();
         return IPNAME_ERR_HOST_UNREACHABLE;
     }
 #else
@@ -711,8 +746,12 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         str_contains_ci(safe_desc, "vbox") ||
         str_contains_ci(safe_name, "wsl") ||
         str_contains_ci(safe_desc, "wsl") ||
-        str_contains_ci(safe_name, "tap") ||
-        str_contains_ci(safe_desc, "tap") ||
+        str_contains_token_ci(safe_name, "tap") ||
+        str_contains_token_ci(safe_desc, "tap") ||
+        str_contains_token_ci(safe_name, "tun") ||
+        str_contains_token_ci(safe_desc, "tun") ||
+        str_contains_ci(safe_name, "tunnel") ||
+        str_contains_ci(safe_desc, "tunnel") ||
         str_contains_ci(safe_name, "wintun") ||
         str_contains_ci(safe_desc, "wintun") ||
         str_contains_ci(safe_name, "tailscale") ||

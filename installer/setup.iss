@@ -8,7 +8,7 @@
 ; ======================================================================
 
 #define MyAppName "IpName2"
-#define MyAppVersion "1.12.7"
+#define MyAppVersion "1.12.8"
 #define MyAppPublisher "AhBiYout"
 #define MyAppURL "https://github.com/AhBiYout-all/IpName2"
 #define MyAppBlogURL "https://ahbiyoutvibe.blogspot.com/"
@@ -50,16 +50,27 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; Unpacked Multi-File Individual Installation (No redundant archives/docs)
-; Main Executable
+; Main Executable (prefers postbuild-prepared IpName2.exe, falls back to Cargo binary ipname2.exe)
+#ifexist "..\src-tauri\target\release\IpName2.exe"
 Source: "..\src-tauri\target\release\IpName2.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
-; Pure Native Custom DLL Engine
-Source: "..\bin\ipname_core.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\..\bin\ipname_core.dll'))
-Source: "..\native\ipname_core\ipname_core.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\..\native\ipname_core\ipname_core.dll'))
+#else
+Source: "..\src-tauri\target\release\ipname2.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
+#endif
+; Pure Native Custom DLL Engine (evaluated at compile time, NOT install time)
+#ifexist "..\bin\ipname_core.dll"
+Source: "..\bin\ipname_core.dll"; DestDir: "{app}"; Flags: ignoreversion
+#else
+  #ifexist "..\native\ipname_core\ipname_core.dll"
+Source: "..\native\ipname_core\ipname_core.dll"; DestDir: "{app}"; Flags: ignoreversion
+  #endif
+#endif
 ; Application Icons
 Source: "..\IpName2.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\app-icon.png"; DestDir: "{app}"; Flags: ignoreversion
 ; Open Source License
-Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\..\LICENSE'))
+#ifexist "..\LICENSE"
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+#endif
 
 [Icons]
 Name: "{group}\{#MyAppName} v{#MyAppVersion}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\IpName2.ico"

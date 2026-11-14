@@ -11,7 +11,7 @@ set "COMPILED=0"
 where cl >nul 2>&1
 if not errorlevel 1 (
     echo [OK] Microsoft Visual C++ compiler cl.exe found.
-    cl /nologo /O2 /LD /DIPNAME_CORE_EXPORTS src\ipname_core.c /Fe:ipname_core.dll /link ws2_32.lib iphlpapi.lib
+    cl /nologo /utf-8 /O2 /LD /DIPNAME_CORE_EXPORTS src\ipname_core.c /Fe:ipname_core.dll /link ws2_32.lib iphlpapi.lib
     if not errorlevel 1 (
         echo [OK] ipname_core.dll successfully created with MSVC.
         set "COMPILED=1"

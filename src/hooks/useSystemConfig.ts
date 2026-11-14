@@ -1,7 +1,22 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { SystemInfo, NetworkAdapter } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { executePowerShell, isTauriEnv } from '../lib/powershell';
+
+function isValidIPv4(ip: string): boolean {
+  if (!ip) return false;
+  const parts = ip.trim().split('.');
+  if (parts.length !== 4) return false;
+  return parts.every(part => {
+    if (!/^\d{1,3}$/.test(part)) return false;
+    const num = Number(part);
+    return num >= 0 && num <= 255 && part === num.toString();
+  });
+}
+
+function escapePsDoubleQuoted(value: string): string {
+  return value.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"');
+}
 
 export function isFilterOrPseudoAdapter(name: string): boolean {
   const n = (name || '').toLowerCase();
@@ -31,7 +46,15 @@ export function isFilterOrPseudoAdapter(name: string): boolean {
   );
 }
 
-export function isGhostOrInvalidAdapter(adapter: { macAddress?: string; name?: string; isEnabled?: boolean; status?: string; type?: string }): boolean {
+export function isGhostOrInvalidAdapter(adapter: {
+  macAddress?: string;
+  name?: string;
+  isEnabled?: boolean;
+  status?: string;
+  type?: string;
+  description?: string;
+  isVirtual?: boolean;
+}): boolean {
   if (adapter.status === 'Not Present' || adapter.status === 'NotPresent') {
     return true;
   }
@@ -39,7 +62,13 @@ export function isGhostOrInvalidAdapter(adapter: { macAddress?: string; name?: s
     return true;
   }
 
-  const isVirt = isVirtualAdapter(adapter.name || '', adapter.type);
+  const isVirt = isVirtualAdapter(
+    adapter.name || '',
+    adapter.type,
+    adapter.description,
+    adapter.isVirtual,
+    adapter.macAddress
+  );
   const clean = (adapter.macAddress || '').replace(/[:-]/g, '').toLowerCase().trim();
   const isZeroOrEmptyMac = !clean || clean === '000000000000' || /^0+$/.test(clean);
 
@@ -106,7 +135,7 @@ export function isVirtualAdapter(name: string, type?: string, description?: stri
     combined.includes('virtualbox') ||
     combined.includes('vbox') ||
     combined.includes('wsl') ||
-    combined.includes('tap') ||
+    /(^|[^a-z0-9])tap(\d|[^a-z0-9]|$)/i.test(combined) ||
     combined.includes('wintun') ||
     combined.includes('tunnel') ||
     combined.includes('tailscale') ||
@@ -127,9 +156,9 @@ export function isVirtualAdapter(name: string, type?: string, description?: stri
 }
 
 function subnetMatches(ip: string, mask: string, gw: string): boolean {
-  if (!ip || !gw || !mask) return false;
+  if (!isValidIPv4(ip) || !isValidIPv4(gw) || !isValidIPv4(mask)) return false;
   try {
-    const parse = (s: string) => s.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+    const parse = (s: string) => s.trim().split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
     const ipInt = parse(ip);
     const gwInt = parse(gw);
     const maskInt = parse(mask);
@@ -243,12 +272,9 @@ export function useSystemConfig() {
     }
   ]);
 
-  const setAdapters = useCallback((action: NetworkAdapter[] | ((prev: NetworkAdapter[]) => NetworkAdapter[])) => {
-    setAdaptersState(prev => {
-      const next = typeof action === 'function' ? action(prev) : action;
-      return sortAdaptersAndEnforcePrimaryIp(next);
-    });
-  }, []);
+  // Interactive edits must NOT reorder adapter tabs or swap primary/secondary IPs mid-keystroke.
+  // Sorting/enforcing primary IP is applied strictly on load/refresh in fetchInitialData.
+  const setAdapters = setAdaptersState;
 
   const adapters = adaptersState;
 
@@ -273,11 +299,9 @@ export function useSystemConfig() {
 
           const adapterList = await invoke<NetworkAdapter[]>('get_adapters');
           
-          // Query all physically present network adapters and disabled adapters from PowerShell
+          // Query disabled adapters and NDIS Virtual flags from PowerShell
           let disabledNetAdapters: Array<{ name: string; macAddress?: string; isVirtual?: boolean; description?: string }> = [];
-          const physicallyPresentNames = new Set<string>();
           const virtualNetNames = new Set<string>();
-          let hasPowerShellData = false;
 
           try {
             const psPresent = await executePowerShell(
@@ -294,12 +318,10 @@ export function useSystemConfig() {
                 if (single.Name) parsed = [single];
               }
               if (Array.isArray(parsed) && parsed.length > 0) {
-                hasPowerShellData = true;
                 for (const item of parsed) {
                   if (item.Name) {
                     const nLower = String(item.Name).toLowerCase();
-                    physicallyPresentNames.add(nLower);
-                    const isItemVirt = item.Virtual === true || isVirtualAdapter(item.Name, undefined, item.InterfaceDescription);
+                    const isItemVirt = item.Virtual === true || isVirtualAdapter(item.Name, undefined, item.InterfaceDescription, item.Virtual, item.MacAddress);
                     if (isItemVirt) {
                       virtualNetNames.add(nLower);
                     }
@@ -338,49 +360,45 @@ export function useSystemConfig() {
               };
             });
 
-          setAdapters(() => {
-            const activeNames = new Set(activeParsed.map(a => a.name.toLowerCase()));
-            const activeMacs = new Set(activeParsed.map(a => (a.macAddress || '').replace(/[:-]/g, '').toLowerCase()).filter(Boolean));
-            const merged = [...activeParsed];
+          const activeNames = new Set(activeParsed.map(a => a.name.toLowerCase()));
+          const activeMacs = new Set(activeParsed.map(a => (a.macAddress || '').replace(/[:-]/g, '').toLowerCase()).filter(Boolean));
+          const merged = [...activeParsed];
 
-            // Add verified disabled adapters discovered from Windows that are not already present
-            for (const dis of disabledNetAdapters) {
-              const cleanDisMac = (dis.macAddress || '').replace(/[:-]/g, '').toLowerCase();
-              if (
-                !activeNames.has(dis.name.toLowerCase()) &&
-                (!cleanDisMac || !activeMacs.has(cleanDisMac)) &&
-                !isFilterOrPseudoAdapter(dis.name) &&
-                !isGhostOrInvalidAdapter(dis)
-              ) {
-                const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
-                merged.push({
-                  id: dis.macAddress || dis.name,
-                  name: dis.name,
-                  type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
-                  status: 'Disabled',
-                  ipAddress: '',
-                  subnetMask: '',
-                  gateway: '',
-                  primaryDns: '',
-                  secondaryDns: '',
-                  macAddress: dis.macAddress || '',
-                  isDhcp: true,
-                  isEnabled: false,
-                  isVirtual: isVirt,
-                  description: dis.description,
-                  additionalIps: []
-                });
-                activeNames.add(dis.name.toLowerCase());
-                if (cleanDisMac) activeMacs.add(cleanDisMac);
-              }
+          // Add verified disabled adapters discovered from Windows that are not already present
+          for (const dis of disabledNetAdapters) {
+            const cleanDisMac = (dis.macAddress || '').replace(/[:-]/g, '').toLowerCase();
+            if (
+              !activeNames.has(dis.name.toLowerCase()) &&
+              (!cleanDisMac || !activeMacs.has(cleanDisMac)) &&
+              !isFilterOrPseudoAdapter(dis.name) &&
+              !isGhostOrInvalidAdapter(dis)
+            ) {
+              const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
+              merged.push({
+                id: dis.macAddress || dis.name,
+                name: dis.name,
+                type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
+                status: 'Disabled',
+                ipAddress: '',
+                subnetMask: '',
+                gateway: '',
+                primaryDns: '',
+                secondaryDns: '',
+                macAddress: dis.macAddress || '',
+                isDhcp: true,
+                isEnabled: false,
+                isVirtual: isVirt,
+                description: dis.description,
+                additionalIps: []
+              });
+              activeNames.add(dis.name.toLowerCase());
+              if (cleanDisMac) activeMacs.add(cleanDisMac);
             }
+          }
 
-            return merged;
-          });
-
-          setOriginalAdapters(prev => {
-            return prev.length === 0 ? activeParsed : prev;
-          });
+          const sortedMerged = sortAdaptersAndEnforcePrimaryIp(merged);
+          setAdaptersState(sortedMerged);
+          setOriginalAdapters(sortedMerged);
         } catch (err: any) {
           console.error('Native API Error:', err);
           setSystemInfo(prev => ({ ...prev, computerName: 'Error', osVersion: String(err).substring(0, 50) }));
@@ -464,8 +482,9 @@ export function useSystemConfig() {
             additionalIps: []
           }
         ];
-        setAdapters(mockAdapters);
-        setOriginalAdapters(mockAdapters);
+        const sortedMock = sortAdaptersAndEnforcePrimaryIp(mockAdapters);
+        setAdaptersState(sortedMock);
+        setOriginalAdapters(sortedMock);
       }
     } catch (error: any) {
       console.error('Failed to fetch initial data:', error);
@@ -489,20 +508,26 @@ export function useSystemConfig() {
     type: 'success'
   });
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToast({ show: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    toastTimerRef.current = setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+      toastTimerRef.current = null;
+    }, 3000);
   }, []);
 
-  const isValidIPv4 = (ip: string) => {
-    if (!ip) return false;
-    const parts = ip.split('.');
-    if (parts.length !== 4) return false;
-    return parts.every(part => {
-      const num = parseInt(part, 10);
-      return num >= 0 && num <= 255 && part === num.toString();
-    });
-  };
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const saveSystemInfo = useCallback(async () => {
     setIsSaving(true);
@@ -511,18 +536,42 @@ export function useSystemConfig() {
       let requiresRestart = false;
 
       if (originalSystemInfo) {
-        if (!systemInfo.computerName || /[\\/:\*\?"<>\|]/.test(systemInfo.computerName)) {
+        const trimmedName = (systemInfo.computerName || '').trim();
+        const trimmedWorkgroup = (systemInfo.workgroup || '').trim();
+
+        if (trimmedName.length === 0 || trimmedName.length > 15) {
+          showToast(t('invalidComputerNameLength'), 'error');
+          setIsSaving(false);
+          return;
+        }
+        if (/[\\/:\*\?"<>\|+=;,\s]/.test(trimmedName)) {
           showToast(t('invalidComputerName'), 'error');
           setIsSaving(false);
           return;
         }
+        if (/^[-.]|[-.]$/.test(trimmedName)) {
+          showToast(t('invalidComputerNameEdge'), 'error');
+          setIsSaving(false);
+          return;
+        }
 
-        if (systemInfo.computerName !== originalSystemInfo.computerName) {
-          script += `Rename-Computer -NewName "${systemInfo.computerName}" -Force\n`;
+        if (trimmedWorkgroup !== (originalSystemInfo.workgroup || '').trim()) {
+          if (
+            trimmedWorkgroup.length === 0 ||
+            trimmedWorkgroup.length > 15 ||
+            /[\\/:\*\?"<>\|+=;,\s]/.test(trimmedWorkgroup) ||
+            /^[-.]|[-.]$/.test(trimmedWorkgroup)
+          ) {
+            showToast(t('invalidWorkgroup'), 'error');
+            setIsSaving(false);
+            return;
+          }
+          script += `Add-Computer -WorkgroupName "${escapePsDoubleQuoted(trimmedWorkgroup)}" -Force\n`;
           requiresRestart = true;
         }
-        if (systemInfo.workgroup !== originalSystemInfo.workgroup) {
-          script += `Add-Computer -WorkgroupName "${systemInfo.workgroup}" -Force\n`;
+
+        if (trimmedName !== (originalSystemInfo.computerName || '').trim()) {
+          script += `Rename-Computer -NewName "${escapePsDoubleQuoted(trimmedName)}" -Force\n`;
           requiresRestart = true;
         }
       }
@@ -541,6 +590,7 @@ export function useSystemConfig() {
           } 2>&1 | Out-Null
           exit 0
         } catch {
+          Write-Error $_
           exit 1
         }
       `;
@@ -549,11 +599,11 @@ export function useSystemConfig() {
         const response = await executePowerShell(wrappedScript, !systemInfo.isAdmin);
         
         if (response.code !== 0) {
-          console.error("PowerShell Error: Command failed with code", response.code);
+          console.error("PowerShell Error:", response.code, response.stderr || response.stdout);
           showToast(t('applyError'), 'error');
         } else {
           if (requiresRestart) {
-            setPendingComputerName(systemInfo.computerName);
+            setPendingComputerName(systemInfo.computerName.trim());
             showToast(`${t('saveSuccess')} ${t('restartRequired')}`, 'success');
           } else {
             showToast(t('saveSuccess'), 'success');
@@ -565,7 +615,7 @@ export function useSystemConfig() {
         // Web Preview Mock
         console.log("Mock saveSystemInfo executed with script:", script);
         if (requiresRestart) {
-          setPendingComputerName(systemInfo.computerName);
+          setPendingComputerName(systemInfo.computerName.trim());
           showToast(`${t('saveSuccess')} ${t('restartRequired')}`, 'success');
         } else {
           showToast(t('saveSuccess'), 'success');
@@ -574,6 +624,7 @@ export function useSystemConfig() {
       }
     } catch (error) {
       console.error("Failed to save system info:", error);
+      showToast(t('applyError'), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -588,13 +639,15 @@ export function useSystemConfig() {
       const originalAdapter = originalAdapters.find(a => a.id === selectedAdapterId);
       
       if (adapter) {
+        const safeAdapterName = escapePsDoubleQuoted(adapter.name);
+
         // Handle Enable/Disable
         if (originalAdapter && adapter.isEnabled !== originalAdapter.isEnabled) {
           if (adapter.isEnabled) {
-            script += `Enable-NetAdapter -Name "${adapter.name}" -Confirm:$false\n`;
+            script += `Enable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\n`;
             script += `Start-Sleep -Seconds 2\n`;
           } else {
-            script += `Disable-NetAdapter -Name "${adapter.name}" -Confirm:$false\n`;
+            script += `Disable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\n`;
           }
         }
 
@@ -633,7 +686,7 @@ export function useSystemConfig() {
             }
 
             if (adapter.additionalIps && adapter.additionalIps.length > 0) {
-              const seenIps = new Set<string>([adapter.ipAddress]);
+              const seenIps = new Set<string>([adapter.ipAddress.trim()]);
               for (const sec of adapter.additionalIps) {
                 if (!sec.ipAddress || !isValidIPv4(sec.ipAddress)) {
                   showToast(t('invalidSecondaryIp'), 'error');
@@ -645,39 +698,39 @@ export function useSystemConfig() {
                   setIsSaving(false);
                   return;
                 }
-                if (seenIps.has(sec.ipAddress)) {
+                if (seenIps.has(sec.ipAddress.trim())) {
                   showToast(t('duplicateIpWarning'), 'error');
                   setIsSaving(false);
                   return;
                 }
-                seenIps.add(sec.ipAddress);
+                seenIps.add(sec.ipAddress.trim());
               }
             }
           }
 
           if (adapter.isDhcp) {
-            script += `netsh interface ipv4 set address name="${adapter.name}" source=dhcp\n`;
-            script += `netsh interface ipv4 set dns name="${adapter.name}" source=dhcp\n`;
+            script += `netsh interface ipv4 set address name="${safeAdapterName}" source=dhcp\n`;
+            script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
           } else {
-            const gw = adapter.gateway ? ` gateway=${adapter.gateway}` : '';
-            script += `netsh interface ipv4 set address name="${adapter.name}" source=static address=${adapter.ipAddress} mask=${adapter.subnetMask}${gw}\n`;
+            const gw = adapter.gateway ? ` gateway=${adapter.gateway.trim()}` : '';
+            script += `netsh interface ipv4 set address name="${safeAdapterName}" source=static address=${adapter.ipAddress.trim()} mask=${adapter.subnetMask.trim()}${gw}\n`;
             
             // Add secondary / multiple IP addresses
             if (adapter.additionalIps && adapter.additionalIps.length > 0) {
               for (const sec of adapter.additionalIps) {
                 if (sec.ipAddress && sec.subnetMask) {
-                  script += `netsh interface ipv4 add address name="${adapter.name}" address=${sec.ipAddress} mask=${sec.subnetMask}\n`;
+                  script += `netsh interface ipv4 add address name="${safeAdapterName}" address=${sec.ipAddress.trim()} mask=${sec.subnetMask.trim()}\n`;
                 }
               }
             }
 
             if (adapter.primaryDns) {
-              script += `netsh interface ipv4 set dns name="${adapter.name}" source=static address=${adapter.primaryDns} validate=no\n`;
+              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${adapter.primaryDns.trim()} validate=no\n`;
               if (adapter.secondaryDns) {
-                script += `netsh interface ipv4 add dns name="${adapter.name}" address=${adapter.secondaryDns} index=2 validate=no\n`;
+                script += `netsh interface ipv4 add dns name="${safeAdapterName}" address=${adapter.secondaryDns.trim()} index=2 validate=no\n`;
               }
             } else {
-              script += `netsh interface ipv4 set dns name="${adapter.name}" source=dhcp\n`;
+              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
             }
           }
         }
@@ -697,6 +750,7 @@ export function useSystemConfig() {
           } 2>&1 | Out-Null
           exit 0
         } catch {
+          Write-Error $_
           exit 1
         }
       `;
@@ -705,7 +759,7 @@ export function useSystemConfig() {
         const response = await executePowerShell(wrappedScript, !systemInfo.isAdmin);
         
         if (response.code !== 0) {
-          console.error("PowerShell Error: Command failed with code", response.code);
+          console.error("PowerShell Error:", response.code, response.stderr || response.stdout);
           showToast(t('applyError'), 'error');
         } else {
           showToast(t('saveSuccess'), 'success');
@@ -772,9 +826,10 @@ export function useSystemConfig() {
       } : a));
 
       if (isTauriEnv()) {
+        const safeAdapterName = escapePsDoubleQuoted(adapter.name);
         const cmd = newEnabled 
-          ? `Enable-NetAdapter -Name "${adapter.name}" -Confirm:$false\nStart-Sleep -Seconds 2`
-          : `Disable-NetAdapter -Name "${adapter.name}" -Confirm:$false`;
+          ? `Enable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\nStart-Sleep -Seconds 2`
+          : `Disable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false`;
 
         const wrappedScript = `
           $ErrorActionPreference = 'Stop';
@@ -784,13 +839,14 @@ export function useSystemConfig() {
             } 2>&1 | Out-Null
             exit 0
           } catch {
+            Write-Error $_
             exit 1
           }
         `;
 
         const response = await executePowerShell(wrappedScript, !systemInfo.isAdmin);
         if (response.code !== 0) {
-          console.error("PowerShell Error: Command failed with code", response.code);
+          console.error("PowerShell Error:", response.code, response.stderr || response.stdout);
           showToast(t('applyError'), 'error');
         } else {
           showToast(newEnabled ? t('adapterEnabledSuccess') : t('adapterDisabledSuccess'), 'success');

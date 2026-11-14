@@ -17,7 +17,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
     { name: 'Vite', version: 'v6.2.0', license: 'MIT', copyright: 'Copyright (c) 2019-present, Yuxi (Evan) You and Vite contributors.', url: 'https://vite.dev' },
     { name: 'Tauri', version: 'v2.11.1', license: 'MIT / Apache-2.0', copyright: 'Copyright (c) 2017-present, Tauri Apps Contributors.', url: 'https://tauri.app' },
     { name: 'Tailwind CSS', version: 'v4.1.14', license: 'MIT', copyright: 'Copyright (c) Tailwind Labs, Inc.', url: 'https://tailwindcss.com' },
-    { name: 'IpNameCore Native DLL', version: 'v1.0.0 (ipname_core.dll)', license: 'MIT', copyright: 'Copyright (c) 2026 AhBiYout (Pure Creative Native Engine)', url: 'https://github.com/AhBiYout-all' },
+    { name: 'IpNameCore Native DLL', version: `v${CURRENT_VERSION} (ipname_core.dll)`, license: 'MIT', copyright: 'Copyright (c) 2026 AhBiYout (Pure Creative Native Engine)', url: 'https://github.com/AhBiYout-all' },
     { name: 'Lucide React', version: 'v0.546.0', license: 'ISC', copyright: 'Copyright (c) 2020, Lucide Contributors', url: 'https://lucide.dev' },
     { name: 'Better-SQLite3', version: 'v12.4.1', license: 'MIT', copyright: 'Copyright (c) 2017-present Joshua Wise', url: 'https://github.com/WiseLibs/better-sqlite3' },
     { name: 'Motion', version: 'v12.23.24', license: 'MIT', copyright: 'Copyright (c) 2018 Framer B.V.', url: 'https://motion.dev' },
@@ -32,12 +32,13 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
       <footer className="mt-2 pt-2 border-t border-border flex flex-wrap justify-between items-center gap-3 text-muted-foreground text-[10px] tracking-wide font-medium shrink-0">
         <div className="flex flex-wrap items-center gap-3">
           <button 
+            type="button"
             onClick={() => setIsAboutOpen(true)}
             className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors focus:outline-none font-bold"
             title="About / Licenses"
           >
             <Settings size={11} className="animate-pulse text-primary" />
-            <span>v1.12-STABLE</span>
+            <span>v{CURRENT_VERSION}</span>
           </button>
           <div className="flex items-center gap-1 text-foreground/80" title={`${t('author')}: AhBiYout`}>
             <User size={11} className="text-primary/70" />
@@ -65,10 +66,10 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
               ahbiyoutvibe.blogspot.com
             </a>
           </div>
-          <div className="flex items-center gap-1" title={`${t('affiliation')}: http://www.cisnet.co.kr/`}>
+          <div className="flex items-center gap-1" title={`${t('affiliation')}: https://www.cisnet.co.kr`}>
             <Building size={11} className="text-primary/70" />
             <a 
-              href="http://www.cisnet.co.kr/" 
+              href="https://www.cisnet.co.kr" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="hover:text-primary transition-colors font-medium text-foreground/70"
@@ -80,6 +81,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
         <div className="flex items-center gap-2 ml-auto">
           {onCheckUpdate && (
             <button
+              type="button"
               onClick={onCheckUpdate}
               className="text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             >
@@ -99,6 +101,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
         title={t('aboutTitle')}
         footer={
           <button
+            type="button"
             onClick={() => setIsAboutOpen(false)}
             className="px-4 py-1.5 bg-primary hover:bg-primary-hover text-primary-foreground font-bold rounded-lg text-xs transition-colors shadow-sm focus:outline-none cursor-pointer"
           >
@@ -155,7 +158,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
                   <Building size={12} className="text-primary/70 shrink-0" />
                   <span>{t('affiliation')}: </span>
                   <a
-                    href="http://www.cisnet.co.kr/"
+                    href="https://www.cisnet.co.kr"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline font-medium flex items-center gap-0.5"

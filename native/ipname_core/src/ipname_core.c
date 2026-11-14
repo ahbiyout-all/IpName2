@@ -36,7 +36,7 @@
   #include <unistd.h>
 #endif
 
-#define IPNAME_VERSION "1.12.8"
+#define IPNAME_VERSION "1.12.9"
 
 /* Helper: case-insensitive substring search */
 static int str_contains_ci(const char* haystack, const char* needle) {
@@ -78,18 +78,40 @@ static int str_contains_token_ci(const char* haystack, const char* token) {
     return 0;
 }
 
-/* Helper: parse IPv4 dotted-decimal string into 32-bit host order integer */
+/* Helper: parse IPv4 dotted-decimal string into 32-bit host order integer (strict, no whitespace/signs) */
 static int parse_ipv4_string(const char* str, uint32_t* out_val) {
     if (!str || !out_val) return 0;
-    unsigned int b1, b2, b3, b4;
-    char tail;
-    if (sscanf(str, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &tail) != 4) {
-        return 0;
+    const unsigned char* p = (const unsigned char*)str;
+    uint32_t result = 0;
+
+    for (int octet = 0; octet < 4; octet++) {
+        if (*p < '0' || *p > '9') return 0;
+        if (octet > 0) {
+            /* Expect '.' before octets 1..3 handled at end of loop; double-check digits here */
+        }
+        uint32_t val = 0;
+        int digits = 0;
+        /* Reject leading zeros on multi-digit octets (e.g. "01" or "001") to match strict dotted decimal */
+        if (*p == '0' && (p[1] >= '0' && p[1] <= '9')) {
+            return 0;
+        }
+        while (*p >= '0' && *p <= '9') {
+            val = val * 10 + (uint32_t)(*p - '0');
+            if (val > 255) return 0;
+            digits++;
+            if (digits > 3) return 0;
+            p++;
+        }
+        if (digits == 0) return 0;
+        result = (result << 8) | val;
+        if (octet < 3) {
+            if (*p != '.') return 0;
+            p++;
+        }
     }
-    if (b1 > 255 || b2 > 255 || b3 > 255 || b4 > 255) {
-        return 0;
-    }
-    *out_val = ((uint32_t)b1 << 24) | ((uint32_t)b2 << 16) | ((uint32_t)b3 << 8) | (uint32_t)b4;
+
+    if (*p != '\0') return 0;
+    *out_val = result;
     return 1;
 }
 
@@ -131,8 +153,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_GetVersion(char* buffer, int max_len)
     if ((size_t)max_len < strlen(IPNAME_VERSION) + 1) {
         return IPNAME_ERR_BUFFER_TOO_SMALL;
     }
-    strncpy(buffer, IPNAME_VERSION, max_len - 1);
-    buffer[max_len - 1] = '\0';
+    snprintf(buffer, (size_t)max_len, "%s", IPNAME_VERSION);
     return IPNAME_OK;
 }
 
@@ -395,13 +416,13 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
             int di = 0, oi = 0;
 
             for (int i = 0; out_result->conflicting_mac[i] && di < 15; i++) {
-                char c = out_result->conflicting_mac[i];
+                unsigned char c = (unsigned char)out_result->conflicting_mac[i];
                 if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
                     clean_detected[di++] = (char)toupper(c);
                 }
             }
             for (int i = 0; own_mac[i] && oi < 15; i++) {
-                char c = own_mac[i];
+                unsigned char c = (unsigned char)own_mac[i];
                 if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
                     clean_own[oi++] = (char)toupper(c);
                 }
@@ -436,7 +457,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
     /* Non-Windows mock for preview environments */
     if (own_mac && (str_contains_ci(own_mac, "AA:BB:CC:11:22:33") || str_contains_ci(own_mac, "18:C0:4D:7F:68:08"))) {
         out_result->is_conflict = 0;
-        strncpy(out_result->conflicting_mac, own_mac, sizeof(out_result->conflicting_mac) - 1);
+        snprintf(out_result->conflicting_mac, sizeof(out_result->conflicting_mac), "%s", own_mac);
         snprintf(out_result->message, sizeof(out_result->message),
             "✓ [현재 어댑터] 해당 IP(%s)는 현재 본인 랜카드(MAC: %s)에 할당된 정상 주소이며, 외부 충돌이 없습니다.",
             target_ip, out_result->conflicting_mac);
@@ -445,7 +466,7 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
 
     if (dest_host_val % 256 == 99) {
         out_result->is_conflict = 1;
-        strncpy(out_result->conflicting_mac, "AA:BB:CC:11:22:33", sizeof(out_result->conflicting_mac) - 1);
+        snprintf(out_result->conflicting_mac, sizeof(out_result->conflicting_mac), "%s", "AA:BB:CC:11:22:33");
         snprintf(out_result->message, sizeof(out_result->message),
             "⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: AA:BB:CC:11:22:33)가 발견되었습니다.");
         return IPNAME_ERR_IP_CONFLICT;
@@ -589,44 +610,44 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_ClassifyIp(
     uint8_t o2 = (val >> 16) & 0xFF;
 
     if (o1 == 10) {
-        strncpy(out_classification->category, "Private (사설 IP)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 1918 Class A (10.0.0.0/8)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Private (사설 IP)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 1918 Class A (10.0.0.0/8)");
         out_classification->is_routable = 0;
     } else if (o1 == 172 && (o2 >= 16 && o2 <= 31)) {
-        strncpy(out_classification->category, "Private (사설 IP)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 1918 Class B (172.16.0.0/12)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Private (사설 IP)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 1918 Class B (172.16.0.0/12)");
         out_classification->is_routable = 0;
     } else if (o1 == 192 && o2 == 168) {
-        strncpy(out_classification->category, "Private (사설 IP)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 1918 Class C (192.168.0.0/16)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Private (사설 IP)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 1918 Class C (192.168.0.0/16)");
         out_classification->is_routable = 0;
     } else if (o1 == 127) {
-        strncpy(out_classification->category, "Loopback (루프백)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 1122 Localhost (127.0.0.0/8)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Loopback (루프백)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 1122 Localhost (127.0.0.0/8)");
         out_classification->is_routable = 0;
     } else if (o1 == 169 && o2 == 254) {
-        strncpy(out_classification->category, "APIPA (자동 사설 IP)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 3927 Link-Local (169.254.0.0/16)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "APIPA (자동 사설 IP)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 3927 Link-Local (169.254.0.0/16)");
         out_classification->is_routable = 0;
     } else if (o1 == 100 && (o2 >= 64 && o2 <= 127)) {
-        strncpy(out_classification->category, "CGNAT (통신사 공유 IP)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 6598 Carrier-Grade NAT (100.64.0.0/10)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "CGNAT (통신사 공유 IP)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 6598 Carrier-Grade NAT (100.64.0.0/10)");
         out_classification->is_routable = 0;
     } else if (o1 >= 224 && o1 <= 239) {
-        strncpy(out_classification->category, "Multicast (멀티캐스트)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 5771 Class D (224.0.0.0/4)", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Multicast (멀티캐스트)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 5771 Class D (224.0.0.0/4)");
         out_classification->is_routable = 0;
     } else if (o1 >= 240) {
-        strncpy(out_classification->category, "Reserved (예약 대역)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 1700 Class E Reserved", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Reserved (예약 대역)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 1700 Class E Reserved");
         out_classification->is_routable = 0;
     } else if (o1 == 0) {
-        strncpy(out_classification->category, "Current Network", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "RFC 1122 'This' Network", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Current Network");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "RFC 1122 'This' Network");
         out_classification->is_routable = 0;
     } else {
-        strncpy(out_classification->category, "Public (공인 WAN IP)", sizeof(out_classification->category) - 1);
-        strncpy(out_classification->scope_desc, "Global Internet Routable", sizeof(out_classification->scope_desc) - 1);
+        snprintf(out_classification->category, sizeof(out_classification->category), "%s", "Public (공인 WAN IP)");
+        snprintf(out_classification->scope_desc, sizeof(out_classification->scope_desc), "%s", "Global Internet Routable");
         out_classification->is_routable = 1;
     }
 
@@ -680,16 +701,16 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         str_contains_ci(safe_desc, "bluetooth")) {
         out_result->is_ghost_or_filter = 1;
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Pseudo Filter / Ghost", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "Kernel filter driver, pseudo device or loopback", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Pseudo Filter / Ghost");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Kernel filter driver, pseudo device or loopback");
         return IPNAME_OK;
     }
 
     /* 2. Check NDIS Tunnel Type */
     if (tunnel_type != 0 || if_type == 131 /* IF_TYPE_TUNNEL */ || if_type == 142 /* IF_TYPE_IPHTTPS */) {
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Virtual Tunnel", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "NDIS Tunnel Interface (VPN/Tunnel Type)", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Tunnel");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "NDIS Tunnel Interface (VPN/Tunnel Type)");
         return IPNAME_OK;
     }
 
@@ -697,8 +718,8 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
     /* Hyper-V: 00:15:5D */
     if (str_contains_ci(safe_mac, "00:15:5D") || str_contains_ci(safe_mac, "00-15-5D")) {
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "Microsoft Hyper-V Virtual MAC OUI (00:15:5D)", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Microsoft Hyper-V Virtual MAC OUI (00:15:5D)");
         return IPNAME_OK;
     }
     /* VMware: 00:05:69, 00:0C:29, 00:50:56 */
@@ -706,22 +727,22 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         str_contains_ci(safe_mac, "00:0C:29") || str_contains_ci(safe_mac, "00-0C-29") ||
         str_contains_ci(safe_mac, "00:50:56") || str_contains_ci(safe_mac, "00-50-56")) {
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "VMware Virtual MAC OUI (00:05:69/00:0C:29/00:50:56)", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "VMware Virtual MAC OUI (00:05:69/00:0C:29/00:50:56)");
         return IPNAME_OK;
     }
     /* VirtualBox: 08:00:27 */
     if (str_contains_ci(safe_mac, "08:00:27") || str_contains_ci(safe_mac, "08-00-27")) {
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "Oracle VirtualBox MAC OUI (08:00:27)", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Oracle VirtualBox MAC OUI (08:00:27)");
         return IPNAME_OK;
     }
     /* QEMU / KVM: 52:54:00 */
     if (str_contains_ci(safe_mac, "52:54:00") || str_contains_ci(safe_mac, "52-54-00")) {
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "QEMU / KVM Virtual MAC OUI (52:54:00)", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "QEMU / KVM Virtual MAC OUI (52:54:00)");
         return IPNAME_OK;
     }
 
@@ -779,8 +800,8 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         str_contains_ci(safe_desc, "virtio") ||
         str_contains_ci(safe_desc, "ndis virtual")) {
         out_result->is_virtual = 1;
-        strncpy(out_result->category, "Virtual Ethernet", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "Virtual / Software Adapter Signature Matched", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Virtual / Software Adapter Signature Matched");
         return IPNAME_OK;
     }
 
@@ -796,12 +817,12 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         str_contains_ci(safe_name, "무선") ||
         str_contains_ci(safe_desc, "무선")) {
         out_result->is_wifi = 1;
-        strncpy(out_result->category, "Physical Wi-Fi", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "Physical IEEE 802.11 Wireless LAN Hardware", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Physical Wi-Fi");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Physical IEEE 802.11 Wireless LAN Hardware");
     } else {
         out_result->is_wifi = 0;
-        strncpy(out_result->category, "Physical Ethernet", sizeof(out_result->category) - 1);
-        strncpy(out_result->detection_reason, "Physical Dedicated Wired Ethernet Hardware NIC", sizeof(out_result->detection_reason) - 1);
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Physical Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Physical Dedicated Wired Ethernet Hardware NIC");
     }
 
     return IPNAME_OK;

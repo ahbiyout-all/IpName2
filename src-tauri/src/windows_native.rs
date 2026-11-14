@@ -423,7 +423,8 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             // Extract MAC Address early for Hypervisor OUI and hardware validity checks
             let mut mac_parts = Vec::new();
             let mut is_all_zero_mac = true;
-            for i in 0..addr.PhysicalAddressLength as usize {
+            let phys_len = (addr.PhysicalAddressLength as usize).min(addr.PhysicalAddress.len());
+            for i in 0..phys_len {
                 if addr.PhysicalAddress[i] != 0 {
                     is_all_zero_mac = false;
                 }
@@ -817,8 +818,8 @@ pub fn calculate_subnet_native(ip_str: &str, mask_str: &str) -> Result<SubnetDet
         format!("{}.{}.{}.{}", (v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)
     };
 
-    let ip = parse_ip(ip_str).ok_or("Invalid IP address")?;
-    let mask = parse_ip(mask_str).ok_or("Invalid Subnet mask")?;
+    let ip = parse_ip(ip_str.trim()).ok_or("Invalid IP address")?;
+    let mask = parse_ip(mask_str.trim()).ok_or("Invalid Subnet mask")?;
     let inv_mask = !mask;
     if mask != 0 && (inv_mask & inv_mask.wrapping_add(1)) != 0 {
         return Err("Invalid non-contiguous subnet mask".to_string());
@@ -851,6 +852,7 @@ pub fn ping_ipv4_native(target_ip: &str, timeout_ms: u32) -> Result<PingResult, 
     use std::net::Ipv4Addr;
     use std::str::FromStr;
 
+    let target_ip = target_ip.trim();
     let target_addr = Ipv4Addr::from_str(target_ip).map_err(|e| format!("잘못된 IPv4 주소 형식: {}", e))?;
     let ip_addr = u32::from_ne_bytes(target_addr.octets());
 
@@ -928,7 +930,7 @@ pub fn classify_ip_native(ip_str: &str) -> Result<IpClassificationResult, String
         Some(val)
     };
 
-    let val = parse_ip(ip_str).ok_or("Invalid IPv4 address format")?;
+    let val = parse_ip(ip_str.trim()).ok_or("Invalid IPv4 address format")?;
     let o1 = (val >> 24) & 0xFF;
     let o2 = (val >> 16) & 0xFF;
 
@@ -967,10 +969,11 @@ pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>, own_ma
     use std::net::Ipv4Addr;
     use std::str::FromStr;
 
+    let target_ip = target_ip.trim();
     let target_addr = Ipv4Addr::from_str(target_ip).map_err(|e| format!("잘못된 대상 IP 형식: {}", e))?;
     let dest_ip = u32::from_ne_bytes(target_addr.octets());
 
-    let src_ip = if let Some(src) = source_ip {
+    let src_ip = if let Some(src) = source_ip.map(|s| s.trim()) {
         if !src.is_empty() {
             let src_addr = Ipv4Addr::from_str(src).map_err(|e| format!("잘못된 출발지 IP 형식: {}", e))?;
             u32::from_ne_bytes(src_addr.octets())
@@ -1032,15 +1035,6 @@ pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>, own_ma
                             message: format!("✓ [본인 기기] 해당 IP({})는 본 컴퓨터의 어댑터('{}', MAC: {})에 할당된 주소이며, 외부 기기와의 충돌이 없습니다.", target_ip, adapter.name, adapter.macAddress),
                         });
                     }
-
-                    // Also check if target_ip is already assigned as an IP on this adapter
-                    if adapter.ipAddress == target_ip || adapter.additionalIps.iter().any(|sec| sec.ipAddress == target_ip) {
-                        return Ok(IpConflictResult {
-                            is_conflict: false,
-                            conflicting_mac: mac_str,
-                            message: format!("✓ [현재 어댑터] 해당 IP({})는 이미 본 컴퓨터의 랜카드('{}')에 구성되어 있으며, 외부 기기와의 충돌이 없습니다.", target_ip, adapter.name),
-                        });
-                    }
                 }
             }
 
@@ -1091,6 +1085,7 @@ pub fn check_tcp_port_native(target_ip: &str, port: u16, timeout_ms: u32) -> Res
     use std::net::{SocketAddr, TcpStream};
     use std::time::{Duration, Instant};
 
+    let target_ip = target_ip.trim();
     let addr_str = format!("{}:{}", target_ip, port);
     let sock_addr: SocketAddr = addr_str.parse().map_err(|e| format!("잘못된 대상 IP/포트 주소: {}", e))?;
     let timeout = Duration::from_millis(if timeout_ms == 0 { 1000 } else { timeout_ms as u64 });

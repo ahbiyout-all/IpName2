@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -25,6 +25,17 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 }) => {
   const { t } = useLanguage();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -36,8 +47,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             {title}
           </h3>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -47,17 +59,19 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </div>
         <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--card-hover)] flex justify-end gap-2">
           <button 
+            type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
           >
             {cancelText || t('confirmNo')}
           </button>
           <button 
+            type="button"
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md text-white transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-md text-white transition-colors cursor-pointer ${
               isDestructive ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'
             }`}
           >

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -10,6 +10,17 @@ interface ModalProps {
 }
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -18,8 +29,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--card-hover)]">
           <h3 className="font-bold text-sm">{title}</h3>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>

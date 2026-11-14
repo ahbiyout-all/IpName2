@@ -14,6 +14,23 @@ function isValidIPv4(ip: string): boolean {
   });
 }
 
+function isValidHostIPv4(ip: string): boolean {
+  if (!isValidIPv4(ip)) return false;
+  const trimmed = ip.trim();
+  return trimmed !== '0.0.0.0' && trimmed !== '255.255.255.255';
+}
+
+function isValidSubnetMask(mask: string): boolean {
+  if (!isValidIPv4(mask)) return false;
+  const maskInt = mask
+    .trim()
+    .split('.')
+    .reduce((acc, octet) => ((acc << 8) | parseInt(octet, 10)) >>> 0, 0) >>> 0;
+  if (maskInt === 0 || maskInt === 0xffffffff) return false;
+  const inv = (~maskInt) >>> 0;
+  return ((inv & ((inv + 1) >>> 0)) >>> 0) === 0;
+}
+
 function escapePsDoubleQuoted(value: string): string {
   return value.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"');
 }
@@ -374,8 +391,9 @@ export function useSystemConfig() {
               !isGhostOrInvalidAdapter(dis)
             ) {
               const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
+              const normalizedMac = dis.macAddress ? dis.macAddress.replace(/-/g, ':').toUpperCase() : '';
               merged.push({
-                id: dis.macAddress || dis.name,
+                id: normalizedMac || dis.name,
                 name: dis.name,
                 type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
                 status: 'Disabled',
@@ -384,7 +402,7 @@ export function useSystemConfig() {
                 gateway: '',
                 primaryDns: '',
                 secondaryDns: '',
-                macAddress: dis.macAddress || '',
+                macAddress: normalizedMac,
                 isDhcp: true,
                 isEnabled: false,
                 isVirtual: isVirt,
@@ -416,6 +434,7 @@ export function useSystemConfig() {
             isDhcp: true,
             isEnabled: false
           }]);
+          setOriginalAdapters([]);
         }
       } else {
         // Web Preview Mock
@@ -659,27 +678,27 @@ export function useSystemConfig() {
               setIsSaving(false);
               return;
             }
-            if (!isValidIPv4(adapter.ipAddress)) {
+            if (!isValidHostIPv4(adapter.ipAddress)) {
               showToast(t('invalidIp'), 'error');
               setIsSaving(false);
               return;
             }
-            if (!isValidIPv4(adapter.subnetMask)) {
+            if (!isValidSubnetMask(adapter.subnetMask)) {
               showToast(t('invalidSubnet'), 'error');
               setIsSaving(false);
               return;
             }
-            if (adapter.gateway && !isValidIPv4(adapter.gateway)) {
+            if (adapter.gateway && !isValidHostIPv4(adapter.gateway)) {
               showToast(t('invalidGateway'), 'error');
               setIsSaving(false);
               return;
             }
-            if (adapter.primaryDns && !isValidIPv4(adapter.primaryDns)) {
+            if (adapter.primaryDns && !isValidHostIPv4(adapter.primaryDns)) {
               showToast(t('invalidDns'), 'error');
               setIsSaving(false);
               return;
             }
-            if (adapter.secondaryDns && !isValidIPv4(adapter.secondaryDns)) {
+            if (adapter.secondaryDns && !isValidHostIPv4(adapter.secondaryDns)) {
               showToast(t('invalidDns'), 'error');
               setIsSaving(false);
               return;
@@ -688,12 +707,12 @@ export function useSystemConfig() {
             if (adapter.additionalIps && adapter.additionalIps.length > 0) {
               const seenIps = new Set<string>([adapter.ipAddress.trim()]);
               for (const sec of adapter.additionalIps) {
-                if (!sec.ipAddress || !isValidIPv4(sec.ipAddress)) {
+                if (!sec.ipAddress || !isValidHostIPv4(sec.ipAddress)) {
                   showToast(t('invalidSecondaryIp'), 'error');
                   setIsSaving(false);
                   return;
                 }
-                if (!sec.subnetMask || !isValidIPv4(sec.subnetMask)) {
+                if (!sec.subnetMask || !isValidSubnetMask(sec.subnetMask)) {
                   showToast(t('invalidSecondaryIp'), 'error');
                   setIsSaving(false);
                   return;
@@ -777,6 +796,7 @@ export function useSystemConfig() {
       }
     } catch (error) {
       console.error("Failed to save network config:", error);
+      showToast(t('applyError'), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -872,6 +892,9 @@ export function useSystemConfig() {
     } catch (err) {
       console.error("Failed to toggle adapter:", err);
       showToast(t('applyError'), 'error');
+      if (isTauriEnv()) {
+        await fetchInitialData();
+      }
     } finally {
       setIsSaving(false);
     }

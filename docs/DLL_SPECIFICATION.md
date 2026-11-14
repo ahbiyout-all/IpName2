@@ -1,6 +1,6 @@
 # IpNameCore 순수 창작 DLL 명세서 (DLL Specification)
 
-본 문서는 **AhBiYout IpName2 v1.12.8**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
+본 문서는 **AhBiYout IpName2 v1.12.9**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
 
 ---
 
@@ -10,7 +10,7 @@
 | :--- | :--- |
 | **모듈 명칭** | `ipname_core.dll` (IpNameCore Native Engine) |
 | **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지 및 자체 MAC 오탐 방지(Whitelist), TCP 포트 진단 및 서브넷 연산 수행 |
-| **버전** | v1.12.8 (IpName2 v1.12.8 정식 탑재) |
+| **버전** | v1.12.9 (IpName2 v1.12.9 정식 탑재) |
 | **아키텍처** | Windows x64 / x86 호환 C-ABI (`__stdcall` / `__cdecl`) |
 | **표준 규격** | ISO C99 / Win32 Native API |
 | **의존성** | 독립 실행형 (Zero External Dependencies, Windows OS 표준 `ws2_32.dll`, `iphlpapi.dll`만 동적 링킹) |
@@ -295,13 +295,15 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
 
 IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 C/Rust 계층의 호출 내역을 정밀 감사한 결과는 다음과 같습니다:
 
-| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.12.8) |
+| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.12.9) |
 | :--- | :--- | :--- | :--- |
+| **`ipname_core.dll`** | `parse_ipv4_string` / `strncpy` 전수 | `sscanf` 기반 파서가 공백·`+` 부호를 허용하고 `C4996` 경고 유발; 일부 분류/어댑터 문자열 복사에서 잔여 `strncpy` 사용 | 엄격한 문자 단위 점 표기 IPv4 파서(0~255, 선행 0 다자리 금지)로 교체하고 `snprintf(..., "%s", ...)` 및 `toupper((unsigned char))` 전면 적용(v1.12.9) |
+| **`windows_native.rs`** | `check_ip_conflict_native` / MAC 파싱 | `SendARP` 응답 MAC이 타 장비임에도 `adapter.ipAddress == target_ip` 조건으로 외부 충돌이 은폐될 위험; `PhysicalAddressLength` 미클램핑 | MAC 화이트리스트(`own_mac` / 로컬 어댑터 MAC)만 허용하여 외부 IP 가로채기 정확 탐지 및 `PhysicalAddressLength.min(8)` 경계 보호(v1.12.9) |
 | **`ipname_core.dll`** | `IpName_PingIpv4` | 64비트 `ICMP_ECHO_REPLY` 버퍼 크기 부족 및 `free(ReplyBuffer)` 직후 해제 메모리(`pEchoReply->Status`) 역참조(Use-After-Free) 위험 | 최소 1024바이트 안전 정렬 버퍼 할당 및 메모리 해제 전 `reply_status` 선저장(v1.12.8)으로 Use-After-Free 원천 차단 |
 | **`ipname_core.dll`** | `IpName_CheckTcpPort` | Winsock 미초기화(`WSAStartup` 누락) 상태에서 독립 호출 시 `WSANOTINITIALISED` 실패 발생 | 함수 진입 시 `WSAStartup(MAKEWORD(2, 2))` 호출 및 모든 반환 경로에 `WSACleanup()` 정합성 보장(v1.12.8) |
 | **`ipname_core.dll`** | `IpName_ValidateNetBiosName` | `strncpy` 버퍼 절단 시 NUL 종단 누락 가능성 및 MSVC 빌드 시 UTF-8 한국어 문자열 깨짐 우려 | `snprintf(..., "%s", ...)` 전면 교체로 NUL 종단 보장 및 `cl.exe` `/utf-8` 컴파일 옵션 적용(v1.12.8) |
 | **`ipname_core.dll`** | `inet_addr` 호출부 | `inet_addr`는 최신 MSVC에서 사용 중단(Deprecated C4996) 경고 및 255.255.255.255 예외 처리 취약 | 호스트 정수를 `htonl()`로 직접 변환하여 경고 제거 및 주소 파싱 안정화 |
-| **`ipname_core.dll`** | `IpName_CalculateSubnet` | 255.0.255.0과 같은 불연속(Disjoint) 비정상 서브넷 마스크 입력 시 오동작 가능성 | `(~mask & (~mask + 1)) == 0` 비트 연산으로 연속 마스크 검증 로직 추가 (Rust 네이티브 백엔드 동일 적용) |
+| **`ipname_core.dll`** | `IpName_CalculateSubnet` | 255.0.255.0과 같은 불연속(Disjoint) 비정상 서브넷 마스크 입력 시 오동작 가능성 | `(~mask & (~mask + 1)) == 0` 비트 연산으로 연속 마스크 검증 로직 추가 (Rust/React 백엔드·프론트엔드 전 계층 동일 적용) |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 도커(Docker), Hyper-V, VPN 등 다중 가상 어댑터 환경에서 초기 버퍼(15KB) 부족 시 1회만 재할당하여 재실패 가능성 존재 | 초기 버퍼를 **32KB**로 2배 이상 증설하고 **최대 3회 점진적 크기 재할당 루프**로 전면 보강 |
 | **`iphlpapi.dll`** | `GetAdaptersAddresses` | 비활성화(Disabled) 어댑터는 NDIS 드라이버 차단으로 `PhysicalAddressLength = 0`으로 응답되어 유령 어댑터로 오판단되는 결함 | 합법적 어댑터("이더넷", "Wi-Fi" 등) 식별 방어 조건을 추가하여 비활성 랜카드 유실 방지 |
 | **`ipname_core.dll`** | `IpName_DistinguishAdapter` | 물리 어댑터 필터 선택 시 가상 어댑터 혼재 및 `"tap"`/`"tun"` 부분 문자열 오탐 가능성 | IEEE MAC OUI, NDIS TunnelType, 토큰 경계 매칭(`str_contains_token_ci`) 적용으로 물리/가상 100% 정밀 구분(v1.12.0~v1.12.8) |

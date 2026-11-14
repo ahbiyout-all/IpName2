@@ -136,3 +136,14 @@ This document tracks high-priority features, reliability fixes, and architecture
   3. Stop re-sorting `primaryIp` during user typing, reset conflict/ping states cleanly on adapter/mode changes, enforce strict 4-octet/NetBIOS validation, and derive displayed versions dynamically from `CURRENT_VERSION`.
 - **Validation**: Triple Lockstep version `1.12.8` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
 
+#### [ROADMAP-014] Round 2 Deep Audit: Strict Parsing, ARP Hijack Protection & Build Hygiene (v1.12.9)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `native/ipname_core/src/ipname_core.c`, `src-tauri/src/windows_native.rs`, `src/hooks/useSystemConfig.ts`, `src/hooks/useGitHubUpdate.ts`, `src/App.tsx`, `src/components/{Footer,CopyButton,Modal,ConfirmModal,Header,SystemSection,AdapterItem}.tsx`, `build.bat`, `build.ps1`, `fix-icon.cjs`
+- **Description**: Resolve deeper edge-case flaws uncovered in a full-file Round 2 review: strict C99 IPv4 parsing and `snprintf`/`toupper((unsigned char))` hygiene, Rust MAC length clamping and removal of external IP conflict masking, React contiguous subnet mask + error rollback + CMD ping injection/hang fixes, and safe `build.bat`/`build.ps1` cleanup without risking `git-push.bat`.
+- **Acceptance Criteria**:
+  1. Replace `sscanf` & remaining `strncpy` calls in `ipname_core.c`; clamp `PhysicalAddressLength` and eliminate non-MAC target-IP masking in `windows_native.rs`.
+  2. Enforce contiguous subnet mask & valid host IPv4 checks, roll back failed adapter toggles, sanitize CMD ping fallback, add `AbortController` fetch timeout and `Escape`/clipboard fallbacks.
+  3. Fix `build.bat` unsafe `.gitkeep-ignore` deletion loop, standardize `build.ps1` step counters/exit checks, and propagate non-zero errors in `fix-icon.cjs`.
+- **Validation**: Triple Lockstep version `1.12.9` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
+

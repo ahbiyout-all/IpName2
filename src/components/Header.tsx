@@ -51,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
       <div className="flex items-center gap-1.5">
         {onCheckUpdate && (
           <button
+            type="button"
             onClick={onCheckUpdate}
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm transition-all cursor-pointer ${
               updateAvailable
@@ -65,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
         )}
 
         <button
+          type="button"
           onClick={onReboot}
           className="flex items-center gap-1 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-full shadow-sm text-[10px] font-bold text-red-600 hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
           title={t('rebootSystem')}
@@ -74,8 +76,9 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
         </button>
 
         <button
+          type="button"
           onClick={toggleLanguage}
-          className="flex items-center gap-1 bg-card border border-border px-2 py-1 rounded-full shadow-sm text-[10px] font-bold text-text-muted hover:text-primary transition-colors"
+          className="flex items-center gap-1 bg-card border border-border px-2 py-1 rounded-full shadow-sm text-[10px] font-bold text-text-muted hover:text-primary transition-colors cursor-pointer"
           title="Toggle Language"
         >
           <Globe size={12} />
@@ -85,9 +88,10 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
         <div className="flex items-center gap-1.5 bg-card border border-border p-1 rounded-full shadow-sm">
           {THEMES.map(theme => (
             <button
+              type="button"
               key={theme.id}
               onClick={() => handleThemeChange(theme.id)}
-              className={`w-4 h-4 rounded-full transition-transform ${currentTheme === theme.id ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-bg' : 'hover:scale-110 opacity-70 hover:opacity-100'}`}
+              className={`w-4 h-4 rounded-full transition-transform cursor-pointer ${currentTheme === theme.id ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-bg' : 'hover:scale-110 opacity-70 hover:opacity-100'}`}
               style={{ backgroundColor: theme.color }}
               title={`${theme.name} 테마`}
             />

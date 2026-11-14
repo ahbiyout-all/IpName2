@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.12.8**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.12.9**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -67,7 +67,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 * `src-tauri/src/lib.rs`: Tauri IPC 커맨드 라우팅 (`get_system_info`, `get_adapters`, `ping_ipv4`, `calculate_subnet`, `check_ip_conflict`, `check_tcp_port`, `classify_ip`).
 * `src-tauri/src/windows_native.rs`: Windows Win32 API FFI 바인딩. `GetAdaptersAddresses`를 호출하여 어댑터 상태, IP, MAC, 활성화 여부를 마이크로초 단위로 쿼리 (`#[allow(non_snake_case)]` 적용으로 0 Warnings 달성).
 * `src-tauri/tauri.conf.json`: 고정 창 크기(650x800), 단일 인스턴스 락, NSIS 타깃 번들 설정.
-* `src-tauri/build.rs`: `tauri_build::WindowsAttributes::new().static_vc_runtime(true)`를 통한 무의존성 정적 런타임 링크.
+* `src-tauri/build.rs`: `tauri_build::WindowsAttributes::new().app_manifest(...)`를 통한 UAC `requireAdministrator` 실행 권한 매니페스트 및 Common Controls v6 내장.
 
 ### 2.3. 순수 창작 네이티브 DLL (`/native/ipname_core`)
 * `native/ipname_core/include/ipname_core.h`: 순수 C-ABI 헤더. 결과 코드 열거형, 결과 구조체 및 함수 원형 정의.
@@ -118,7 +118,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
                                      ▼                                                           ▼
                            [remoteVer > currentVer]                                    [최신 버전 유지 중]
                         UpdateModal 팝업 창 자동 실행                                   최신 상태 안내 배너
-                        - 버전 차이(v1.12.8 vs vX.Y.Z)
+                        - 버전 차이(v1.12.9 vs vX.Y.Z)
                         - 전용 인스톨러 직접 다운로드
                         - 이번 버전 건너뛰기
 ```

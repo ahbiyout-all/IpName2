@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeStorage } from '../lib/storage';
 
-export const CURRENT_VERSION = '1.12.8';
+export const CURRENT_VERSION = '1.12.9';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -48,18 +48,32 @@ export function useGitHubUpdate() {
   const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const checkUpdate = useCallback(async (manual = false) => {
     setIsChecking(true);
     setStatusMessage(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
     try {
       const response = await fetch(
         `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
         {
+          signal: controller.signal,
           headers: {
             'Accept': 'application/vnd.github.v3+json'
           }
         }
       );
+
+      if (!isMountedRef.current) return;
 
       if (!response.ok) {
         // If 404 (no releases published yet), handle gracefully
@@ -74,6 +88,8 @@ export function useGitHubUpdate() {
       }
 
       const data = await response.json();
+      if (!isMountedRef.current) return;
+
       const tagName: string = data.tag_name || '';
       const remoteVersion = tagName.replace(/^v/i, '');
 
@@ -118,13 +134,17 @@ export function useGitHubUpdate() {
         }
       }
     } catch (err: any) {
+      if (!isMountedRef.current) return;
       console.warn('[GitHub Update Check] Failed to check for updates:', err?.message || err);
       if (manual) {
         setStatusMessage('GitHub 릴리스 서버 연결 실패. 잠시 후 다시 시도해 주세요.');
         setIsModalOpen(true);
       }
     } finally {
-      setIsChecking(false);
+      clearTimeout(timeoutId);
+      if (isMountedRef.current) {
+        setIsChecking(false);
+      }
     }
   }, []);
 

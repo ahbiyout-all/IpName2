@@ -28,7 +28,7 @@ function getLatestVersion() {
     }
   }
 
-  return '1.12.8';
+  return '1.12.9';
 }
 
 function getTauriProductName() {

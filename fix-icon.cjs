@@ -76,6 +76,7 @@ async function run() {
     console.log('Reading original icon from:', iconPath);
     if (!fs.existsSync(iconPath)) {
         console.error('Error: Original icon.png is missing. Skipping Windows icon compilation fix.');
+        process.exitCode = 1;
         return;
     }
 
@@ -96,6 +97,7 @@ async function run() {
         }
     } catch (readError) {
         console.error('Failed to read icon.png:', readError);
+        process.exitCode = 1;
         return;
     }
 
@@ -174,4 +176,7 @@ async function run() {
     console.log('Successfully generated strict BMP icon.ico! (rc.exe compatible)');
 }
 
-run().catch(console.error);
+run().catch((err) => {
+    console.error('fix-icon fatal error:', err);
+    process.exitCode = 1;
+});

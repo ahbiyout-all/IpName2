@@ -15,8 +15,8 @@ interface SystemSectionProps {
 export const SystemSection = memo(({ info, originalInfo, isSaving, onUpdate, onSave }: SystemSectionProps) => {
   const { t } = useLanguage();
   
-  const isComputerNameChanged = originalInfo && info.computerName !== originalInfo.computerName;
-  const isWorkgroupChanged = originalInfo && info.workgroup !== originalInfo.workgroup;
+  const isComputerNameChanged = originalInfo && info.computerName.trim() !== originalInfo.computerName.trim();
+  const isWorkgroupChanged = originalInfo && info.workgroup.trim() !== originalInfo.workgroup.trim();
   
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -29,6 +29,7 @@ export const SystemSection = memo(({ info, originalInfo, isSaving, onUpdate, onS
             <h3 className="font-bold text-sm">{t('systemInfo')}</h3>
           </div>
           <button 
+            type="button"
             onClick={onSave}
             disabled={isSaving}
             className="btn-primary py-1 px-2 text-[10px] flex items-center gap-1 disabled:opacity-70"

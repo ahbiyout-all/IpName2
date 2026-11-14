@@ -1,6 +1,6 @@
 # IpName2 문서 허브 (Documentation Hub)
 
-본 디렉터리(`/docs`)는 **AhBiYout IpName2 (v1.12.8)** 데스크톱 애플리케이션의 개발, 아키텍처, 순수 창작 DLL, 버전 관리, 패치 노트 및 GitHub 배포 파이프라인을 체계적으로 관리하는 공식 문서 모음입니다.
+본 디렉터리(`/docs`)는 **AhBiYout IpName2 (v1.12.9)** 데스크톱 애플리케이션의 개발, 아키텍처, 순수 창작 DLL, 버전 관리, 패치 노트 및 GitHub 배포 파이프라인을 체계적으로 관리하는 공식 문서 모음입니다.
 
 ---
 
@@ -11,7 +11,7 @@
 | **[UPDATE_WORK_INSTRUCTION.md](./UPDATE_WORK_INSTRUCTION.md)** | 타 IP Name 앱 업데이트 작업 지시서 | 다른 AI 및 프로젝트에 즉시 전달 가능한 7대 핵심 원칙 통합 프롬프트, 모듈별 구현 코드, 34종 핵심 파일 검증표 |
 | **[BLOGGER_POST.md](./BLOGGER_POST.md)** | 구글 블로거 공식 배포 소개 글 | 공식 블로그([AhBiYout Vibe](https://ahbiyoutvibe.blogspot.com/)) 발행용 메타데이터, 마크다운 본문 및 완성형 HTML 소스 코드 |
 | **[DEVELOPMENT.md](./DEVELOPMENT.md)** | 개발 및 빌드 가이드 | 환경 설정, 빌드 스크립트(`build.bat`/`ps1`), 데스크톱 규격(650x800), 포트(3030), GitHub 핵심 파일 관리(`scripts/github/`), 실시간 자동 업데이트 |
-| **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.12.8` 상세 변경 내역, C99 DLL·Rust·Inno Setup·React 전 계층 감사 및 결함 일괄 수정 |
+| **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.12.9` 상세 변경 내역, C99·Rust·React·빌드 스크립트 2차 심층 감사 및 보안·검증·안정성 강화 |
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | 시스템 아키텍처 명세서 | Rust Tauri Backend, Win32 Native C++ API, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, 실시간 GitHub 업데이트 데이터 흐름 |
 | **[DLL_SPECIFICATION.md](./DLL_SPECIFICATION.md)** | 순수 창작 DLL 명세서 | `ipname_core.dll` C-ABI 규격, 물리/가상 어댑터 정밀 판별(`IpName_DistinguishAdapter`), Layer-2 ARP IP 충돌 감지(`SendARP`), 넌블로킹 TCP 포트 진단, 서브넷 비트 연산기, 기존 시스템 DLL 감사 보고서 |
 | **[VERSIONING_POLICY.md](./VERSIONING_POLICY.md)** | 버전 관리 및 기록 정책 | **MAJOR.MINOR.PATCH** 3단계 버전 관리 원칙, 버전 삼중 동기화(Triple Lockstep), 다단 동적 버전 자동 추출 및 특이점 기록 규칙 |

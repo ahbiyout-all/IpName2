@@ -391,6 +391,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           {/* DHCP Auto / Manual Toggle */}
           <div className="flex p-0.5 bg-[var(--input-bg)] border border-[var(--border)] rounded-md shrink-0">
             <button 
+              type="button"
               onClick={() => {
                 setConflictResult(null);
                 setSecConflictStates({});
@@ -402,6 +403,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
               {t('auto')}
             </button>
             <button 
+              type="button"
               onClick={() => onUpdate(adapter.id, 'isDhcp', false)}
               disabled={!adapter.isEnabled || isSaving}
               className={`px-2 py-1 text-[9px] font-bold rounded transition-all ${!adapter.isDhcp ? 'bg-[var(--card)] shadow-sm text-primary' : 'text-text-muted hover:text-foreground'} ${!adapter.isEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
@@ -412,6 +414,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
 
           {/* Apply Changes Button */}
           <button 
+            type="button"
             onClick={onSave}
             disabled={isSaving || !adapter.isEnabled}
             className="btn-primary py-1 px-2 text-[10px] flex items-center gap-1 disabled:opacity-50"

@@ -2,6 +2,44 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.12.9] - 2026-11-14
+
+### 1. C99 네이티브 DLL (`native/ipname_core/src/ipname_core.c`) 엄격한 파싱 및 안전성 강화
+* **`parse_ipv4_string` 문자 단위 엄격 파서 전면 교체**:
+  - 공백 포함 주소나 `+` 기호, 후행 잔여 문자를 허용하던 `sscanf` 기반 파싱을 제거하고 엄격한 점 표기(0~255, 선행 0 다자리 금지, 공백·기호 불허) 문자 단위 파서로 교체하여 MSVC `C4996` 경고를 제거하고 입력 무결성을 강화.
+* **부호 있는 `char` `toupper` 미정의 동작(UB) 차단**:
+  - `IpName_CheckIpConflictEx` 내 MAC 16진수 정규화 루프에서 `unsigned char` 캐스팅을 적용하여 확장 바이트 처리 시 발생할 수 있는 UB 원천 차단.
+* **잔여 `strncpy` 전면 제거 및 `IPNAME_VERSION` 동기화**:
+  - `IpName_GetVersion`, `IpName_CheckIpConflictEx` (모의 경로), `IpName_ClassifyIp`, `IpName_DistinguishAdapter`의 모든 `strncpy` 호출을 `snprintf(..., sizeof(...), "%s", ...)`로 통일하여 NUL 종단 보장 및 컴파일러 경고 제거 (`IPNAME_VERSION "1.12.9"`).
+
+### 2. Rust Win32 백엔드 (`src-tauri/src/windows_native.rs`) 경계 검사 및 ARP 충돌 판정 교정
+* **외부 IP 충돌 마스킹 버그 수정 (`check_ip_conflict_native`)**:
+  - `SendARP` 응답 MAC이 `own_mac` 및 로컬 어댑터 MAC 목록 어느 것과도 일치하지 않았음에도 `adapter.ipAddress == target_ip`만으로 "충돌 없음"으로 잘못 덮어쓰던 조건을 제거하여, 외부 장비의 동일 IP 가로채기(IP Hijacking/Conflict)를 정확히 탐지하도록 교정.
+* **MAC 주소 버퍼 인덱스 경계 클램핑**:
+  - `GetAdaptersAddresses` 순회 시 `PhysicalAddressLength`를 `addr.PhysicalAddress.len()`(8바이트)으로 클램핑(`.min(...)`)하여 드라이버 이상 값으로 인한 패닉 원천 차단.
+* **네이티브 네트워크 명령 입력 공백 트리밍**:
+  - `calculate_subnet_native`, `ping_ipv4_native`, `classify_ip_native`, `check_ip_conflict_native`, `check_tcp_port_native` 진입 시 앞뒤 공백(`.trim()`) 정규화 적용.
+
+### 3. 프론트엔드 React / TypeScript (`src/`) 검증·타임아웃·상태 롤백·접근성 개선
+* **연속 서브넷 마스크 및 호스트 IP 엄격 검증 (`useSystemConfig.ts`)**:
+  - `isValidSubnetMask`(32비트 MSB 연속 1비트 검증, `0.0.0.0` 및 `255.255.255.255` 차단) 및 `isValidHostIPv4`(`0.0.0.0` / `255.255.255.255` 차단)를 도입하여 `netsh` 실행 단계 런타임 실패 사전 차단.
+  - PowerShell 비활성 어댑터 병합 시 하이픈(`-`) 구분 MAC 주소를 콜론(`:`) 대문자로 정규화, `fetchInitialData` 오류 시 `originalAdapters` 초기화, `toggleAdapterEnabled` 예외 발생 시 낙관적 UI 상태 자동 롤백(`fetchInitialData`), `saveNetworkConfig` 예외 시 에러 토스트 표시 보강.
+* **주 DNS Ping 폴백 정지 상태 및 쉘 인젝션 방어 (`App.tsx`)**:
+  - `isTauriEnv` 중복 선언을 `src/lib/powershell.ts` 공용 import로 통합하고, `handlePingDns` 네이티브 Ping 실패 후 CMD 폴백 실행 시 대상 문자열 문자셋 검증(`/^[a-zA-Z0-9.:-]+$/`) 및 상태값(`CMD 실행됨` / `오류`) 갱신으로 `"조회 중..."` 무한 유지 결함 해결.
+* **업데이트 타임아웃, 클립보드 폴백, 모달 ESC 및 HTTPS 링크 일관화**:
+  - `useGitHubUpdate.ts`: `AbortController` 기반 6초 타임아웃 및 언마운트 가드(`isMountedRef`) 적용 (`CURRENT_VERSION = '1.12.9'`).
+  - `Footer.tsx`: `IpNameCore Native DLL` 표기 버전을 `v${CURRENT_VERSION}` 동적 바인딩으로 교정하고 푸터 버전 배지(`v{CURRENT_VERSION}`) 및 `https://www.cisnet.co.kr` HTTPS 링크 통일.
+  - `CopyButton.tsx`: 언마운트 타이머 정리, 빈 문자열 가드, WebView 제한 환경용 `execCommand('copy')` 폴백 추가.
+  - `Modal.tsx` / `ConfirmModal.tsx` / `Header.tsx` / `SystemSection.tsx` / `AdapterItem.tsx`: `Escape` 키 모달 닫기 및 명시적 `type="button"` 속성 전수 적용.
+
+### 4. 빌드 및 아이콘 검증 파이프라인 안정화 (`build.bat`, `build.ps1`, `fix-icon.cjs`)
+* **`.gitkeep-ignore` 기반 오삭제 결함 제거 (`build.bat`)**:
+  - 기존 `build.bat` STEP 1에서 지연 확장(`enabledelayedexpansion`) 중 `"!"` 비교 구문 오류 및 `.gitkeep-ignore` 목록 내 로컬 파일(`git-push.bat`, `.env` 등)까지 삭제될 수 있던 위험 루프를 제거하고 `scripts\github\verify-core-files.cjs --clean` + 임시 락파일 정리로 안전 교체, 단계 표기 `[STEP 0/8] ~ [STEP 8/8]` 및 `IpName2_v1.12.9.exe` 통일.
+* **`build.ps1` 단계 번호 & 종료 코드 전파 및 `fix-icon.cjs` 오류 코드 반환**:
+  - `build.ps1`의 `[1/7] ~ [7/7]` 단계 번호 통일, 네이티브 DLL 및 `postbuild-rename.cjs` `$LASTEXITCODE` 검사, `bun.lock` 정리 추가. `fix-icon.cjs` 실패 시 `process.exitCode = 1` 설정으로 오류 마스킹 차단.
+
+---
+
 ## [v1.12.8] - 2026-11-14
 
 ### 1. 순수 창작 C99 네이티브 DLL (`native/ipname_core/`) 메모리 안전성 및 소켓 초기화 결함 해결

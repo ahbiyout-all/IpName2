@@ -12,7 +12,7 @@ echo.
 :: STEP 0: Configure local server port
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 0/7] Port Configuration
+echo  [STEP 0/8] Port Configuration
 echo ======================================================================
 echo Please enter the port number for Vite / local communication.
 set "PORT_INPUT="
@@ -34,47 +34,28 @@ for %%A in (%*) do (
 )
 
 :: ----------------------------------------------------------------------
-:: STEP 1: Process .gitkeep-ignore to Purge Non-Essential / Scratch Files
+:: STEP 1: Clean Transient Scratch Files via Core-Manifest Auditor
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 1/7] Processing .gitkeep-ignore ^& Cleaning Non-Essential Files
+echo  [STEP 1/8] Cleaning Transient Scratch ^& Non-Essential Files
 echo ======================================================================
-if exist ".gitkeep-ignore" (
-    echo [INFO] Found .gitkeep-ignore. Purging ignored scratch and transient files...
-    for /f "usebackq eol=# tokens=*" %%L in (".gitkeep-ignore") do (
-        set "ITEM=%%~L"
-        if defined ITEM (
-            :: Handle directory paths ending with slash
-            if "!ITEM:~-1!"=="/" (
-                set "DIRPATH=!ITEM:~0,-1!"
-                set "DIRPATH=!DIRPATH:/=\!"
-                if exist "!DIRPATH!" (
-                    echo   - Removing ignored directory: "!DIRPATH!"
-                    rmdir /s /q "!DIRPATH!" 2>nul
-                )
-            ) else (
-                :: Handle wildcard files or specific files
-                set "FILEPATH=!ITEM:/=\!"
-                if not "!FILEPATH:~0,1!"=="!" (
-                    if exist "!FILEPATH!" (
-                        echo   - Removing ignored file pattern: "!FILEPATH!"
-                        del /f /q /a "!FILEPATH!" 2>nul
-                    )
-                )
-            )
-        )
-    )
-    echo [OK] .gitkeep-ignore processing completed.
-) else (
-    echo [INFO] No .gitkeep-ignore file found. Skipping pattern-based purge.
+if exist "scripts\github\verify-core-files.cjs" (
+    node scripts\github\verify-core-files.cjs --clean
 )
+if exist ".aistudio" rmdir /s /q ".aistudio" 2>nul
+if exist "public\assets\aistudio" rmdir /s /q "public\assets\aistudio" 2>nul
+if exist "bun.lock" del /f /q "bun.lock" 2>nul
+if exist "bun.lockb" del /f /q "bun.lockb" 2>nul
+if exist "yarn.lock" del /f /q "yarn.lock" 2>nul
+if exist "pnpm-lock.yaml" del /f /q "pnpm-lock.yaml" 2>nul
+echo [OK] Workspace scratch cleanup completed.
 echo.
 
 :: ----------------------------------------------------------------------
 :: STEP 2: Cleaning previous build output
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 2/7] Cleaning Build Outputs
+echo  [STEP 2/8] Cleaning Build Outputs
 echo ======================================================================
 if "%CLEAN%"=="1" (
     echo Cleaning previous build outputs...
@@ -91,7 +72,7 @@ echo.
 :: STEP 3: Dependencies Verification
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 3/7] Dependencies Verification
+echo  [STEP 3/8] Dependencies Verification
 echo ======================================================================
 echo Verifying and installing npm packages...
 call npm install
@@ -107,7 +88,7 @@ echo.
 :: STEP 4: Application Icon Pipeline
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 4/7] Application Icon Pipeline
+echo  [STEP 4/8] Application Icon Pipeline
 echo ======================================================================
 if "%ICONS%"=="1" (
     echo Generating application icons...
@@ -116,6 +97,11 @@ if "%ICONS%"=="1" (
     echo Verifying standard BMP application icon...
     node fix-icon.cjs
 )
+if errorlevel 1 (
+    echo [ERROR] Icon verification/generation failed!
+    pause
+    exit /b 1
+)
 echo [OK] Icons verified.
 echo.
 
@@ -123,7 +109,7 @@ echo.
 :: STEP 5: Build React Frontend (Vite)
 :: ----------------------------------------------------------------------
 echo ======================================================================
-echo  [STEP 5/7] Building React Frontend (Vite)
+echo  [STEP 5/8] Building React Frontend (Vite)
 echo ======================================================================
 set "VITE_PORT=%PORT_INPUT%"
 call npm run build
@@ -190,7 +176,7 @@ echo ======================================================================
 echo  BUILD COMPLETED SUCCESSFULLY!
 echo ======================================================================
 echo The versioned executable output has been generated in:
-echo   - Workspace Root: [e.g. IpName2_v1.12.8.exe]
+echo   - Workspace Root: [e.g. IpName2_v1.12.9.exe]
 echo   - Release Directory: src-tauri\target\release\
 echo ======================================================================
 echo [OK] Opening build output folder...

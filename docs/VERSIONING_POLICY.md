@@ -46,6 +46,7 @@
   - GitHub Actions Node 24 러너 마이그레이션 및 웹/태그 듀얼 푸시 CI/CD 파이프라인 구축 (v1.12.6)
   - 타 IP Name 앱 대상 AI 통합 마이그레이션 작업지시서(`UPDATE_WORK_INSTRUCTION.md`) 수립 (v1.12.7)
   - 전 계층(C99 DLL, Rust Win32, Inno Setup/CI-CD, React/TypeScript) 정밀 감사 및 결함 일괄 수정 (v1.12.8)
+  - 2차 심층 감사(C99 엄격 IPv4 파서/UB 차단, ARP 외부 충돌 은폐 제거, 연속 서브넷 검증, `build.bat` 안전 정리 및 `build.ps1` 종료 코드 보강) (v1.12.9)
   - 배치 스크립트 특수문자(`&`) 구문 오류 방지 및 CMD 중첩 괄호 파싱 결함 해결
 
 ---

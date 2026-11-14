@@ -12,6 +12,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { UpdateModal } from './components/UpdateModal';
 import { useGitHubUpdate } from './hooks/useGitHubUpdate';
 import { useLanguage } from './contexts/LanguageContext';
+import { isTauriEnv } from './lib/powershell';
 import { NativePingResult } from './types';
 
 interface ErrorBoundaryProps {
@@ -142,8 +143,6 @@ const AppContent: React.FC = () => {
     setPingStatus(null);
   }, [selectedAdapter?.id, selectedAdapter?.primaryDns]);
 
-  const isTauriEnv = () => typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
-
   const handleOpenCmd = async () => {
     if (isTauriEnv()) {
       try {
@@ -158,7 +157,8 @@ const AppContent: React.FC = () => {
   };
 
   const handlePingDns = async () => {
-    if (!selectedAdapter?.primaryDns) return;
+    const dnsTarget = selectedAdapter?.primaryDns?.trim();
+    if (!dnsTarget) return;
     setIsPinging(true);
     setPingStatus(t('checking'));
 
@@ -166,23 +166,32 @@ const AppContent: React.FC = () => {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const res = await invoke<NativePingResult>('ping_ipv4', {
-          targetIp: selectedAdapter.primaryDns,
+          targetIp: dnsTarget,
           timeoutMs: 1500
         });
         if (res.success) {
           const latencyStr = `${res.round_trip_time_ms}ms (TTL ${res.time_to_live})`;
           setPingStatus(latencyStr);
-          showToast(`⚡ [IpNameCore] ${selectedAdapter.primaryDns} Ping 성공: ${latencyStr}`, 'success');
+          showToast(`⚡ [IpNameCore] ${dnsTarget} Ping 성공: ${latencyStr}`, 'success');
         } else {
           setPingStatus('타임아웃');
           showToast(`[IpNameCore] Ping 실패: ${res.message}`, 'error');
         }
       } catch (e) {
         console.error("Native Ping failed, falling back to CMD:", e);
-        try {
-          const { Command } = await import('@tauri-apps/plugin-shell');
-          await Command.create('cmd', ['/c', 'start', 'cmd.exe', '/k', `ping -t ${selectedAdapter.primaryDns}`]).execute();
-        } catch {}
+        if (!/^[a-zA-Z0-9.:-]+$/.test(dnsTarget)) {
+          setPingStatus('형식 오류');
+          showToast(t('invalidDns'), 'error');
+        } else {
+          try {
+            const { Command } = await import('@tauri-apps/plugin-shell');
+            await Command.create('cmd', ['/c', 'start', 'cmd.exe', '/k', `ping -t ${dnsTarget}`]).execute();
+            setPingStatus('CMD 실행됨');
+          } catch {
+            setPingStatus('오류');
+            showToast(t('applyError'), 'error');
+          }
+        }
       } finally {
         setIsPinging(false);
       }
@@ -301,6 +310,7 @@ const AppContent: React.FC = () => {
                 const isVirtual = adapter.type === 'Virtual' || adapter.isVirtual === true || isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual, adapter.macAddress);
                 return (
                   <button
+                    type="button"
                     key={adapter.id}
                     onClick={() => setSelectedAdapterId(adapter.id)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold rounded-lg border transition-all duration-200 active:scale-95 cursor-pointer select-none shrink-0 ${
@@ -372,6 +382,7 @@ const AppContent: React.FC = () => {
             
             <div className="grid grid-cols-2 gap-2 mt-1">
               <button 
+                type="button"
                 onClick={handleOpenCmd}
                 className="card p-3 flex items-center justify-center gap-2 hover:bg-[var(--card-hover)] transition-colors border border-[var(--border)]"
               >
@@ -379,6 +390,7 @@ const AppContent: React.FC = () => {
                 <span className="text-xs font-bold">{t('openCmd')}</span>
               </button>
               <button 
+                type="button"
                 onClick={handlePingDns}
                 disabled={!selectedAdapter?.primaryDns || isPinging}
                 className="card p-3 flex items-center justify-center gap-1.5 hover:bg-[var(--card-hover)] transition-colors border border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed select-none"

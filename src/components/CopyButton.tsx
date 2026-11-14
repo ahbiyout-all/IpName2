@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
 
 interface CopyButtonProps {
@@ -8,14 +8,51 @@ interface CopyButtonProps {
 
 export const CopyButton: React.FC<CopyButtonProps> = ({ textToCopy, className = '' }) => {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(textToCopy);
+    if (!textToCopy) return;
+
+    const markCopied = () => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setCopied(false);
+        timerRef.current = null;
+      }, 2000);
+    };
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+        markCopied();
+        return;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = textToCopy;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (ok) markCopied();
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }

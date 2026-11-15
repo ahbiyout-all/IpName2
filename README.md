@@ -41,7 +41,8 @@
    - 외부 네트워크 연결 시 공인 IP와 ISP 정보를 실시간으로 확인.
 6. **네트워크 어댑터 전원 원클릭 제어**:
    - 관리자 권한(UAC) 안전 실행을 통한 랜카드 재시작/활성화/비활성화.
-7. **실시간 GitHub 릴리스 자동 업데이트**:
+7. **SWR 즉시 부팅 및 GitHub 릴리스 자동 업데이트**:
+   - 스냅샷 캐시 즉시 복원 + 병렬 Win32 API 선표시로 0초대 초기 화면 기동.
    - 새 버전 출시 시 자동 감지 및 원클릭 업데이트 안내.
 
 ---
@@ -62,7 +63,7 @@
 ## 🚀 빠른 시작 (Getting Started)
 
 ### 사전 요구사항 (Prerequisites)
-- [Node.js](https://nodejs.org/) (v20 LTS 이상 권장)
+- [Node.js](https://nodejs.org/) (v22 LTS 권장)
 - [Rust](https://www.rust-lang.org/) (Tauri v2 빌드용, 1.77.2 이상)
 - [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (C DLL 및 Win32 Native 연동)
 
@@ -70,6 +71,10 @@
 ```bash
 # 종속성 설치
 npm install
+
+# TypeScript 정적 검사 및 저장소 무결성 감사
+npm run lint
+node scripts/github/verify-core-files.cjs --clean
 
 # 프론트엔드 개발 서버 시작 (기본 포트: 3030)
 npm run dev

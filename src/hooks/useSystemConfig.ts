@@ -2,6 +2,49 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { SystemInfo, NetworkAdapter } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { executePowerShell, isTauriEnv } from '../lib/powershell';
+import { safeStorage } from '../lib/storage';
+
+const STARTUP_CACHE_KEY = 'ipname2_startup_snapshot_v1';
+
+interface StartupSnapshot {
+  systemInfo: SystemInfo;
+  adapters: NetworkAdapter[];
+  timestamp: number;
+}
+
+function loadStartupSnapshot(): StartupSnapshot | null {
+  try {
+    const raw = safeStorage.getItem(STARTUP_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StartupSnapshot;
+    if (
+      parsed &&
+      parsed.systemInfo &&
+      typeof parsed.systemInfo.computerName === 'string' &&
+      Array.isArray(parsed.adapters) &&
+      parsed.adapters.length > 0 &&
+      parsed.adapters[0]?.id !== 'loading'
+    ) {
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function saveStartupSnapshot(systemInfo: SystemInfo, adapters: NetworkAdapter[]): void {
+  try {
+    if (!systemInfo?.computerName || systemInfo.computerName === 'Error' || systemInfo.computerName === 'Exception') {
+      return;
+    }
+    const validAdapters = adapters.filter(a => a.id !== 'loading' && a.id !== 'error');
+    const payload: StartupSnapshot = {
+      systemInfo,
+      adapters: validAdapters,
+      timestamp: Date.now()
+    };
+    safeStorage.setItem(STARTUP_CACHE_KEY, JSON.stringify(payload));
+  } catch {}
+}
 
 function isValidIPv4(ip: string): boolean {
   if (!ip) return false;
@@ -261,33 +304,45 @@ export function sortAdaptersAndEnforcePrimaryIp(adapters: NetworkAdapter[]): Net
 export function useSystemConfig() {
   const { t } = useLanguage();
 
-  const [systemInfo, setSystemInfo] = useState<SystemInfo>({
-    computerName: t('loading'),
-    workgroup: t('loading'),
-    osVersion: t('loading'),
-    processor: t('loading'),
-    ram: t('loading'),
-    isAdmin: false
-  });
-  
-  const [originalSystemInfo, setOriginalSystemInfo] = useState<SystemInfo | null>(null);
+  const initialSnapshotRef = useRef<StartupSnapshot | null | undefined>(undefined);
+  if (initialSnapshotRef.current === undefined) {
+    initialSnapshotRef.current = loadStartupSnapshot();
+  }
+  const hasInitialCache = Boolean(initialSnapshotRef.current);
 
-  const [adaptersState, setAdaptersState] = useState<NetworkAdapter[]>([
-    {
-      id: 'loading',
-      name: t('loading'),
-      type: 'Ethernet',
-      status: 'Disconnected',
-      ipAddress: '',
-      subnetMask: '',
-      gateway: '',
-      primaryDns: '',
-      secondaryDns: '',
-      macAddress: '',
-      isDhcp: true,
-      isEnabled: true
+  const [systemInfo, setSystemInfo] = useState<SystemInfo>(() =>
+    initialSnapshotRef.current?.systemInfo ?? {
+      computerName: t('loading'),
+      workgroup: t('loading'),
+      osVersion: t('loading'),
+      processor: t('loading'),
+      ram: t('loading'),
+      isAdmin: false
     }
-  ]);
+  );
+  
+  const [originalSystemInfo, setOriginalSystemInfo] = useState<SystemInfo | null>(() =>
+    initialSnapshotRef.current?.systemInfo ?? null
+  );
+
+  const [adaptersState, setAdaptersState] = useState<NetworkAdapter[]>(() =>
+    initialSnapshotRef.current?.adapters ?? [
+      {
+        id: 'loading',
+        name: t('loading'),
+        type: 'Ethernet',
+        status: 'Disconnected',
+        ipAddress: '',
+        subnetMask: '',
+        gateway: '',
+        primaryDns: '',
+        secondaryDns: '',
+        macAddress: '',
+        isDhcp: true,
+        isEnabled: true
+      }
+    ]
+  );
 
   // Interactive edits must NOT reorder adapter tabs or swap primary/secondary IPs mid-keystroke.
   // Sorting/enforcing primary IP is applied strictly on load/refresh in fetchInitialData.
@@ -295,15 +350,65 @@ export function useSystemConfig() {
 
   const adapters = adaptersState;
 
-  const [originalAdapters, setOriginalAdapters] = useState<NetworkAdapter[]>([]);
+  const [originalAdapters, setOriginalAdapters] = useState<NetworkAdapter[]>(() =>
+    initialSnapshotRef.current?.adapters ?? []
+  );
 
-  const fetchInitialData = useCallback(async () => {
+  const [isLoaded, setIsLoaded] = useState<boolean>(hasInitialCache);
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState<boolean>(false);
+  const [pendingComputerName, setPendingComputerName] = useState<string | null>(null);
+
+  const isMountedRef = useRef<boolean>(true);
+  const fetchGenerationRef = useRef<number>(0);
+  const adaptersRef = useRef<NetworkAdapter[]>(adaptersState);
+  adaptersRef.current = adaptersState;
+  const dirtyAdapterIdsRef = useRef<Set<string>>(new Set());
+  const dirtySystemRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const mergeRespectingDirtyEdits = useCallback(
+    (incoming: NetworkAdapter[], current: NetworkAdapter[], forceOverwrite = false): NetworkAdapter[] => {
+      if (forceOverwrite || dirtyAdapterIdsRef.current.size === 0) {
+        return incoming;
+      }
+      const dirtyMap = new Map<string, NetworkAdapter>();
+      for (const item of current) {
+        if (dirtyAdapterIdsRef.current.has(item.id)) {
+          dirtyMap.set(item.id, item);
+        }
+      }
+      return incoming.map(item => dirtyMap.get(item.id) ?? item);
+    },
+    []
+  );
+
+  const fetchInitialData = useCallback(async (options?: { forceOverwrite?: boolean }) => {
+    const gen = ++fetchGenerationRef.current;
+    const forceOverwrite = options?.forceOverwrite === true;
+    if (forceOverwrite) {
+      dirtyAdapterIdsRef.current.clear();
+      dirtySystemRef.current = false;
+    }
+
     try {
       if (isTauriEnv()) {
         const { invoke } = await import('@tauri-apps/api/core');
         try {
-          const sysInfo = await invoke<SystemInfo>('get_system_info');
-          const fetchedInfo = {
+          // Phase 1: Parallel Win32 Native Fast Path (<50ms)
+          const [sysInfo, adapterList] = await Promise.all([
+            invoke<SystemInfo>('get_system_info'),
+            invoke<NetworkAdapter[]>('get_adapters')
+          ]);
+
+          if (!isMountedRef.current || fetchGenerationRef.current !== gen) return;
+
+          const fetchedInfo: SystemInfo = {
             computerName: sysInfo.computerName || 'Unknown',
             workgroup: sysInfo.workgroup || 'WORKGROUP',
             osVersion: formatOsVersion(sysInfo.osVersion),
@@ -311,63 +416,23 @@ export function useSystemConfig() {
             ram: sysInfo.ram || 'Unknown',
             isAdmin: !!sysInfo.isAdmin
           };
-          setSystemInfo(fetchedInfo);
+
           setOriginalSystemInfo(fetchedInfo);
-
-          const adapterList = await invoke<NetworkAdapter[]>('get_adapters');
-          
-          // Query disabled adapters and NDIS Virtual flags from PowerShell
-          let disabledNetAdapters: Array<{ name: string; macAddress?: string; isVirtual?: boolean; description?: string }> = [];
-          const virtualNetNames = new Set<string>();
-
-          try {
-            const psPresent = await executePowerShell(
-              `try { @(Get-NetAdapter -IncludeHidden:$false -ErrorAction SilentlyContinue | Select-Object -Property Name,Status,MacAddress,Virtual,InterfaceDescription) | ConvertTo-Json -Compress } catch { '[]' }`,
-              false
-            );
-            if (psPresent.stdout) {
-              const trimmed = psPresent.stdout.trim();
-              let parsed: any[] = [];
-              if (trimmed.startsWith('[')) {
-                parsed = JSON.parse(trimmed);
-              } else if (trimmed.startsWith('{')) {
-                const single = JSON.parse(trimmed);
-                if (single.Name) parsed = [single];
-              }
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                for (const item of parsed) {
-                  if (item.Name) {
-                    const nLower = String(item.Name).toLowerCase();
-                    const isItemVirt = item.Virtual === true || isVirtualAdapter(item.Name, undefined, item.InterfaceDescription, item.Virtual, item.MacAddress);
-                    if (isItemVirt) {
-                      virtualNetNames.add(nLower);
-                    }
-                    if (item.Status === 'Disabled') {
-                      disabledNetAdapters.push({ 
-                        name: item.Name, 
-                        macAddress: item.MacAddress,
-                        isVirtual: isItemVirt,
-                        description: item.InterfaceDescription
-                      });
-                    }
-                  }
-                }
-              }
+          setSystemInfo(prev => {
+            if (!forceOverwrite && dirtySystemRef.current) {
+              return {
+                ...fetchedInfo,
+                computerName: prev.computerName,
+                workgroup: prev.workgroup
+              };
             }
-          } catch (e) {
-            console.warn("Could not query present NetAdapters via PowerShell:", e);
-          }
+            return fetchedInfo;
+          });
 
-          const activeParsed = adapterList
-            .filter(adapter => {
-              if (isFilterOrPseudoAdapter(adapter.name) || isGhostOrInvalidAdapter(adapter)) {
-                return false;
-              }
-              return true;
-            })
+          const activeParsed: NetworkAdapter[] = adapterList
+            .filter(adapter => !isFilterOrPseudoAdapter(adapter.name) && !isGhostOrInvalidAdapter(adapter))
             .map((adapter, index) => {
               const isVirt = adapter.isVirtual === true ||
-                virtualNetNames.has(adapter.name.toLowerCase()) ||
                 isVirtualAdapter(adapter.name, adapter.type, adapter.description, adapter.isVirtual, adapter.macAddress);
               return {
                 ...adapter,
@@ -379,46 +444,130 @@ export function useSystemConfig() {
 
           const activeNames = new Set(activeParsed.map(a => a.name.toLowerCase()));
           const activeMacs = new Set(activeParsed.map(a => (a.macAddress || '').replace(/[:-]/g, '').toLowerCase()).filter(Boolean));
-          const merged = [...activeParsed];
 
-          // Add verified disabled adapters discovered from Windows that are not already present
-          for (const dis of disabledNetAdapters) {
-            const cleanDisMac = (dis.macAddress || '').replace(/[:-]/g, '').toLowerCase();
-            if (
-              !activeNames.has(dis.name.toLowerCase()) &&
-              (!cleanDisMac || !activeMacs.has(cleanDisMac)) &&
-              !isFilterOrPseudoAdapter(dis.name) &&
-              !isGhostOrInvalidAdapter(dis)
-            ) {
-              const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
-              const normalizedMac = dis.macAddress ? dis.macAddress.replace(/-/g, ':').toUpperCase() : '';
-              merged.push({
-                id: normalizedMac || dis.name,
-                name: dis.name,
-                type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
-                status: 'Disabled',
-                ipAddress: '',
-                subnetMask: '',
-                gateway: '',
-                primaryDns: '',
-                secondaryDns: '',
-                macAddress: normalizedMac,
-                isDhcp: true,
-                isEnabled: false,
-                isVirtual: isVirt,
-                description: dis.description,
-                additionalIps: []
+          // Temporarily preserve previously known disabled adapters until Phase 2 confirms
+          const carriedDisabled = adaptersRef.current.filter(prev => {
+            if (prev.id === 'loading' || prev.id === 'error') return false;
+            if (prev.status !== 'Disabled' && prev.isEnabled !== false) return false;
+            const prevName = (prev.name || '').toLowerCase();
+            const prevMac = (prev.macAddress || '').replace(/[:-]/g, '').toLowerCase();
+            return !activeNames.has(prevName) && (!prevMac || !activeMacs.has(prevMac));
+          });
+
+          const phase1Sorted = sortAdaptersAndEnforcePrimaryIp([...activeParsed, ...carriedDisabled]);
+          setOriginalAdapters(phase1Sorted);
+          setAdaptersState(prev => mergeRespectingDirtyEdits(phase1Sorted, prev, forceOverwrite));
+          setIsLoaded(true);
+          saveStartupSnapshot(fetchedInfo, phase1Sorted);
+
+          // Phase 2: Deferred Non-Blocking PowerShell Enrichment for Disabled Adapters & NDIS Virtual Flags
+          setIsBackgroundSyncing(true);
+          void (async () => {
+            try {
+              // Yield a frame so Phase 1 UI renders immediately before spawning PowerShell
+              await new Promise(resolve => setTimeout(resolve, 16));
+              if (!isMountedRef.current || fetchGenerationRef.current !== gen) return;
+
+              let disabledNetAdapters: Array<{ name: string; macAddress?: string; isVirtual?: boolean; description?: string }> = [];
+              const virtualNetNames = new Set<string>();
+
+              const psPresent = await executePowerShell(
+                `try { @(Get-NetAdapter -IncludeHidden:$false -ErrorAction SilentlyContinue | Select-Object -Property Name,Status,MacAddress,Virtual,InterfaceDescription) | ConvertTo-Json -Compress } catch { '[]' }`,
+                false
+              );
+
+              if (!isMountedRef.current || fetchGenerationRef.current !== gen) return;
+
+              if (psPresent.stdout) {
+                const trimmed = psPresent.stdout.trim();
+                let parsed: any[] = [];
+                if (trimmed.startsWith('[')) {
+                  parsed = JSON.parse(trimmed);
+                } else if (trimmed.startsWith('{')) {
+                  const single = JSON.parse(trimmed);
+                  if (single.Name) parsed = [single];
+                }
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  for (const item of parsed) {
+                    if (item.Name) {
+                      const nLower = String(item.Name).toLowerCase();
+                      const isItemVirt = item.Virtual === true || isVirtualAdapter(item.Name, undefined, item.InterfaceDescription, item.Virtual, item.MacAddress);
+                      if (isItemVirt) {
+                        virtualNetNames.add(nLower);
+                      }
+                      if (item.Status === 'Disabled') {
+                        disabledNetAdapters.push({
+                          name: item.Name,
+                          macAddress: item.MacAddress,
+                          isVirtual: isItemVirt,
+                          description: item.InterfaceDescription
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+
+              const enrichedActive: NetworkAdapter[] = activeParsed.map(adapter => {
+                const isVirt = adapter.isVirtual === true || virtualNetNames.has(adapter.name.toLowerCase());
+                return isVirt !== adapter.isVirtual || (isVirt && adapter.type !== 'Virtual')
+                  ? { ...adapter, isVirtual: isVirt, type: isVirt ? ('Virtual' as const) : adapter.type }
+                  : adapter;
               });
-              activeNames.add(dis.name.toLowerCase());
-              if (cleanDisMac) activeMacs.add(cleanDisMac);
-            }
-          }
 
-          const sortedMerged = sortAdaptersAndEnforcePrimaryIp(merged);
-          setAdaptersState(sortedMerged);
-          setOriginalAdapters(sortedMerged);
+              const enrichedNames = new Set(enrichedActive.map(a => a.name.toLowerCase()));
+              const enrichedMacs = new Set(enrichedActive.map(a => (a.macAddress || '').replace(/[:-]/g, '').toLowerCase()).filter(Boolean));
+              const merged = [...enrichedActive];
+
+              for (const dis of disabledNetAdapters) {
+                const cleanDisMac = (dis.macAddress || '').replace(/[:-]/g, '').toLowerCase();
+                if (
+                  !enrichedNames.has(dis.name.toLowerCase()) &&
+                  (!cleanDisMac || !enrichedMacs.has(cleanDisMac)) &&
+                  !isFilterOrPseudoAdapter(dis.name) &&
+                  !isGhostOrInvalidAdapter(dis)
+                ) {
+                  const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
+                  const normalizedMac = dis.macAddress ? dis.macAddress.replace(/-/g, ':').toUpperCase() : '';
+                  merged.push({
+                    id: normalizedMac || dis.name,
+                    name: dis.name,
+                    type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
+                    status: 'Disabled',
+                    ipAddress: '',
+                    subnetMask: '',
+                    gateway: '',
+                    primaryDns: '',
+                    secondaryDns: '',
+                    macAddress: normalizedMac,
+                    isDhcp: true,
+                    isEnabled: false,
+                    isVirtual: isVirt,
+                    description: dis.description,
+                    additionalIps: []
+                  });
+                  enrichedNames.add(dis.name.toLowerCase());
+                  if (cleanDisMac) enrichedMacs.add(cleanDisMac);
+                }
+              }
+
+              const sortedMerged = sortAdaptersAndEnforcePrimaryIp(merged);
+              if (!isMountedRef.current || fetchGenerationRef.current !== gen) return;
+
+              setOriginalAdapters(sortedMerged);
+              setAdaptersState(prev => mergeRespectingDirtyEdits(sortedMerged, prev, forceOverwrite));
+              saveStartupSnapshot(fetchedInfo, sortedMerged);
+            } catch (e) {
+              console.warn('Could not enrich NetAdapters via deferred PowerShell:', e);
+            } finally {
+              if (isMountedRef.current && fetchGenerationRef.current === gen) {
+                setIsBackgroundSyncing(false);
+              }
+            }
+          })();
         } catch (err: any) {
           console.error('Native API Error:', err);
+          if (!isMountedRef.current || fetchGenerationRef.current !== gen) return;
           setSystemInfo(prev => ({ ...prev, computerName: 'Error', osVersion: String(err).substring(0, 50) }));
           setAdapters([{
             id: 'error',
@@ -435,10 +584,11 @@ export function useSystemConfig() {
             isEnabled: false
           }]);
           setOriginalAdapters([]);
+          setIsLoaded(true);
         }
       } else {
         // Web Preview Mock
-        const mockInfo = {
+        const mockInfo: SystemInfo = {
           computerName: 'WEB-PREVIEW-PC',
           workgroup: 'WORKGROUP',
           osVersion: 'Windows 11 Pro (Web Preview)',
@@ -504,19 +654,23 @@ export function useSystemConfig() {
         const sortedMock = sortAdaptersAndEnforcePrimaryIp(mockAdapters);
         setAdaptersState(sortedMock);
         setOriginalAdapters(sortedMock);
+        setIsLoaded(true);
+        saveStartupSnapshot(mockInfo, sortedMock);
       }
     } catch (error: any) {
       console.error('Failed to fetch initial data:', error);
-      setSystemInfo(prev => ({ ...prev, computerName: 'Exception' }));
+      if (isMountedRef.current) {
+        setSystemInfo(prev => ({ ...prev, computerName: 'Exception' }));
+        setIsLoaded(true);
+      }
     }
-  }, []);
-
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [pendingComputerName, setPendingComputerName] = useState<string | null>(null);
+  }, [mergeRespectingDirtyEdits]);
 
   useEffect(() => {
     fetchInitialData().finally(() => {
-      setIsLoaded(true);
+      if (isMountedRef.current) {
+        setIsLoaded(true);
+      }
     });
   }, [fetchInitialData]);
 
@@ -530,12 +684,15 @@ export function useSystemConfig() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    if (!isMountedRef.current) return;
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
     }
     setToast({ show: true, message, type });
     toastTimerRef.current = setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
+      if (isMountedRef.current) {
+        setToast(prev => ({ ...prev, show: false }));
+      }
       toastTimerRef.current = null;
     }, 3000);
   }, []);
@@ -618,11 +775,13 @@ export function useSystemConfig() {
 
       if (isTauriEnv()) {
         const response = await executePowerShell(wrappedScript, !systemInfo.isAdmin);
-        
+        if (!isMountedRef.current) return;
+
         if (response.code !== 0) {
           console.error("PowerShell Error:", response.code, response.stderr || response.stdout);
           showToast(t('applyError'), 'error');
         } else {
+          dirtySystemRef.current = false;
           if (requiresRestart) {
             if (nameChanged) {
               setPendingComputerName(systemInfo.computerName.trim());
@@ -631,12 +790,15 @@ export function useSystemConfig() {
           } else {
             showToast(t('saveSuccess'), 'success');
           }
+          await fetchInitialData();
         }
-        
-        await fetchInitialData(); // Refresh system info
       } else {
         // Web Preview Mock
         console.log("Mock saveSystemInfo executed with script:", script);
+        dirtySystemRef.current = false;
+        const nextInfo = { ...systemInfo };
+        setOriginalSystemInfo(nextInfo);
+        saveStartupSnapshot(nextInfo, adaptersRef.current);
         if (requiresRestart) {
           if (nameChanged) {
             setPendingComputerName(systemInfo.computerName.trim());
@@ -645,13 +807,16 @@ export function useSystemConfig() {
         } else {
           showToast(t('saveSuccess'), 'success');
         }
-        setOriginalSystemInfo({...systemInfo});
       }
     } catch (error) {
       console.error("Failed to save system info:", error);
-      showToast(t('applyError'), 'error');
+      if (isMountedRef.current) {
+        showToast(t('applyError'), 'error');
+      }
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) {
+        setIsSaving(false);
+      }
     }
   }, [systemInfo, originalSystemInfo, fetchInitialData, t, showToast]);
 
@@ -794,33 +959,91 @@ export function useSystemConfig() {
 
       if (isTauriEnv()) {
         const response = await executePowerShell(wrappedScript, !systemInfo.isAdmin);
-        
+        if (!isMountedRef.current) return;
+
         if (response.code !== 0) {
           console.error("PowerShell Error:", response.code, response.stderr || response.stdout);
           showToast(t('applyError'), 'error');
-        } else {
-          showToast(t('saveSuccess'), 'success');
+          return;
         }
-        
-        // Wait for Windows to apply network changes before fetching
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        await fetchInitialData(); // Refresh data after applying
+
+        showToast(t('saveSuccess'), 'success');
+        dirtyAdapterIdsRef.current.delete(selectedAdapterId);
+
+        // Adaptive polling: verify all applied fields settled in Win32 before refreshing (max ~2.1s)
+        if (adapter) {
+          const expectedEnabled = adapter.isEnabled;
+          const expectedDhcp = adapter.isDhcp;
+          const expectedIp = !expectedDhcp ? (adapter.ipAddress || '').trim() : '';
+          const expectedGw = !expectedDhcp ? (adapter.gateway || '').trim() : '';
+          const rawDns1 = !expectedDhcp ? (adapter.primaryDns || '').trim() : '';
+          const rawDns2 = !expectedDhcp ? (adapter.secondaryDns || '').trim() : '';
+          const expectedDns1 = rawDns1 || rawDns2;
+          const expectedDns2 = (rawDns1 && rawDns2 && rawDns2 !== rawDns1) ? rawDns2 : '';
+          const expectedSecIps = !expectedDhcp
+            ? (adapter.additionalIps || []).map(s => (s.ipAddress || '').trim()).filter(Boolean)
+            : [];
+          const targetNameLower = (adapter.name || '').toLowerCase();
+
+          await new Promise(resolve => setTimeout(resolve, 350));
+          for (let attempt = 0; attempt < 6; attempt++) {
+            if (!isMountedRef.current) return;
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              const polled = await invoke<NetworkAdapter[]>('get_adapters');
+              const matched = polled.find(a => a.id === selectedAdapterId || a.name.toLowerCase() === targetNameLower);
+              if (!expectedEnabled) {
+                if (!matched || matched.isEnabled === false) break;
+              } else if (matched && matched.isEnabled) {
+                if (expectedDhcp) {
+                  if (matched.isDhcp) break;
+                } else {
+                  const secMatch =
+                    (matched.additionalIps || []).length === expectedSecIps.length &&
+                    expectedSecIps.every(ip => (matched.additionalIps || []).some(s => s.ipAddress === ip));
+                  if (
+                    !matched.isDhcp &&
+                    matched.ipAddress === expectedIp &&
+                    (matched.gateway || '') === expectedGw &&
+                    (matched.primaryDns || '') === expectedDns1 &&
+                    (matched.secondaryDns || '') === expectedDns2 &&
+                    secMatch
+                  ) {
+                    break;
+                  }
+                }
+              }
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 350));
+          }
+        }
+
+        if (isMountedRef.current) {
+          await fetchInitialData();
+        }
       } else {
         // Web Preview Mock
         console.log("Mock saveNetworkConfig executed with script:", script);
+        dirtyAdapterIdsRef.current.delete(selectedAdapterId);
+        const snapshotAdapters = [...adaptersRef.current];
+        setOriginalAdapters(snapshotAdapters);
+        saveStartupSnapshot(systemInfo, snapshotAdapters);
         showToast(t('saveSuccess'), 'success');
-        setOriginalAdapters([...adapters]);
       }
     } catch (error) {
       console.error("Failed to save network config:", error);
-      showToast(t('applyError'), 'error');
+      if (isMountedRef.current) {
+        showToast(t('applyError'), 'error');
+      }
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) {
+        setIsSaving(false);
+      }
     }
   }, [adapters, originalAdapters, systemInfo, fetchInitialData, t, showToast]);
 
   const updateAdapter = useCallback((id: string, fieldOrUpdates: keyof NetworkAdapter | Partial<NetworkAdapter>, value?: any) => {
+    dirtyAdapterIdsRef.current.add(id);
     setAdapters(prev => prev.map(adapter => {
       if (adapter.id !== id) return adapter;
       if (typeof fieldOrUpdates === 'object' && fieldOrUpdates !== null) {
@@ -831,10 +1054,12 @@ export function useSystemConfig() {
   }, []);
 
   const updateSystemInfo = useCallback((field: keyof SystemInfo, value: string) => {
+    dirtySystemRef.current = true;
     setSystemInfo(prev => ({ ...prev, [field]: value }));
   }, []);
 
   const applyDns = useCallback((adapterId: string, primary: string, secondary: string) => {
+    dirtyAdapterIdsRef.current.add(adapterId);
     setAdapters(prev => prev.map(adapter => 
       adapter.id === adapterId ? {
         ...adapter,
@@ -883,57 +1108,90 @@ export function useSystemConfig() {
         `;
 
         const response = await executePowerShell(wrappedScript, !systemInfo.isAdmin);
+        if (!isMountedRef.current) return;
+
+        dirtyAdapterIdsRef.current.delete(adapterId);
+
         if (response.code !== 0) {
           console.error("PowerShell Error:", response.code, response.stderr || response.stdout);
           showToast(t('applyError'), 'error');
-        } else {
-          showToast(newEnabled ? t('adapterEnabledSuccess') : t('adapterDisabledSuccess'), 'success');
+          await fetchInitialData();
+          return;
         }
 
-        // Wait for Windows to update network stack
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        await fetchInitialData();
+        showToast(newEnabled ? t('adapterEnabledSuccess') : t('adapterDisabledSuccess'), 'success');
+
+        // Adaptive polling: finish as soon as adapter enable/disable state settles in Win32 (max ~2.1s)
+        const targetNameLower = adapter.name.toLowerCase();
+        await new Promise(resolve => setTimeout(resolve, 350));
+        for (let attempt = 0; attempt < 5; attempt++) {
+          if (!isMountedRef.current) return;
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const polled = await invoke<NetworkAdapter[]>('get_adapters');
+            const matched = polled.find(a => a.id === adapterId || a.name.toLowerCase() === targetNameLower);
+            if (newEnabled ? matched?.isEnabled === true : (!matched || matched.isEnabled === false)) {
+              break;
+            }
+          } catch {}
+          await new Promise(resolve => setTimeout(resolve, 350));
+        }
+
+        if (isMountedRef.current) {
+          await fetchInitialData();
+        }
       } else {
         // Web Preview Mock
-        setAdapters(prev => prev.map(a => (a.id === adapter.id || a.name === adapter.name) ? {
+        dirtyAdapterIdsRef.current.delete(adapterId);
+        const nextAdapters = adaptersRef.current.map(a => (a.id === adapter.id || a.name === adapter.name) ? {
           ...a,
           isEnabled: newEnabled,
-          status: newEnabled ? (a.ipAddress ? 'Connected' : 'Disconnected') : 'Disabled'
-        } : a));
-        setOriginalAdapters(prev => prev.map(a => (a.id === adapter.id || a.name === adapter.name) ? {
-          ...a,
-          isEnabled: newEnabled,
-          status: newEnabled ? (a.ipAddress ? 'Connected' : 'Disconnected') : 'Disabled'
-        } : a));
+          status: (newEnabled ? (a.ipAddress ? 'Connected' : 'Disconnected') : 'Disabled') as NetworkAdapter['status']
+        } : a);
+        setAdaptersState(nextAdapters);
+        setOriginalAdapters(nextAdapters);
+        saveStartupSnapshot(systemInfo, nextAdapters);
         showToast(newEnabled ? t('adapterEnabledSuccess') : t('adapterDisabledSuccess'), 'success');
       }
     } catch (err) {
       console.error("Failed to toggle adapter:", err);
-      showToast(t('applyError'), 'error');
-      if (isTauriEnv()) {
-        await fetchInitialData();
+      if (isMountedRef.current) {
+        showToast(t('applyError'), 'error');
+        dirtyAdapterIdsRef.current.delete(adapterId);
+        if (isTauriEnv()) {
+          await fetchInitialData();
+        }
       }
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) {
+        setIsSaving(false);
+      }
     }
   }, [adapters, systemInfo, fetchInitialData, t, showToast]);
 
   const rebootSystem = useCallback(async () => {
     try {
       if (isTauriEnv()) {
-        await executePowerShell('Restart-Computer -Force');
+        const response = await executePowerShell('Restart-Computer -Force', !systemInfo.isAdmin);
+        if (response.code !== 0 && isMountedRef.current) {
+          console.error("Reboot PowerShell Error:", response.code, response.stderr || response.stdout);
+          showToast(t('applyError'), 'error');
+        }
       } else {
         console.log("Mock reboot executed");
         showToast(t('rebootSystem'), 'success');
       }
     } catch (error) {
       console.error("Failed to reboot system:", error);
-      showToast(t('applyError'), 'error');
+      if (isMountedRef.current) {
+        showToast(t('applyError'), 'error');
+      }
     }
-  }, [t, showToast]);
+  }, [systemInfo.isAdmin, t, showToast]);
 
   return {
     isLoaded,
+    isBackgroundSyncing,
     systemInfo,
     originalSystemInfo,
     adapters,

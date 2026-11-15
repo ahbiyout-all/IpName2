@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeStorage } from '../lib/storage';
 
-export const CURRENT_VERSION = '1.12.10';
+export const CURRENT_VERSION = '1.13.2';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -155,12 +155,29 @@ export function useGitHubUpdate() {
     }
   }, [latestRelease]);
 
-  // Initial background check on application mount
+  // Initial background check deferred until after first paint and Win32 startup
   useEffect(() => {
+    let idleHandle: number | null = null;
     const timer = setTimeout(() => {
-      checkUpdate(false);
-    }, 1500);
-    return () => clearTimeout(timer);
+      const win = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (id: number) => void;
+      };
+      if (typeof win.requestIdleCallback === 'function') {
+        idleHandle = win.requestIdleCallback(() => {
+          checkUpdate(false);
+        }, { timeout: 2000 });
+      } else {
+        checkUpdate(false);
+      }
+    }, 2200);
+    return () => {
+      clearTimeout(timer);
+      const win = window as Window & { cancelIdleCallback?: (id: number) => void };
+      if (idleHandle !== null && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleHandle);
+      }
+    };
   }, [checkUpdate]);
 
   return {

@@ -36,7 +36,7 @@
   #include <unistd.h>
 #endif
 
-#define IPNAME_VERSION "1.12.10"
+#define IPNAME_VERSION "1.13.2"
 
 /* Helper: case-insensitive substring search */
 static int str_contains_ci(const char* haystack, const char* needle) {
@@ -405,8 +405,10 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_CheckIpConflictEx(
 
     /* Send in-process Layer-2 ARP request to detect conflicting devices */
     DWORD dwRet = SendARP(dest_ip, src_ip, mac_addr, &mac_addr_len);
+    const uint8_t* mac_bytes = (const uint8_t*)mac_addr;
+    int is_nonzero_mac = (mac_bytes[0] | mac_bytes[1] | mac_bytes[2] | mac_bytes[3] | mac_bytes[4] | mac_bytes[5]) != 0;
 
-    if (dwRet == NO_ERROR && mac_addr_len == 6) {
+    if (dwRet == NO_ERROR && mac_addr_len == 6 && is_nonzero_mac) {
         IpName_FormatMac((const uint8_t*)mac_addr, ':', out_result->conflicting_mac);
 
         /* Check if the responding MAC is actually the local adapter's own MAC */

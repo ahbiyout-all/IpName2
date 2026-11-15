@@ -16,30 +16,20 @@ async function run() {
 
     // Try to sync from IpName2.png and IpName2.ico first
     if (fs.existsSync(primarySource)) {
-        console.log('Found IpName2.png. Syncing to app-icon.png, src-tauri/icons/icon.png, and public/appIcon.png...');
+        console.log('Found IpName2.png. Syncing to app-icon.png and src-tauri/icons/icon.png...');
         fs.copyFileSync(primarySource, sourceAppIcon);
         fs.copyFileSync(primarySource, iconPath);
-        
-        const publicAppIcon = path.join(__dirname, 'public', 'appIcon.png');
-        try {
-            fs.copyFileSync(primarySource, publicAppIcon);
-            console.log('Successfully synced public/appIcon.png');
-        } catch (e) {
-            console.warn('Warning: Could not copy to public/appIcon.png', e);
-        }
     }
 
     const sourceIco = path.join(__dirname, 'IpName2.ico');
     if (fs.existsSync(sourceIco)) {
-        console.log('Found IpName2.ico. Syncing to public/favicon.ico and public/icon1.ico...');
+        console.log('Found IpName2.ico. Syncing to public/favicon.ico...');
         const publicFavicon = path.join(__dirname, 'public', 'favicon.ico');
-        const publicIcon1 = path.join(__dirname, 'public', 'icon1.ico');
         try {
             fs.copyFileSync(sourceIco, publicFavicon);
-            fs.copyFileSync(sourceIco, publicIcon1);
-            console.log('Successfully synced public favicons.');
+            console.log('Successfully synced public/favicon.ico.');
         } catch (e) {
-            console.warn('Warning: Could not copy public favicons', e);
+            console.warn('Warning: Could not copy public/favicon.ico', e);
         }
     }
 

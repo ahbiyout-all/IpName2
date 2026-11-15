@@ -487,7 +487,8 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           <button
             type="button"
             onClick={toggleSmartHelper}
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-semibold border transition-all cursor-pointer select-none ${
+            disabled={isSaving}
+            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-semibold border transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed ${
               smartHelperEnabled
                 ? 'bg-primary/10 text-primary border-primary/30 shadow-xs'
                 : 'bg-[var(--input-bg)] text-text-muted border-[var(--border)] hover:bg-[var(--card-hover)]'
@@ -508,7 +509,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             <button
               type="button"
               onClick={handleCheckConflict}
-              disabled={!adapter.ipAddress || isCheckingConflict || adapter.isDhcp || !adapter.isEnabled}
+              disabled={!adapter.ipAddress || isCheckingConflict || adapter.isDhcp || !adapter.isEnabled || isSaving}
               className={`inline-flex items-center gap-1 text-[8px] font-semibold px-1 py-0.2 rounded transition-all cursor-pointer ${
                 conflictResult?.is_conflict 
                   ? 'bg-red-500/10 text-red-500 border border-red-500/30'
@@ -534,6 +535,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             type="text" 
             value={adapter.ipAddress}
             onChange={(e) => handleIpChange(e.target.value)}
+            disabled={isSaving || adapter.isDhcp || !adapter.isEnabled}
             className={`input-field font-mono py-1 px-2 text-[10px] ${
               conflictResult?.is_conflict ? 'border-red-500 focus:border-red-500 bg-red-500/5' : ''
             }`}
@@ -553,7 +555,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           <SubnetMaskSelector 
             value={adapter.subnetMask}
             onChange={(val) => onUpdate(adapter.id, 'subnetMask', val)}
-            disabled={adapter.isDhcp || !adapter.isEnabled}
+            disabled={adapter.isDhcp || !adapter.isEnabled || isSaving}
             placeholder="255.255.255.0"
           />
         </div>
@@ -563,6 +565,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             type="text" 
             value={adapter.gateway}
             onChange={(e) => onUpdate(adapter.id, 'gateway', e.target.value)}
+            disabled={isSaving || adapter.isDhcp || !adapter.isEnabled}
             className="input-field font-mono py-1 px-2 text-[10px]"
             placeholder="192.168.1.1"
             spellCheck={false}
@@ -574,6 +577,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             type="text" 
             value={adapter.primaryDns}
             onChange={(e) => onUpdate(adapter.id, 'primaryDns', e.target.value)}
+            disabled={isSaving || adapter.isDhcp || !adapter.isEnabled}
             className="input-field font-mono py-1 px-2 text-[10px]"
             placeholder="8.8.8.8"
             spellCheck={false}
@@ -585,6 +589,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             type="text" 
             value={adapter.secondaryDns}
             onChange={(e) => onUpdate(adapter.id, 'secondaryDns', e.target.value)}
+            disabled={isSaving || adapter.isDhcp || !adapter.isEnabled}
             className="input-field font-mono py-1 px-2 text-[10px]"
             placeholder="8.8.4.4"
             spellCheck={false}
@@ -626,7 +631,8 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             <button
               type="button"
               onClick={handleAddSecondaryIp}
-              className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded-md bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all cursor-pointer active:scale-95"
+              disabled={isSaving}
+              className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded-md bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               title="이 어댑터에 보조(다중) IP를 추가합니다."
             >
               <Plus size={10} />
@@ -655,7 +661,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                         <button
                           type="button"
                           onClick={() => handleCheckSecondaryConflict(idx, sec.ipAddress)}
-                          disabled={!sec.ipAddress || secConflict?.checking}
+                          disabled={!sec.ipAddress || secConflict?.checking || isSaving}
                           className={`inline-flex items-center gap-1 text-[8px] font-semibold px-1 py-0.5 rounded transition-all cursor-pointer ${
                             secConflict?.result?.is_conflict 
                               ? 'bg-red-500/10 text-red-500 border border-red-500/30'
@@ -681,7 +687,8 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                         <button
                           type="button"
                           onClick={() => handleRemoveSecondaryIp(idx)}
-                          className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-all cursor-pointer active:scale-95"
+                          disabled={isSaving}
+                          className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                           title={t('removeSecondaryIp')}
                         >
                           <Trash2 size={11} />

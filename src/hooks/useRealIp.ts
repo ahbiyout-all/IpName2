@@ -45,6 +45,18 @@ export function useRealIp() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isFetchingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
+  const cacheTimestampRef = useRef<number>((() => {
+    try {
+      const cached = safeStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed: CachedRealIp = JSON.parse(cached);
+        if (parsed.ip && typeof parsed.timestamp === 'number') {
+          return parsed.timestamp;
+        }
+      }
+    } catch {}
+    return 0;
+  })());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -202,7 +214,32 @@ export function useRealIp() {
   }, []);
 
   useEffect(() => {
-    fetchRealIp();
+    const cacheAgeMs = Date.now() - cacheTimestampRef.current;
+    const isFreshCache = cacheTimestampRef.current > 0 && cacheAgeMs < 5 * 60 * 1000;
+    const delayMs = isFreshCache ? 2200 : 180;
+
+    let idleHandle: number | null = null;
+    const timer = setTimeout(() => {
+      const win = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (id: number) => void;
+      };
+      if (typeof win.requestIdleCallback === 'function') {
+        idleHandle = win.requestIdleCallback(() => {
+          fetchRealIp();
+        }, { timeout: 1500 });
+      } else {
+        fetchRealIp();
+      }
+    }, delayMs);
+
+    return () => {
+      clearTimeout(timer);
+      const win = window as Window & { cancelIdleCallback?: (id: number) => void };
+      if (idleHandle !== null && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleHandle);
+      }
+    };
   }, [fetchRealIp]);
 
   return {

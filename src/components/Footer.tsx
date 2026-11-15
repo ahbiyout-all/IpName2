@@ -19,7 +19,6 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
     { name: 'Tailwind CSS', version: 'v4.1.14', license: 'MIT', copyright: 'Copyright (c) Tailwind Labs, Inc.', url: 'https://tailwindcss.com' },
     { name: 'IpNameCore Native DLL', version: `v${CURRENT_VERSION} (ipname_core.dll)`, license: 'MIT', copyright: 'Copyright (c) 2026 AhBiYout (Pure Creative Native Engine)', url: 'https://github.com/AhBiYout-all' },
     { name: 'Lucide React', version: 'v0.546.0', license: 'ISC', copyright: 'Copyright (c) 2020, Lucide Contributors', url: 'https://lucide.dev' },
-    { name: 'Better-SQLite3', version: 'v12.4.1', license: 'MIT', copyright: 'Copyright (c) 2017-present Joshua Wise', url: 'https://github.com/WiseLibs/better-sqlite3' },
     { name: 'Motion', version: 'v12.23.24', license: 'MIT', copyright: 'Copyright (c) 2018 Framer B.V.', url: 'https://motion.dev' },
     { name: 'Jimp', version: 'v0.22.10', license: 'MIT', copyright: 'Copyright (c) 2018 Oliver Moran', url: 'https://github.com/jimp-dev/jimp' },
     { name: 'Serde (Rust)', version: 'v1.0', license: 'MIT / Apache-2.0', copyright: 'Copyright (c) 2014-2017 Erick Tryzelaar and David Tolnay', url: 'https://serde.rs' },

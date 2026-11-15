@@ -54,6 +54,7 @@ export const SystemSection = memo(({ info, originalInfo, isSaving, onUpdate, onS
                 type="text" 
                 value={info.computerName}
                 onChange={(e) => onUpdate('computerName', e.target.value)}
+                disabled={isSaving}
                 className="input-field py-1 pl-2 pr-7 text-xs w-full"
                 spellCheck={false}
               />
@@ -75,6 +76,7 @@ export const SystemSection = memo(({ info, originalInfo, isSaving, onUpdate, onS
               type="text" 
               value={info.workgroup}
               onChange={(e) => onUpdate('workgroup', e.target.value)}
+              disabled={isSaving}
               className="input-field py-1 px-2 text-xs w-full"
               spellCheck={false}
             />

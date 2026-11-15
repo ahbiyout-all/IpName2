@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef, ErrorInfo, ReactNode } from 'react';
-import { Network, Wifi, ShieldAlert, Terminal, Activity, Layers, Zap } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense, ErrorInfo, ReactNode } from 'react';
+import { Network, Wifi, ShieldAlert, Terminal, Activity, Layers, Zap, RefreshCw } from 'lucide-react';
 import { useSystemConfig, isVirtualAdapter, isGhostOrInvalidAdapter } from './hooks/useSystemConfig';
 import { Header } from './components/Header';
 import { SystemSection } from './components/SystemSection';
@@ -8,12 +8,13 @@ import { QuickDnsSettings } from './components/QuickDnsSettings';
 import { AdapterItem } from './components/AdapterItem';
 import { Footer } from './components/Footer';
 import { Toast } from './components/Toast';
-import { ConfirmModal } from './components/ConfirmModal';
-import { UpdateModal } from './components/UpdateModal';
 import { useGitHubUpdate } from './hooks/useGitHubUpdate';
 import { useLanguage } from './contexts/LanguageContext';
 import { isTauriEnv } from './lib/powershell';
 import { NativePingResult } from './types';
+
+const ConfirmModal = lazy(() => import('./components/ConfirmModal').then(m => ({ default: m.ConfirmModal })));
+const UpdateModal = lazy(() => import('./components/UpdateModal').then(m => ({ default: m.UpdateModal })));
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -59,6 +60,7 @@ const AppContent: React.FC = () => {
   const { t } = useLanguage();
   const {
     isLoaded,
+    isBackgroundSyncing,
     systemInfo,
     originalSystemInfo,
     adapters,
@@ -289,6 +291,15 @@ const AppContent: React.FC = () => {
                   {displayAdapters.length}/{adapters.length}
                 </span>
               )}
+              {isBackgroundSyncing && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary"
+                  title={t('syncingAdapters')}
+                >
+                  <RefreshCw size={10} className="animate-spin" />
+                  <span className="hidden sm:inline">{t('syncingAdapters')}</span>
+                </span>
+              )}
             </div>
 
             {/* Filter Segmented Controls */}
@@ -449,58 +460,66 @@ const AppContent: React.FC = () => {
       <Toast show={toast.show} message={toast.message} type={toast.type} />
       <Footer onCheckUpdate={() => checkUpdate(true)} />
       
-      <ConfirmModal 
-        isOpen={confirmAction !== null}
-        onClose={() => setConfirmAction(null)}
-        onConfirm={() => {
-          if (confirmAction?.type === 'system') {
-            saveSystemInfo();
-          } else if (confirmAction?.type === 'network' && confirmAction.id) {
-            saveNetworkConfig(confirmAction.id);
-          } else if (confirmAction?.type === 'reboot') {
-            rebootSystem();
-          } else if (confirmAction?.type === 'toggle-adapter' && confirmAction.id) {
-            toggleAdapterEnabled(confirmAction.id, confirmAction.targetState);
-          }
-        }}
-        title={
-          confirmAction?.type === 'reboot' ? t('rebootSystem') : 
-          confirmAction?.type === 'system' ? t('confirmSystemApplyTitle') : 
-          confirmAction?.type === 'toggle-adapter' ? (
-            confirmAction.targetState ? t('confirmEnableLanCardTitle') : t('confirmDisableLanCardTitle')
-          ) :
-          t('confirmNetworkApplyTitle')
-        }
-        description={
-          confirmAction?.type === 'reboot' ? t('rebootConfirm') : 
-          confirmAction?.type === 'system' ? t('confirmSystemApplyDesc') : 
-          confirmAction?.type === 'toggle-adapter' ? (
-            `[${confirmAction.adapterName}] ` + (confirmAction.targetState ? t('confirmEnableLanCardDesc') : t('confirmDisableLanCardDesc'))
-          ) :
-          t('confirmNetworkApplyDesc')
-        }
-        confirmText={
-          confirmAction?.type === 'toggle-adapter' ? (
-            confirmAction.targetState ? t('enableLanCard') : t('disableLanCard')
-          ) : undefined
-        }
-        isDestructive={
-          confirmAction?.type === 'reboot' ||
-          (confirmAction?.type === 'toggle-adapter' && !confirmAction.targetState)
-        }
-      />
+      {confirmAction !== null && (
+        <Suspense fallback={null}>
+          <ConfirmModal 
+            isOpen={true}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={() => {
+              if (confirmAction?.type === 'system') {
+                saveSystemInfo();
+              } else if (confirmAction?.type === 'network' && confirmAction.id) {
+                saveNetworkConfig(confirmAction.id);
+              } else if (confirmAction?.type === 'reboot') {
+                rebootSystem();
+              } else if (confirmAction?.type === 'toggle-adapter' && confirmAction.id) {
+                toggleAdapterEnabled(confirmAction.id, confirmAction.targetState);
+              }
+            }}
+            title={
+              confirmAction?.type === 'reboot' ? t('rebootSystem') : 
+              confirmAction?.type === 'system' ? t('confirmSystemApplyTitle') : 
+              confirmAction?.type === 'toggle-adapter' ? (
+                confirmAction.targetState ? t('confirmEnableLanCardTitle') : t('confirmDisableLanCardTitle')
+              ) :
+              t('confirmNetworkApplyTitle')
+            }
+            description={
+              confirmAction?.type === 'reboot' ? t('rebootConfirm') : 
+              confirmAction?.type === 'system' ? t('confirmSystemApplyDesc') : 
+              confirmAction?.type === 'toggle-adapter' ? (
+                `[${confirmAction.adapterName}] ` + (confirmAction.targetState ? t('confirmEnableLanCardDesc') : t('confirmDisableLanCardDesc'))
+              ) :
+              t('confirmNetworkApplyDesc')
+            }
+            confirmText={
+              confirmAction?.type === 'toggle-adapter' ? (
+                confirmAction.targetState ? t('enableLanCard') : t('disableLanCard')
+              ) : undefined
+            }
+            isDestructive={
+              confirmAction?.type === 'reboot' ||
+              (confirmAction?.type === 'toggle-adapter' && !confirmAction.targetState)
+            }
+          />
+        </Suspense>
+      )}
 
-      <UpdateModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => dismissUpdate(false)}
-        currentVersion={currentVersion}
-        latestRelease={latestRelease}
-        updateAvailable={updateAvailable}
-        isChecking={isCheckingUpdate}
-        statusMessage={updateStatusMessage}
-        repoUrl={repoUrl}
-        onSkipVersion={() => dismissUpdate(true)}
-      />
+      {isUpdateModalOpen && (
+        <Suspense fallback={null}>
+          <UpdateModal
+            isOpen={true}
+            onClose={() => dismissUpdate(false)}
+            currentVersion={currentVersion}
+            latestRelease={latestRelease}
+            updateAvailable={updateAvailable}
+            isChecking={isCheckingUpdate}
+            statusMessage={updateStatusMessage}
+            repoUrl={repoUrl}
+            onSkipVersion={() => dismissUpdate(true)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

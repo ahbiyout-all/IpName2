@@ -161,7 +161,8 @@ body {
   box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
-.input-field:read-only {
+.input-field:read-only,
+.input-field:disabled {
   background-color: var(--input-read-bg);
   color: var(--input-read-text);
   cursor: not-allowed;

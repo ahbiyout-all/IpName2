@@ -158,3 +158,46 @@ This document tracks high-priority features, reliability fixes, and architecture
   3. Add Win32 `AdapterName`/`FriendlyName` `.is_null()` checks and `Ipv4Addr::from_str` strict parsing in `windows_native.rs`, align `ipname_core.c` filter parity, and add `FileExists`/`waituntilterminated` guards in `installer/setup.iss`.
 - **Validation**: Triple Lockstep version `1.12.10` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
 
+#### [ROADMAP-016] Fast Startup SWR Cache, Parallel Win32 Fast Path & Async Runtime Optimization (v1.13.0)
+- **Priority**: P0
+- **Status**: VERIFIED
+- **Target Files**: `src/hooks/{useSystemConfig,useRealIp,useGitHubUpdate}.ts`, `src/App.tsx`, `src/i18n/translations.ts`, `src-tauri/src/lib.rs`, `src-tauri/Cargo.toml`, `vite.config.ts`
+- **Description**: Eliminate blocking full-screen startup spinners and PowerShell cold-start stalls via SWR snapshot caching, parallel Win32 enumeration with non-blocking deferred PowerShell enrichment, Tokio `spawn_blocking` offloading, adaptive post-apply polling, lazy modal loading, and Cargo/Vite build optimizations.
+- **Acceptance Criteria**:
+  1. Hydrate cached system info and adapters on mount (`ipname2_startup_snapshot_v1`), fetch `get_system_info` + `get_adapters` in parallel, and merge deferred `Get-NetAdapter` disabled/virtual results without overwriting in-progress edits (`dirtyAdapterIdsRef`).
+  2. Offload blocking Win32/PowerShell commands to `tauri::async_runtime::spawn_blocking` and configure `[profile.release]` (`opt-level = 3`, `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, `strip = true`).
+  3. Replace hardcoded `2.5s–3.0s` post-apply sleeps with adaptive `get_adapters` polling, defer background WAN IP & GitHub API fetches via `requestIdleCallback`, lazy-load modals, and configure Vite `manualChunks`.
+- **Validation**: Triple Lockstep version `1.13.0` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-017] Round 4 Deep Audit: Adaptive Polling Parity, Dirty-Edit Preservation & Input/Native Hardening (v1.13.1)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `src/hooks/useSystemConfig.ts`, `src/components/{AdapterItem,SystemSection}.tsx`, `src/index.css`, `src-tauri/src/windows_native.rs`, `native/ipname_core/src/ipname_core.c`, `vite.config.ts`
+- **Description**: Resolve Round 4 deep self-reflection defects uncovered after the `v1.13.0` fast-startup optimization across adaptive post-apply polling, failed-save dirty edit preservation, keyboard/mid-save input locking, Win32/C99 DNS & ARP edge cases, and Vite port parsing.
+- **Acceptance Criteria**:
+  1. Verify all applied fields (`ipAddress`, `gateway`, `primaryDns`, `secondaryDns`, `additionalIps`, `isEnabled`, `isDhcp`) in `saveNetworkConfig` polling and `matched?.isEnabled === true` in `toggleAdapterEnabled` polling; preserve dirty user edits on `response.code !== 0`, scope dirty-ref clearing per target, pass `!systemInfo.isAdmin` to `rebootSystem`, and synchronize Web Preview mock SWR snapshots.
+  2. Enforce `disabled` attributes across primary/secondary IP & system inputs and controls during DHCP, disabled-adapter, or `isSaving` states, and align `.input-field:disabled` CSS styling.
+  3. Skip `0.0.0.0`/duplicate DNS entries in `windows_native.rs`, ignore all-zero MAC `SendARP` replies in both Rust & C99 DLL, and harden `VITE_PORT` parsing in `vite.config.ts`.
+- **Validation**: Triple Lockstep version `1.13.1` synchronized; core-manifest audit (`--clean`), Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-018] GitHub Repository Hygiene, 6-Stage Secret/Lockstep Gate & CI Caching (v1.13.2)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `package.json`, `package-lock.json`, `fix-icon.cjs`, `.env.example`, `src/components/Footer.tsx`, `scripts/github/{core-manifest.json,verify-core-files.cjs}`, `.github/workflows/release.yml`, `README.md`, `docs/*`
+- **Description**: Clean unused dependencies/native addons and duplicate unreferenced binary icon assets before GitHub upload, upgrade `verify-core-files.cjs` to a 6-stage hygiene/secret/version-lockstep gate covering 48 essential files, add npm/Rust caching and fast-fail validation steps to CI/CD while preserving `main` + `v*` dual auto-release triggers, and align all repository documentation.
+- **Acceptance Criteria**:
+  1. Remove unused packages (`@google/genai`, `better-sqlite3`, `dotenv`, `express`, `@types/express`, `autoprefixer`, `tsx`, `vite-plugin-pwa`), move `jimp` to `devDependencies`, clean `Footer.tsx` & `.env.example`, delete duplicate `public/appIcon.png` & `public/icon1.ico`, and regenerate `package-lock.json`.
+  2. Expand `core-manifest.json` to 48 required core files and upgrade `verify-core-files.cjs` with whitelist extra-file detection, secret/PII leak scanning, and 10-target Triple Lockstep version validation.
+  3. Enable `cache: 'npm'`, `Swatinem/rust-cache@v2`, `verify-core-files.cjs`, and `npm run lint` fast-fail gates in `.github/workflows/release.yml`.
+- **Validation**: Triple Lockstep version `1.13.2` synchronized; 6-stage `verify-core-files.cjs --clean`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-018] GitHub Repository Hygiene, 6-Stage Secret/Lockstep Gate & CI Caching (v1.13.2)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `package.json`, `package-lock.json`, `fix-icon.cjs`, `.env.example`, `src/components/Footer.tsx`, `scripts/github/{core-manifest.json,verify-core-files.cjs}`, `.github/workflows/release.yml`, `README.md`, `docs/*`
+- **Description**: Clean unused dependencies/native addons and duplicate unreferenced binary icon assets before GitHub upload, upgrade `verify-core-files.cjs` to a 6-stage hygiene/secret/version-lockstep gate covering 48 essential files, add npm/Rust caching and fast-fail validation steps to CI/CD while preserving `main` + `v*` dual auto-release triggers, and align all repository documentation.
+- **Acceptance Criteria**:
+  1. Remove unused packages (`@google/genai`, `better-sqlite3`, `dotenv`, `express`, `@types/express`, `autoprefixer`, `tsx`, `vite-plugin-pwa`), move `jimp` to `devDependencies`, clean `Footer.tsx` & `.env.example`, delete duplicate `public/appIcon.png` & `public/icon1.ico`, and regenerate `package-lock.json`.
+  2. Expand `core-manifest.json` to 48 required core files and upgrade `verify-core-files.cjs` with whitelist extra-file detection, secret/PII leak scanning, and 10-target Triple Lockstep version validation.
+  3. Enable `cache: 'npm'`, `Swatinem/rust-cache@v2`, `verify-core-files.cjs`, and `npm run lint` fast-fail gates in `.github/workflows/release.yml`.
+- **Validation**: Triple Lockstep version `1.13.2` synchronized; 6-stage `verify-core-files.cjs --clean`, Vite production build, and TypeScript lint verified.

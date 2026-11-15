@@ -607,7 +607,6 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             let mut primary_dns = String::new();
             let mut secondary_dns = String::new();
             let mut dns = addr.FirstDnsServerAddress;
-            let mut dns_count = 0;
             while !dns.is_null() {
                 let dns_addr = &*dns;
                 let sa = &*dns_addr.Address.lpSockaddr;
@@ -615,12 +614,13 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                     let ipv4: *const SOCKADDR_IN = dns_addr.Address.lpSockaddr as *const _;
                     let ip_bytes = (*ipv4).sin_addr.S_un.S_un_b;
                     let dns_str = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
-                    if dns_count == 0 {
-                        primary_dns = dns_str;
-                    } else if dns_count == 1 {
-                        secondary_dns = dns_str;
+                    if dns_str != "0.0.0.0" {
+                        if primary_dns.is_empty() {
+                            primary_dns = dns_str;
+                        } else if secondary_dns.is_empty() && dns_str != primary_dns {
+                            secondary_dns = dns_str;
+                        }
                     }
-                    dns_count += 1;
                 }
                 dns = dns_addr.Next;
             }
@@ -980,7 +980,7 @@ pub fn check_ip_conflict_native(target_ip: &str, source_ip: Option<&str>, own_ma
 
         let ret = SendARP(dest_ip, src_ip, mac_buf.as_mut_ptr() as *mut _, &mut mac_len);
 
-        if ret == 0 && mac_len == 6 {
+        if ret == 0 && mac_len == 6 && mac_buf[..6].iter().any(|&b| b != 0) {
             let mac_str = format!(
                 "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                 mac_buf[0], mac_buf[1], mac_buf[2], mac_buf[3], mac_buf[4], mac_buf[5]

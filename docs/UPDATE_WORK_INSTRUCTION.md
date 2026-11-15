@@ -12,8 +12,8 @@
 # [작업 지시서] IP Name 애플리케이션 최신 표준 아키텍처 및 파이프라인 전면 업그레이드
 
 당신은 Windows 시스템 및 네트워크 어댑터 관리 유틸리티 개발의 시니어 시스템 엔지니어입니다.
-본 프로젝트를 'AhBiYout IpName2 v1.12.x'의 검증된 기술 표준과 아키텍처에 맞춰 전면 업그레이드하세요.
-아래의 7대 핵심 원칙과 세부 구현 요구사항을 한 단계도 빠짐없이 철저히 구현해야 합니다.
+본 프로젝트를 'AhBiYout IpName2 v1.13.x'의 검증된 기술 표준과 아키텍처에 맞춰 전면 업그레이드하세요.
+아래의 8대 핵심 원칙과 세부 구현 요구사항을 한 단계도 빠짐없이 철저히 구현해야 합니다.
 
 ---
 
@@ -87,8 +87,8 @@
 2. **동적 버전 푸시 스크립트 (`git-push.bat`)**:
    - `package.json`에서 버전을 동적 추출하고, `git branch -M main` 보정, author 자동 설정(`AhBiYout`), 스테이징 전 자체 캐시 제거(`git rm --cached git-push.bat`), 커밋, `v%APP_VER%` 태그 생성 및 푸시 완결.
    - 배치 파일 내 앰퍼샌드는 반드시 `^&`로 이스케이프하고, 괄호 충돌을 방지하기 위해 라벨 분기(`goto :push_failed`)를 사용할 것.
-3. **핵심 파일 감사 도구**:
-   - `scripts/github/core-manifest.json` 및 `scripts/github/verify-core-files.cjs`를 통해 34개 필수 빌드 파일 무결성 및 금지 파일 자동 정화(`--clean`) 체계를 구축할 것.
+3. **6단계 핵심 파일·보안·버전 감사 도구**:
+   - `scripts/github/core-manifest.json` 및 `scripts/github/verify-core-files.cjs`를 통해 48개 필수 빌드 파일 무결성, 중복·스크래치 파일 자동 정화(`--clean`), 미등록 파일 감사, 시크릿/이메일 유출 스캔 및 10지점 버전 삼중 동기화 검증 체계를 구축할 것.
 
 ---
 
@@ -196,10 +196,25 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: 'npm'
 
-      - name: Install dependencies & Build
+      - name: Install dependencies, Audit & Type Check
         run: |
           npm ci || npm install
+          node scripts/github/verify-core-files.cjs
+          npm run lint
+
+      - name: Setup Rust Stable Toolchain & Cache
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build Frontend & Tauri
+        run: |
           npm run build
           npm run tauri build
 
@@ -219,9 +234,9 @@ jobs:
 
 ---
 
-## 🛠️ 3. 파일 매니페스트 및 디렉터리 레이아웃 표준 (34 Core Files)
+## 🛠️ 3. 파일 매니페스트 및 디렉터리 레이아웃 표준 (48 Core Files)
 
-다른 프로젝트 구성 시 아래 34개 필수 파일 구조를 정확하게 유지해야 합니다:
+다른 프로젝트 구성 시 아래 48개 필수 파일 구조를 정확하게 유지해야 합니다:
 
 ```
 IpName/
@@ -245,17 +260,21 @@ IpName/
 │   ├── build.bat
 │   └── Makefile
 ├── scripts/github/                      # GitHub 핵심 파일 감사 및 동기화 도구
-│   ├── core-manifest.json               # 34개 필수 빌드 파일 화이트리스트
+│   ├── core-manifest.json               # 48개 필수 빌드 파일 화이트리스트
 │   ├── prepare-github-sync.bat          # 원클릭 감사 및 푸시 연동 스크립트
-│   └── verify-core-files.cjs            # 스크래치 파일 자동 정화 및 무결성 검증기
+│   └── verify-core-files.cjs            # 6단계 보안·버전 감사 및 자동 정화기
+├── public/favicon.ico                   # 웹/앱 공용 파비콘 아이콘
 ├── src/                                 # React 19 프론트엔드 소스
 ├── src-tauri/                           # Tauri v2 데스크톱 백엔드 소스
+├── .env.example                         # 환경 변수 예시 템플릿
 ├── .gitignore                           # 엄격 화이트리스트 기반 제외 규칙
 ├── .gitkeep-ignore                      # 스크립트 연동 클리닝 규칙
 ├── AGENTS.md                            # AI 코딩 어시스턴트 영구 지침
+├── app-icon.png / IpName2.png / IpName2.ico # 공식 앱·인스톨러 아이콘 자산
 ├── build.bat / build.ps1                # 포트 3030 통합 원클릭 빌드 스크립트
 ├── fix-icon.cjs                         # Windows 아이콘 규격 보정 스크립트
 ├── git-push.bat                         # 로컬 전용 동적 버전 자동 푸시 유틸리티 (Git 제외)
+├── index.html                           # 프론트엔드 HTML 엔트리포인트
 ├── LICENSE                              # 루트 MIT 표준 라이선스 파일
 ├── package.json / package-lock.json     # Node.js 패키지 설정
 ├── README.md                            # GitHub 저장소 공식 루트 설명서
@@ -267,7 +286,7 @@ IpName/
 ## ✅ 4. 최종 무결성 검증 체크리스트
 
 1. [ ] `npm run build` 및 `npm run lint` (`tsc --noEmit`) 에러 0건 확인.
-2. [ ] `node scripts\github\verify-core-files.cjs --clean` 실행 시 34개 필수 파일 100% 정상 통과.
+2. [ ] `node scripts\github\verify-core-files.cjs --clean` 실행 시 48개 필수 파일·보안 스캔·10지점 버전 정합성 100% 정상 통과.
 3. [ ] `git-push.bat` 및 `scripts/git-push.bat`이 `.gitignore`에 의해 Git 추적에서 제외되어 있는지 확인 (`git check-ignore -v git-push.bat`).
 4. [ ] `package.json`, `tauri.conf.json`, `Cargo.toml`, `ipname_core.c`, `PATCH_NOTES.md` 버전 삼중 동기화 완료.
 5. [ ] GitHub Actions 워크플로가 Node.js 24 규격(`actions/checkout@v5`, `setup-node@v5`, `action-gh-release@v3`)으로 설정되어 있는지 확인.

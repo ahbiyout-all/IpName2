@@ -34,87 +34,116 @@ fn encode_powershell_command(script: &str) -> String {
 
 #[tauri::command]
 async fn execute_powershell(script: String, require_admin: bool) -> Result<CommandResponse, String> {
-    #[cfg(windows)]
-    {
-        let encoded_cmd = encode_powershell_command(&script);
-        
-        let mut args = vec![
-            "-NoProfile".to_string(),
-            "-NonInteractive".to_string(),
-            "-ExecutionPolicy".to_string(),
-            "Bypass".to_string(),
-            "-WindowStyle".to_string(),
-            "Hidden".to_string(),
-            "-EncodedCommand".to_string(),
-        ];
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(windows)]
+        {
+            let encoded_cmd = encode_powershell_command(&script);
+            
+            let mut args = vec![
+                "-NoProfile".to_string(),
+                "-NonInteractive".to_string(),
+                "-ExecutionPolicy".to_string(),
+                "Bypass".to_string(),
+                "-WindowStyle".to_string(),
+                "Hidden".to_string(),
+                "-EncodedCommand".to_string(),
+            ];
 
-        if require_admin {
-            let elevate_script = format!(
-                r#"try {{ $p = Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand {}" -Verb RunAs -Wait -PassThru -ErrorAction Stop; exit $p.ExitCode }} catch {{ exit 1 }}"#,
-                encoded_cmd
-            );
-            let elevate_encoded = encode_powershell_command(&elevate_script);
-            args.push(elevate_encoded);
-        } else {
-            args.push(encoded_cmd);
+            if require_admin {
+                let elevate_script = format!(
+                    r#"try {{ $p = Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand {}" -Verb RunAs -Wait -PassThru -ErrorAction Stop; exit $p.ExitCode }} catch {{ exit 1 }}"#,
+                    encoded_cmd
+                );
+                let elevate_encoded = encode_powershell_command(&elevate_script);
+                args.push(elevate_encoded);
+            } else {
+                args.push(encoded_cmd);
+            }
+
+            let output = Command::new("powershell")
+                .args(args)
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+                .map_err(|e| e.to_string())?;
+
+            Ok(CommandResponse {
+                code: output.status.code().unwrap_or(if output.status.success() { 0 } else { 1 }),
+                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            })
         }
 
-        let output = Command::new("powershell")
-            .args(args)
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .map_err(|e| e.to_string())?;
-
-        Ok(CommandResponse {
-            code: output.status.code().unwrap_or(if output.status.success() { 0 } else { 1 }),
-            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-        })
-    }
-
-    #[cfg(not(windows))]
-    {
-        Ok(CommandResponse {
-            code: -1,
-            stdout: "".to_string(),
-            stderr: "PowerShell is only supported on Windows.".to_string(),
-        })
-    }
+        #[cfg(not(windows))]
+        {
+            let _ = (script, require_admin);
+            Ok(CommandResponse {
+                code: -1,
+                stdout: "".to_string(),
+                stderr: "PowerShell is only supported on Windows.".to_string(),
+            })
+        }
+    })
+    .await
+    .map_err(|e| format!("PowerShell task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn get_system_info() -> Result<SystemInfo, String> {
-    windows_native::get_system_info_native()
+    tauri::async_runtime::spawn_blocking(windows_native::get_system_info_native)
+        .await
+        .map_err(|e| format!("System info task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn get_adapters() -> Result<Vec<NetworkAdapter>, String> {
-    windows_native::get_adapters_native()
+    tauri::async_runtime::spawn_blocking(windows_native::get_adapters_native)
+        .await
+        .map_err(|e| format!("Adapters task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn ping_ipv4(target_ip: String, timeout_ms: u32) -> Result<PingResult, String> {
-    windows_native::ping_ipv4_native(&target_ip, timeout_ms)
+    tauri::async_runtime::spawn_blocking(move || {
+        windows_native::ping_ipv4_native(&target_ip, timeout_ms)
+    })
+    .await
+    .map_err(|e| format!("Ping task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn calculate_subnet(ip: String, mask: String) -> Result<SubnetDetails, String> {
-    windows_native::calculate_subnet_native(&ip, &mask)
+    tauri::async_runtime::spawn_blocking(move || {
+        windows_native::calculate_subnet_native(&ip, &mask)
+    })
+    .await
+    .map_err(|e| format!("Subnet task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn check_ip_conflict(target_ip: String, source_ip: Option<String>, own_mac: Option<String>) -> Result<IpConflictResult, String> {
-    windows_native::check_ip_conflict_native(&target_ip, source_ip.as_deref(), own_mac.as_deref())
+    tauri::async_runtime::spawn_blocking(move || {
+        windows_native::check_ip_conflict_native(&target_ip, source_ip.as_deref(), own_mac.as_deref())
+    })
+    .await
+    .map_err(|e| format!("IP conflict task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn check_tcp_port(target_ip: String, port: u16, timeout_ms: u32) -> Result<TcpPortResult, String> {
-    windows_native::check_tcp_port_native(&target_ip, port, timeout_ms)
+    tauri::async_runtime::spawn_blocking(move || {
+        windows_native::check_tcp_port_native(&target_ip, port, timeout_ms)
+    })
+    .await
+    .map_err(|e| format!("TCP port task join error: {}", e))?
 }
 
 #[tauri::command]
 async fn classify_ip(ip: String) -> Result<IpClassificationResult, String> {
-    windows_native::classify_ip_native(&ip)
+    tauri::async_runtime::spawn_blocking(move || {
+        windows_native::classify_ip_native(&ip)
+    })
+    .await
+    .map_err(|e| format!("Classify IP task join error: {}", e))?
 }
 
 #[tauri::command]

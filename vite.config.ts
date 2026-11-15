@@ -15,8 +15,25 @@ export default defineConfig({
     },
   },
   clearScreen: false,
+  build: {
+    target: 'es2022',
+    cssCodeSplit: true,
+    reportCompressedSize: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons';
+          }
+        },
+      },
+    },
+  },
   server: {
-    port: process.env.VITE_PORT ? parseInt(process.env.VITE_PORT, 10) : 3000,
+    port: Number.parseInt(process.env.VITE_PORT || '', 10) || 3000,
     host: '0.0.0.0',
     strictPort: true,
     hmr: false,

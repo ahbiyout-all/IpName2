@@ -176,7 +176,7 @@ echo ======================================================================
 echo  BUILD COMPLETED SUCCESSFULLY!
 echo ======================================================================
 echo The versioned executable output has been generated in:
-echo   - Workspace Root: [e.g. IpName2_v1.12.10.exe]
+echo   - Workspace Root: [e.g. IpName2_v1.13.2.exe]
 echo   - Release Directory: src-tauri\target\release\
 echo ======================================================================
 echo [OK] Opening build output folder...

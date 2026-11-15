@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.12.10**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.13.2**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -16,12 +16,13 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 │   - Segmented Filter [Physical / Virtual / All] Tabs            │
 │   - Multi-Adapter Tabs, Multi-IP (Secondary IPs) Manager        │
 │   - SubnetMaskSelector, ConfirmModal (Destructive Action Prev.) │
+│   - React.lazy Modal Splitting & SWR Cache Instant First-Paint    │
 │   - GitHub Releases Live Updater (UpdateModal, useGitHubUpdate) │
 └────────────────────────────────┬────────────────────────────────┘
                                  │ IPC (Tauri Invoke)
 ┌────────────────────────────────▼────────────────────────────────┐
 │                   Desktop Core (Rust / Tauri v2)                │
-│   - src-tauri/src/lib.rs (IPC Handler & Routing)                │
+│   - src-tauri/src/lib.rs (IPC + spawn_blocking Thread Pool)     │
 │   - Single-Instance Lock, Fixed Window Sizing (650x800)         │
 │   - Shell Plugin (tauri_plugin_shell), Process Plugin           │
 └────────────────────────────────┬────────────────────────────────┘
@@ -40,9 +41,9 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ┌────────────────────────────────▼────────────────────────────────┐
 │             Packaging & Distribution Pipeline                   │
 │   - Inno Setup Professional (installer/setup.iss)               │
-│   - GitHub Actions CI/CD (Node 24 Actions, Node 22 LTS Build)   │
+│   - GitHub Actions CI/CD (Node 24 + npm/Rust Cache + Fast-Fail Gate)│
 │   - Dual Push Triggers (branches: main & tags: v*)              │
-│   - Core Files Validator (scripts/github/verify-core-files.cjs) │
+│   - 6-Stage Auditor (scripts/github/verify-core-files.cjs)        │
 │   - Dynamic Version Git Pusher (git-push.bat)                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -80,9 +81,9 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 
 ### 2.4. 패키징, GitHub 관리 및 표준화 파이프라인 (`/installer`, `/.github`, `/scripts`, `/docs`)
 * `installer/setup.iss`: Inno Setup 프로페셔널 스크립트 (Unpacked Multi-File, 기존 버전 감지 및 덮어쓰기, 무인 설치, Windows 방화벽 기본명/버전명 듀얼 사전 등록).
-* `.github/workflows/release.yml`: Node.js 24 런타임(`checkout@v5`, `setup-node@v5`, `action-gh-release@v3`) 및 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` 기반 릴리스 자동화 (AI Studio Web Sync 및 Git Tag 듀얼 트리거).
-* `scripts/github/core-manifest.json`: 34개 빌드 필수 파일 화이트리스트 및 금지 파일 패턴 정의.
-* `scripts/github/verify-core-files.cjs`: 작업 트리 실시간 감사 및 스크래치 파일 자동 청소 도구.
+* `.github/workflows/release.yml`: Node.js 24 런타임(`checkout@v5`, `setup-node@v5` npm 캐시, `rust-cache@v2`), `verify-core-files.cjs` + `npm run lint` 선행 Fast-Fail 게이트 및 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` 기반 릴리스 자동화 (AI Studio Web Sync 및 Git Tag 듀얼 트리거).
+* `scripts/github/core-manifest.json`: 48개 빌드 필수 파일 화이트리스트 및 금지·중복 파일 패턴 정의.
+* `scripts/github/verify-core-files.cjs`: 작업 트리 실시간 6단계 감사(필수 파일·스크래치 정리·미등록 탐지·시크릿/이메일 스캔·10지점 버전 정합성·로컬 스크립트 격리) 도구.
 * `git-push.bat`: 다단 동적 버전 자동 추출 및 STEP 3 사전 무결성 감사 연동 푸시 파이프라인 (GitHub 원격 업로드 격리).
 * `docs/UPDATE_WORK_INSTRUCTION.md`: 타 IP Name 시리즈 및 신규 파생 데스크톱 앱을 최신 표준으로 일괄 업그레이드하기 위한 AI 전용 작업 지시 프롬프트.
 
@@ -94,7 +95,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ```
 [사용자 클릭] ──> [ConfirmModal 경고] ──> [useSystemConfig.ts] ──> [PowerShell UAC]
                                                                         │
-[초록/빨강 상태 점 갱신] <── [2.5초 대기 & 자동 재조회] <── [Enable/Disable-NetAdapter]
+[초록/빨강 상태 점 갱신] <── [Win32 적응형 폴링 & 재조회] <── [Enable/Disable-NetAdapter]
 ```
 
 ### 3.2. Layer-2 ARP 기반 IP 충돌 감지 흐름
@@ -118,7 +119,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
                                      ▼                                                           ▼
                            [remoteVer > currentVer]                                    [최신 버전 유지 중]
                         UpdateModal 팝업 창 자동 실행                                   최신 상태 안내 배너
-                        - 버전 차이(v1.12.10 vs vX.Y.Z)
+                        - 버전 차이(v1.13.2 vs vX.Y.Z)
                         - 전용 인스톨러 직접 다운로드
                         - 이번 버전 건너뛰기
 ```
@@ -131,8 +132,9 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 [STEP 1: 다단 동적 버전 추출] (package.json ➔ PowerShell ➔ PATCH_NOTES.md) ➔ %APP_VER%
        │
        ▼
-[STEP 3: 핵심 파일 정밀 감사] (scripts/github/verify-core-files.cjs --clean)
-       ├── 34개 필수 빌드 파일 존재 확인
+[STEP 3: 6단계 저장소 정밀 감사] (scripts/github/verify-core-files.cjs --clean)
+       ├── 48개 필수 빌드 파일 존재 및 미등록·중복 에셋 탐지
+       ├── 시크릿·개인 이메일 유출 스캔 및 10지점 버전 삼중 동기화 검증
        └── 스크래치 파일 및 비표준 락파일(bun.lock 등) 자동 제거
        │
        ▼
@@ -202,9 +204,24 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
         ├── 불변 사양 보장 (창 크기 650x800, 포트 3030, 공식 메타데이터)
         ├── 순수 창작 C DLL (Layer-2 ARP SendARP 본인 MAC 오탐 방어)
         ├── 어댑터 Primary IP 정렬 & 물리/가상 NIC 엄격 필터링
-        ├── Tauri v2 클린 컴파일 & GitHub Actions Node 24 런타임 승급
-        └── 34종 필수 빌드 파일 화이트리스트 & 버전 삼중 동기화
+        ├── Tauri v2 클린 컴파일 & GitHub Actions Node 24 + 캐시 + Fast-Fail 승급
+        └── 48종 필수 빌드 파일 화이트리스트·시크릿 감사 & 버전 삼중 동기화
         │
         ▼
 [타 IP Name 애플리케이션 AI 어시스턴트에 원클릭 전달 ➔ 100% 동일 규격 업그레이드 완료]
+```
+
+### 3.9. 고속 부팅(SWR 캐시) 및 2단계 비차단 어댑터 조회 아키텍처 (v1.13.x)
+```
+[앱 시작 (0ms)] ──► [SWR 스냅샷 캐시 복원] ──► 즉시 UI 렌더링 (React.lazy 모달 지연)
+       │
+       ├──► [1단계: 병렬 Win32 Fast Path (<50ms)]
+       │      └── Promise.all(get_system_info, get_adapters) @ Tokio spawn_blocking
+       │            └── 실시간 활성 어댑터·시스템 정보 즉시 반영 & 캐시 갱신
+       │
+       ├──► [2단계: 백그라운드 PowerShell 보강 (비차단)]
+       │      └── Get-NetAdapter (비활성 NIC·NDIS Virtual) ──► 편집 중 어댑터 보호 병합
+       │
+       └──► [3단계: 유휴 후순위 네트워크 작업]
+              └── requestIdleCallback ➔ 리얼 IP 재조회 & GitHub 최신 릴리스 확인
 ```

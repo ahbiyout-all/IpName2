@@ -2,6 +2,81 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.2] - 2026-11-15
+
+### 1. GitHub 공개 저장소 위생 점검, 미사용 패키지·중복 에셋 정리 (`package.json`, `Footer.tsx`, `.env.example`, `fix-icon.cjs`)
+* **미사용 의존성 및 네이티브 애드온 컴파일 부담 제거**:
+  - 소스 전반에서 참조되지 않는 `@google/genai`, `better-sqlite3`, `dotenv`, `express`, `@types/express`, `autoprefixer`, `tsx`, `vite-plugin-pwa` 패키지를 제거하고 `package-lock.json`을 최신화하여 Windows 러너의 불필요한 네이티브 C++ 애드온 빌드 위험 및 `npm ci` 시간을 절감.
+  - `fix-icon.cjs` 전용 이미지 유틸리티 `jimp`를 `devDependencies`로 재분류하고 `Footer.tsx` 오픈소스 라이선스 목록에서 미사용 `Better-SQLite3` 항목을 제거.
+  - `.env.example`에서 미사용 API/URL 플레이스홀더를 정리하고 `VITE_PORT=3030` 표준 환경 변수만 남기도록 정비.
+* **중복·미참조 대용량 바이너리 아이콘 에셋 제거**:
+  - `index.html`, `README.md`, `setup.iss`, `src-tauri`에서 전혀 참조되지 않는 중복 복사본 `public/appIcon.png`(1.4MB) 및 `public/icon1.ico`(84KB)를 삭제하고 `fix-icon.cjs`의 해당 복사 로직을 제거하여 `dist/` 번들 및 실행 파일 용량 축소.
+
+### 2. 6단계 GitHub 업로드 통합 감사 게이트 및 CI/CD 캐싱·Fast-Fail 고도화 (`scripts/github/`, `.github/workflows/release.yml`)
+* **6단계 저장소 감사 파이프라인 구축 (`verify-core-files.cjs`, `core-manifest.json`)**:
+  - 필수 파일 검증 대상을 48종(`AGENTS.md`, `build.ps1`, `Makefile`, `scripts/github/*`, 아이콘·무시 규칙 포함)으로 확장.
+  - 기존 금지 파일 청소(`--clean`) 외에 ① 필수 파일 검증 ② 금지·중복 파일 차단 ③ 루트·에셋 화이트리스트 외 미등록 파일 탐지 ④ 시크릿·토큰·개인정보(이메일)·`.env` 유출 정규식 스캔 ⑤ `package.json`·`package-lock.json`·`tauri.conf.json`·`Cargo.toml`·`useGitHubUpdate.ts`·`ipname_core.c`·`setup.iss`·`index.html`·`PATCH_NOTES.md`·`core-manifest.json` 10개 지점 삼중 버전 정합성 교차 검증 ⑥ 로컬 `git-push.bat` 원격 추적 격리 확인까지 자동 수행하도록 고도화.
+* **GitHub Actions CI/CD 빠른 실패 게이트 및 빌드 캐시 적용 (`.github/workflows/release.yml`)**:
+  - `main` 브랜치 및 `v*` 태그 푸시 듀얼 자동 릴리스 정책을 유지하면서, `actions/setup-node@v5`에 `cache: 'npm'` 적용, Rust 컴파일 전 `verify-core-files.cjs` 및 `npm run lint`(`tsc --noEmit`) 선행 검증 단계 추가, `Swatinem/rust-cache@v2` (`workspaces: src-tauri`) 캐싱을 도입해 반복 빌드 속도 대폭 개선.
+
+### 3. 문서 및 버전 삼중 동기화 (`README.md`, `docs/*`)
+* **문서 최신화**: `README.md`의 사전 요구사항을 Node.js `v22 LTS`로 상향하고 SWR 부팅 및 사전 검증 명령을 추가했으며, `/docs/` 내 전체 기술 문서(`README`, `DEVELOPMENT`, `ARCHITECTURE`, `ROADMAP`, `VERSIONING_POLICY`, `UPDATE_WORK_INSTRUCTION`, `DLL_SPECIFICATION`, `LICENSE_NOTICE`, `BLOGGER_POST`)를 `v1.13.2` 규격으로 일괄 동기화.
+
+---
+
+## [v1.13.1] - 2026-11-14
+
+### 1. 4차 심층 감사: 적응형 폴링·편집 상태 보존·재부팅 UAC 승급 및 모의 스냅샷 동기화 (`src/hooks/useSystemConfig.ts`)
+* **적응형 폴링 조기 종료 결함 수정 (`saveNetworkConfig`, `toggleAdapterEnabled`)**:
+  - `saveNetworkConfig`에서 기본 IP나 DHCP 상태가 유지된 채 게이트웨이·DNS·보조 IP만 변경할 때 첫 폴링(`350ms`)에서 즉시 완료로 오판하던 조건을 제거하고, `ipAddress`, `gateway`, `primaryDns`, `secondaryDns`, `additionalIps` 및 `isEnabled`/`isDhcp` 전체 일치 여부를 검증하도록 개선.
+  - `toggleAdapterEnabled`에서 `GAA_FLAG_INCLUDE_ALL_INTERFACES`로 비활성 인터페이스(`isEnabled === false`)가 응답에 이미 포함되어 재활성화 폴링이 즉시 빠져나가던 문제를 `matched?.isEnabled === true` 확인으로 교정.
+* **저장 실패/UAC 취소 시 사용자 편집 보존 및 격리**:
+  - `saveSystemInfo`와 `saveNetworkConfig`가 실패(`response.code !== 0`)했을 때 `forceOverwrite: true`로 다른 탭/어댑터나 현재 입력 중이던 값을 덮어쓰던 문제를 수정하여, 실패 시 사용자의 편집 내역(`dirtySystemRef`, `dirtyAdapterIdsRef`)을 그대로 보존하고 불필요한 적용 후 폴링을 생략하도록 개선.
+  - 성공 시에도 전역 `forceOverwrite` 대신 저장된 대상(`dirtySystemRef` 또는 해당 `selectedAdapterId`)만 선택적으로 해제해 동시 편집 중인 다른 항목의 유실을 차단.
+* **시스템 재부팅 UAC 승급 및 웹 미리보기 SWR 캐시 정합성 보강**:
+  - `rebootSystem`에서 `executePowerShell('Restart-Computer -Force', !systemInfo.isAdmin)`로 관리자 권한 승급 플래그를 전달하고 비정상 종료 시 오류 토스트를 표시하도록 수정.
+  - 웹 미리보기 모의 저장(`saveSystemInfo`, `saveNetworkConfig`, `toggleAdapterEnabled`)에서도 `dirty*` 플래그 정리 및 `saveStartupSnapshot` 갱신을 동기화하며, 모든 비동기 타이머·`finally` 블록에 `isMountedRef.current` 가드 적용.
+
+### 2. 키보드 탭/저장 중 입력 잠금 및 테마 disabled 스타일 통일 (`AdapterItem.tsx`, `SystemSection.tsx`, `index.css`)
+* **입력 필드 및 보조 IP 컨트롤 완전 잠금**:
+  - `AdapterItem.tsx`의 기본 IP/게이트웨이/주·보조 DNS `<input>`과 `SubnetMaskSelector`에 `disabled={isSaving || adapter.isDhcp || !adapter.isEnabled}`를 명시해 DHCP·비활성 상태에서 `Tab` 키보드 포커스로 편집이 가능하던 틈을 차단하고, 스마트 도우미·충돌 검사·보조 IP 추가/삭제 버튼에도 `isSaving` 잠금 일괄 적용.
+  - `SystemSection.tsx`의 컴퓨터 이름·작업 그룹 입력 필드에 `disabled={isSaving}` 추가 및 `src/index.css`에 `.input-field:disabled` 스타일 규칙 통합.
+
+### 3. Win32·C99 DLL DNS/ARP 엣지 케이스 및 Vite 포트 파싱 안전성 보강 (`windows_native.rs`, `ipname_core.c`, `vite.config.ts`)
+* **Win32 DNS 무효 주소(`0.0.0.0`)·중복 필터링 및 ARP 0-MAC 방어**:
+  - `src-tauri/src/windows_native.rs`의 `get_adapters_native`에서 `0.0.0.0` 또는 주 DNS와 중복되는 주소를 건너뛰도록 개선하고, `check_ip_conflict_native`와 `native/ipname_core/src/ipname_core.c`의 `IpName_CheckIpConflictEx`에서 `00:00:00:00:00:00` 응답을 외부 충돌로 오탐하지 않도록 차단.
+* **안전한 `VITE_PORT` 파싱 (`vite.config.ts`)**:
+  - 비수치 또는 `"0"` 환경 변수 입력 시 `NaN` 포트로 바인딩되는 문제를 방지하기 위해 `Number.parseInt(process.env.VITE_PORT || '', 10) || 3000`으로 보완.
+
+---
+
+## [v1.13.0] - 2026-11-14
+
+### 1. SWR 즉시 캐시 복원 및 2단계 비차단 어댑터 조회 파이프라인 (`src/hooks/useSystemConfig.ts`, `src/App.tsx`)
+* **체감 부팅 0ms Stale-While-Revalidate (SWR) 캐시 도입**:
+  - `safeStorage` 기반 `ipname2_startup_snapshot_v1` 스냅샷 캐시를 도입하여 재실행 시 직전 시스템 정보와 어댑터 목록을 첫 프레임에 즉시 복원하고 전체 화면 로딩 스피너 차단을 제거.
+* **병렬 Win32 Fast Path + 지연 PowerShell 백그라운드 보강**:
+  - 초기 로딩 시 `get_system_info`와 `get_adapters`를 `Promise.all`로 동시 호출하여 `<50ms` 내에 실시간 활성 어댑터를 선표시.
+  - `.NET` 콜드 스타트(1~2.5초)를 유발하던 PowerShell `Get-NetAdapter` 조회를 비차단 백그라운드 2단계로 분리하여 비활성(Disabled) 어댑터·NDIS 가상 속성을 부드럽게 병합하고, 사용자가 1차 화면에서 수정 중인 어댑터(`dirtyAdapterIdsRef`)는 덮어쓰지 않도록 보호.
+  - 어댑터 헤더 영역에 비차단 동기화 상태 배지(`syncingAdapters`) 및 다국어 키(`src/i18n/translations.ts`) 추가.
+* **고정 대기 제거 및 적응형 적용 완료 폴링**:
+  - 네트워크 설정 저장 및 랜카드 전원 토글 후 무조건 `2.5~3.0초` 대기하던 `sleep`을 제거하고, `350ms` 간격 Win32 `get_adapters` 상태 반영 확인 폴링(최대 2.1~2.4초)으로 교체해 적용 체감 속도 단축.
+
+### 2. Rust Tauri 비동기 스레드 격리 및 릴리스 컴파일 최적화 (`src-tauri/src/lib.rs`, `src-tauri/Cargo.toml`)
+* **Tokio 워커 블로킹 해소 (`spawn_blocking`)**:
+  - `execute_powershell`, `get_system_info`, `get_adapters`, `ping_ipv4`, `calculate_subnet`, `check_ip_conflict`, `check_tcp_port`, `classify_ip` 커맨드를 `tauri::async_runtime::spawn_blocking`으로 오프로드하여 동시 IPC 호출이 이벤트 루프를 막지 않고 진정한 병렬로 실행되도록 개선.
+* **Cargo 릴리스 프로파일 최적화**:
+  - `[profile.release]`에 `opt-level = 3`, `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, `strip = true`를 적용하여 네이티브 바이너리 실행 성능 및 콜드 스타트 용량 최적화.
+
+### 3. 프론트엔드 번들 청킹, 모달 지연 로딩 및 유휴 네트워크 스케줄링 (`vite.config.ts`, `App.tsx`, `useRealIp.ts`, `useGitHubUpdate.ts`)
+* **코드 분할 및 모달 지연 로딩**:
+  - `ConfirmModal`, `UpdateModal`을 `React.lazy` + `Suspense`로 분리해 초기 부팅 JS 파싱량 절감.
+  - `vite.config.ts`에 `target: 'es2022'` 및 `vendor-react` / `vendor-icons` `manualChunks` 분리 적용.
+* **백그라운드 네트워크 경합 방지**:
+  - `useRealIp.ts`(5분 이내 유효 캐시 시 2.2초 지연) 및 `useGitHubUpdate.ts` 초기 체크를 `requestIdleCallback` 기반 유휴 시점으로 지연시켜 초기 페인트 및 Win32 IPC와의 리소스 경합 제거.
+
+---
+
 ## [v1.12.10] - 2026-11-14
 
 ### 1. Tailwind CSS v4 테마 토큰 누락 및 UI 대비·호버 결함 수정 (`src/index.css`)

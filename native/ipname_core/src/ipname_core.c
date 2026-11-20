@@ -36,7 +36,7 @@
   #include <unistd.h>
 #endif
 
-#define IPNAME_VERSION "1.13.2"
+#define IPNAME_VERSION "1.13.5"
 
 /* Helper: case-insensitive substring search */
 static int str_contains_ci(const char* haystack, const char* needle) {
@@ -53,6 +53,26 @@ static int str_contains_ci(const char* haystack, const char* needle) {
         if (j == nlen) return 1;
     }
     return 0;
+}
+
+/* Helper: compare normalized 6-hex-digit MAC OUI prefix (ignores separators) */
+static int mac_oui_matches(const char* mac, const char* oui_hex6) {
+    if (!mac || !oui_hex6) return 0;
+    char prefix[7] = {0};
+    int idx = 0;
+    for (size_t i = 0; mac[i] != '\0' && idx < 6; i++) {
+        unsigned char c = (unsigned char)mac[i];
+        if (isxdigit(c)) {
+            prefix[idx++] = (char)toupper(c);
+        }
+    }
+    if (idx < 6) return 0;
+    for (int i = 0; i < 6; i++) {
+        if (prefix[i] != (char)toupper((unsigned char)oui_hex6[i])) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /* Helper: case-insensitive token/prefix search (prevents false-positive substring matches like "tap"/"tun") */
@@ -718,35 +738,49 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
         return IPNAME_OK;
     }
 
-    /* 3. Check IEEE Hypervisor MAC OUI Prefixes */
+    /* 3. Check IEEE Hypervisor MAC OUI Prefixes (strict 6-hex-char prefix comparison) */
     /* Hyper-V: 00:15:5D */
-    if (str_contains_ci(safe_mac, "00:15:5D") || str_contains_ci(safe_mac, "00-15-5D")) {
+    if (mac_oui_matches(safe_mac, "00155D")) {
         out_result->is_virtual = 1;
         snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
         snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Microsoft Hyper-V Virtual MAC OUI (00:15:5D)");
         return IPNAME_OK;
     }
     /* VMware: 00:05:69, 00:0C:29, 00:50:56 */
-    if (str_contains_ci(safe_mac, "00:05:69") || str_contains_ci(safe_mac, "00-05-69") ||
-        str_contains_ci(safe_mac, "00:0C:29") || str_contains_ci(safe_mac, "00-0C-29") ||
-        str_contains_ci(safe_mac, "00:50:56") || str_contains_ci(safe_mac, "00-50-56")) {
+    if (mac_oui_matches(safe_mac, "000569") ||
+        mac_oui_matches(safe_mac, "000C29") ||
+        mac_oui_matches(safe_mac, "005056")) {
         out_result->is_virtual = 1;
         snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
         snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "VMware Virtual MAC OUI (00:05:69/00:0C:29/00:50:56)");
         return IPNAME_OK;
     }
     /* VirtualBox: 08:00:27 */
-    if (str_contains_ci(safe_mac, "08:00:27") || str_contains_ci(safe_mac, "08-00-27")) {
+    if (mac_oui_matches(safe_mac, "080027")) {
         out_result->is_virtual = 1;
         snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
         snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Oracle VirtualBox MAC OUI (08:00:27)");
         return IPNAME_OK;
     }
     /* QEMU / KVM: 52:54:00 */
-    if (str_contains_ci(safe_mac, "52:54:00") || str_contains_ci(safe_mac, "52-54-00")) {
+    if (mac_oui_matches(safe_mac, "525400")) {
         out_result->is_virtual = 1;
         snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
         snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "QEMU / KVM Virtual MAC OUI (52:54:00)");
+        return IPNAME_OK;
+    }
+    /* Xen: 00:16:3E */
+    if (mac_oui_matches(safe_mac, "00163E")) {
+        out_result->is_virtual = 1;
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Xen Hypervisor Virtual MAC OUI (00:16:3E)");
+        return IPNAME_OK;
+    }
+    /* Parallels: 00:1C:42 */
+    if (mac_oui_matches(safe_mac, "001C42")) {
+        out_result->is_virtual = 1;
+        snprintf(out_result->category, sizeof(out_result->category), "%s", "Virtual Ethernet");
+        snprintf(out_result->detection_reason, sizeof(out_result->detection_reason), "%s", "Parallels Desktop Virtual MAC OUI (00:1C:42)");
         return IPNAME_OK;
     }
 

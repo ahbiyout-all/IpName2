@@ -4,7 +4,7 @@ import { NetworkAdapter, NativeIpConflictResult } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CopyButton } from './CopyButton';
 import { SubnetMaskSelector } from './SubnetMaskSelector';
-import { isVirtualAdapter } from '../hooks/useSystemConfig';
+import { isVirtualAdapter, isValidHostIPv4 } from '../hooks/useSystemConfig';
 import { isTauriEnv } from '../lib/powershell';
 import { safeStorage } from '../lib/storage';
 
@@ -38,6 +38,9 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
   const [conflictResult, setConflictResult] = useState<NativeIpConflictResult | null>(null);
   const isMountedRef = useRef(true);
   const mockTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const primaryConflictReqRef = useRef(0);
+  const secGlobalGenRef = useRef(0);
+  const secConflictGenRef = useRef<Record<number, number>>({});
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -49,11 +52,21 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
   }, []);
 
   const handleCheckConflict = async () => {
-    if (!adapter.ipAddress || isCheckingConflict) return;
+    const targetIp = (adapter.ipAddress || '').trim();
+    if (!targetIp || isCheckingConflict) return;
+    if (!isValidHostIPv4(targetIp)) {
+      setConflictResult({
+        is_conflict: true,
+        conflicting_mac: '',
+        message: `⚠️ [형식 오류] ${t('invalidIp')}`
+      });
+      return;
+    }
+
+    const reqId = ++primaryConflictReqRef.current;
     setIsCheckingConflict(true);
     setConflictResult(null);
 
-    const targetIp = adapter.ipAddress.trim();
     const ownMac = adapter.macAddress || '';
 
     if (isTauriEnv()) {
@@ -64,7 +77,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           sourceIp: null,
           ownMac: ownMac || null
         });
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || primaryConflictReqRef.current !== reqId) return;
 
         // Filter out own MAC address if ARP resolved to the local interface
         if (res.is_conflict && ownMac && isSameMac(res.conflicting_mac, ownMac)) {
@@ -77,14 +90,15 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           setConflictResult(res);
         }
       } catch (err: any) {
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || primaryConflictReqRef.current !== reqId) return;
+        const errMsg = typeof err === 'string' ? err : (err?.message || 'IP 충돌 검사 중 오류가 발생했습니다.');
         setConflictResult({
-          is_conflict: false,
+          is_conflict: true,
           conflicting_mac: '',
-          message: err?.message || '검사 완료'
+          message: `⚠️ ${errMsg}`
         });
       } finally {
-        if (isMountedRef.current) {
+        if (isMountedRef.current && primaryConflictReqRef.current === reqId) {
           setIsCheckingConflict(false);
         }
       }
@@ -92,7 +106,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
       // Mock for web preview
       const timer = setTimeout(() => {
         mockTimersRef.current.delete(timer);
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || primaryConflictReqRef.current !== reqId) return;
         const isConflict = targetIp.endsWith('.99');
         if (ownMac && (isSameMac(ownMac, 'AA:BB:CC:11:22:33') || isSameMac(ownMac, '18:C0:4D:7F:68:08'))) {
           setConflictResult({
@@ -120,6 +134,9 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
 
   // Reset per-adapter diagnostic states whenever selected adapter changes
   useEffect(() => {
+    primaryConflictReqRef.current += 1;
+    secGlobalGenRef.current += 1;
+    secConflictGenRef.current = {};
     setConflictResult(null);
     setIsCheckingConflict(false);
     setSecConflictStates({});
@@ -128,6 +145,23 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
   const handleCheckSecondaryConflict = async (index: number, ip: string) => {
     const trimmedIp = ip.trim();
     if (!trimmedIp || secConflictStates[index]?.checking) return;
+    if (!isValidHostIPv4(trimmedIp)) {
+      setSecConflictStates(prev => ({
+        ...prev,
+        [index]: {
+          checking: false,
+          result: {
+            is_conflict: true,
+            conflicting_mac: '',
+            message: `⚠️ [형식 오류] ${t('invalidIp')}`
+          }
+        }
+      }));
+      return;
+    }
+    const globalGen = secGlobalGenRef.current;
+    const reqGen = (secConflictGenRef.current[index] || 0) + 1;
+    secConflictGenRef.current[index] = reqGen;
     setSecConflictStates(prev => ({ ...prev, [index]: { checking: true, result: null } }));
 
     const ownMac = adapter.macAddress || '';
@@ -175,7 +209,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           sourceIp: null,
           ownMac: ownMac || null
         });
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || secGlobalGenRef.current !== globalGen || secConflictGenRef.current[index] !== reqGen) return;
 
         // Filter out own MAC address if ARP resolved to the local interface
         if (res.is_conflict && ownMac && isSameMac(res.conflicting_mac, ownMac)) {
@@ -194,15 +228,16 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           setSecConflictStates(prev => ({ ...prev, [index]: { checking: false, result: res } }));
         }
       } catch (err: any) {
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || secGlobalGenRef.current !== globalGen || secConflictGenRef.current[index] !== reqGen) return;
+        const errMsg = typeof err === 'string' ? err : (err?.message || 'IP 충돌 검사 중 오류가 발생했습니다.');
         setSecConflictStates(prev => ({
           ...prev,
           [index]: {
             checking: false,
             result: {
-              is_conflict: false,
+              is_conflict: true,
               conflicting_mac: '',
-              message: err?.message || '검사 완료'
+              message: `⚠️ ${errMsg}`
             }
           }
         }));
@@ -211,7 +246,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
       // Mock for web preview
       const timer = setTimeout(() => {
         mockTimersRef.current.delete(timer);
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || secGlobalGenRef.current !== globalGen || secConflictGenRef.current[index] !== reqGen) return;
         const isConflict = trimmedIp.endsWith('.99');
         if (ownMac && (isSameMac(ownMac, 'AA:BB:CC:11:22:33') || isSameMac(ownMac, '18:C0:4D:7F:68:08'))) {
           setSecConflictStates(prev => ({
@@ -257,17 +292,22 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
     if (current[index]) {
       current[index] = { ...current[index], [field]: value };
       onUpdate(adapter.id, 'additionalIps', current);
-      if (field === 'ipAddress' && secConflictStates[index]) {
-        setSecConflictStates(prev => {
-          const next = { ...prev };
-          delete next[index];
-          return next;
-        });
+      if (field === 'ipAddress') {
+        secConflictGenRef.current[index] = (secConflictGenRef.current[index] || 0) + 1;
+        if (secConflictStates[index]) {
+          setSecConflictStates(prev => {
+            const next = { ...prev };
+            delete next[index];
+            return next;
+          });
+        }
       }
     }
   };
 
   const handleRemoveSecondaryIp = (index: number) => {
+    secGlobalGenRef.current += 1;
+    secConflictGenRef.current = {};
     const current = (adapter.additionalIps || []).filter((_, i) => i !== index);
     onUpdate(adapter.id, 'additionalIps', current);
     setSecConflictStates(prev => {
@@ -275,7 +315,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
       for (const keyStr of Object.keys(prev)) {
         const keyNum = Number(keyStr);
         const state = prev[keyNum];
-        if (!state) continue;
+        if (!state || state.checking) continue;
         if (keyNum < index) {
           reindexed[keyNum] = state;
         } else if (keyNum > index) {
@@ -294,6 +334,8 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
 
   // C-Class automatic gateway synchronization logic
   const handleIpChange = (newIp: string) => {
+    primaryConflictReqRef.current += 1;
+    if (isCheckingConflict) setIsCheckingConflict(false);
     if (conflictResult) setConflictResult(null);
     if (!smartHelperEnabled) {
       onUpdate(adapter.id, 'ipAddress', newIp);
@@ -416,6 +458,10 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             <button 
               type="button"
               onClick={() => {
+                primaryConflictReqRef.current += 1;
+                secGlobalGenRef.current += 1;
+                secConflictGenRef.current = {};
+                setIsCheckingConflict(false);
                 setConflictResult(null);
                 setSecConflictStates({});
                 onUpdate(adapter.id, 'isDhcp', true);
@@ -463,7 +509,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             type="button"
             onClick={() => onRequestToggleEnabled ? onRequestToggleEnabled(adapter.id, true, adapter.name) : onUpdate(adapter.id, 'isEnabled', true)}
             disabled={isSaving}
-            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[10px] rounded shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[10px] rounded shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Power size={11} />
             <span>{t('enableLanCard')}</span>

@@ -8,7 +8,7 @@
 ; ======================================================================
 
 #define MyAppName "IpName2"
-#define MyAppVersion "1.13.2"
+#define MyAppVersion "1.13.5"
 #define MyAppPublisher "AhBiYout"
 #define MyAppURL "https://github.com/AhBiYout-all/IpName2"
 #define MyAppBlogURL "https://ahbiyoutvibe.blogspot.com/"

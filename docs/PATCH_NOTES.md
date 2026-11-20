@@ -2,6 +2,59 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.5] - 2026-11-20
+
+### 1. 6차 심층 감사: 푸터 Tauri 외부 링크 보호·ARP 오류 오표기 차단·동시 저장 잠금·업데이트 경합 해결
+* **Tauri WebView2 외부 링크 안전 실행 (`Footer.tsx`)**:
+  - 하단 푸터 및 정보(`About / Licenses`) 모달 내 모든 외부 링크(`GitHub`, `ahbiyoutvibe.blogspot.com`, `(주)청운정보시스템 ( cisnet.co.kr )`, 오픈소스 라이선스 URL)에 `isTauriEnv()` 가드가 적용된 `handleExternalLinkClick`(`@tauri-apps/plugin-shell` `open`)을 연결해 데스크톱 앱 창 내부로 외부 페이지가 열리는 현상을 차단.
+* **ARP IP 충돌 검사 입력 검증 및 Tauri 문자열 예외 오표기 수정 (`AdapterItem.tsx`)**:
+  - `check_ip_conflict` 호출 전 `isValidHostIPv4` 선행 검증을 수행하고, Tauri 커맨드가 문자열 예외로 reject될 때 `typeof err === 'string'`을 추출하지 못해 녹색 성공 상태(`is_conflict: false`, `"검사 완료"`)로 오표기되던 결함을 빨간색 경고(`is_conflict: true`)로 교정.
+* **단일 실행 잠금(`isSavingRef`) 및 적응형 폴링 서브넷 마스크 검증 (`useSystemConfig.ts`)**:
+  - `saveSystemInfo`, `saveNetworkConfig`, `toggleAdapterEnabled`에 동기 Ref 잠금(`isSavingRef`)을 적용해 빠른 연속 클릭으로 중복 PowerShell/UAC 프롬프트가 호출되는 경합 방지.
+  - `saveNetworkConfig` 적응형 폴링 완료 조건에 `matched.subnetMask === expectedMask` 검증을 추가해 서브넷 마스크만 변경한 경우에도 Win32 반영 완료 후 새로고침하도록 개선.
+* **업데이트 확인 경합 차단 (`useGitHubUpdate.ts`) & Win32 레지스트리 방어 (`windows_native.rs`, `release.yml`)**:
+  - 백그라운드 자동 확인과 수동 업데이트 확인이 겹칠 때 `AbortController` 취소 및 세대 카운터(`checkGenRef`)로 이전 응답이 최신 UI 상태를 덮어쓰지 않도록 보호.
+  - `windows_native.rs`에서 어댑터 GUID(`id`)가 비어 있을 때 `Tcpip\\Parameters\\Interfaces` 레지스트리 조회를 건너뛰도록 방어하고, `.github/workflows/release.yml` 릴리스 본문 소속 표기를 `(주)청운정보시스템 ( https://cisnet.co.kr )`으로 통일.
+
+---
+
+## [v1.13.4] - 2026-11-20
+
+### 1. 하단 푸터 및 정보(About) 모달 소속 표기 변경 (`Footer.tsx`)
+* **소속 표기 통일 (`(주)청운정보시스템 ( cisnet.co.kr )`)**:
+  - 메인 화면 하단 푸터 링크와 정보(`About / Licenses`) 모달 내 소속 항목의 표시 텍스트 및 툴팁을 `www.cisnet.co.kr`에서 `(주)청운정보시스템 ( cisnet.co.kr )`(`https://cisnet.co.kr`)으로 변경.
+  - 650px 고정 데스크톱 창 너비에서 문구가 중간에 끊기지 않도록 `whitespace-nowrap` 및 아이콘 축소 방지(`shrink-0`) 적용.
+  - `README.md` 및 `docs/` 내 소속 표기와 버전 삼중 동기화(`v1.13.4`) 반영.
+
+---
+
+## [v1.13.3] - 2026-11-20
+
+### 1. 5차 심층 감사: UI 플레이스홀더 격리·비동기 ARP 경합 차단·외부 링크 안전화 (`App.tsx`, `AdapterItem.tsx`, `UpdateModal.tsx`)
+* **초기 `loading`·오류(`error`) 플레이스홀더가 어댑터 카운터 및 제어 UI에 노출되는 결함 수정 (`App.tsx`)**:
+  - `loading`/`error` 더미 엔트리와 유령 어댑터를 선제 배제한 `validAdapters` 파생 목록을 도입하여 `0/1`·`전체 (1)` 오표기를 제거하고, 치명적 로드 실패 시 `<QuickDnsSettings>`·CMD 열기·DNS Ping 버튼이 비정상적으로 렌더링되지 않도록 차단.
+* **비동기 Layer-2 ARP IP 충돌 검사 경합(Race Condition) 및 스타일 보강 (`AdapterItem.tsx`)**:
+  - `handleCheckConflict` 및 `handleCheckSecondaryConflict`에 요청 세대 추적 Ref(`primaryConflictReqRef`, `secGlobalGenRef`, `secConflictGenRef`)를 도입해 검사 도중 IP 편집·DHCP 자동 모드 전환·보조 IP 삭제(인덱스 시프트) 발생 시 지연 도착한 과거 응답이 UI 상태를 덮어쓰지 않도록 교정.
+  - 비활성화 안내 배너 내 `[랜카드 사용]` 버튼에 `disabled:opacity-50 disabled:cursor-not-allowed` 비활성 스타일 추가.
+* **외부 URL 처리 안전성 및 웹 미리보기 호환성 보강 (`UpdateModal.tsx`)**:
+  - `window.open` 폴백을 제거하고 `isTauriEnv()` 가드가 적용된 시맨틱 `<a target="_blank" rel="noopener noreferrer">` 링크로 통합해, Tauri 데스크톱에서는 `@tauri-apps/plugin-shell`로 안전 실행하고 웹 미리보기에서도 콘솔 오류 없이 동작하도록 개선.
+
+### 2. 비활성 어댑터 GUID 연속성 보장·Win32 `0.0.0.0`/DHCP 정렬 교정 (`useSystemConfig.ts`, `windows_native.rs`)
+* **비활성화 ➔ 활성화 전환 시 어댑터 ID 불일치 해소 (`useSystemConfig.ts`)**:
+  - 2단계 `Get-NetAdapter` 쿼리에 `InterfaceGuid` 속성을 포함하고 비활성 어댑터 `id` 생성 시 `InterfaceGuid`를 최우선 채택해, Win32 `AdapterName` GUID와 동일하게 유지되어 랜카드 활성화 직후 선택된 탭(`selectedAdapterId`)이 다른 탭으로 튀는 현상 방지.
+* **Win32 네이티브 `0.0.0.0` 방어 및 DHCP 레지스트리 우선순위 교정 (`windows_native.rs`)**:
+  - `get_adapters_native`의 IPv4 유니캐스트 및 기본 게이트웨이 수집 루프에서 일시적 `0.0.0.0` 주소를 건너뛰도록 방어.
+  - 다중 IP 대표 주소 정렬(Priority A) 전에 `is_dhcp` 플래그를 먼저 판별해 DHCP 어댑터에서는 과거 정적 `IPAddress` 레지스트리 대신 `DhcpIPAddress`를 조회하고, 게이트웨이 서브넷 일치(Priority B) 및 비-APIPA(`169.254.x.x` 배제, Priority C) 순으로 안전하게 폴백.
+
+### 3. C99 DLL 하이퍼바이저 OUI 정밀 매칭 및 빌드·문서 정합성 동기화 (`ipname_core.c`, `build.ps1`, `docs/ROADMAP.md`)
+* **Strict 6-Hex OUI 접두사 대조 및 Xen·Parallels OUI 보완 (`ipname_core.c`)**:
+  - `IpName_DistinguishAdapter`의 부분 문자열 OUI 검색(`str_contains_ci`)이 NIC 하위 바이트와 우연히 일치할 위험을 차단하기 위해 정규화된 앞 6자리 16진수 접두사 비교(`mac_oui_matches`)로 교체하고, 누락되어 있던 Xen(`00:16:3E`) 및 Parallels(`00:1C:42`) OUI를 추가해 Rust·TypeScript 분류기와 100% 일치시킴.
+* **PowerShell 빌드 위생 게이트 통합 및 캐시 보존 (`build.ps1`) & 로드맵 중복 정리 (`docs/ROADMAP.md`)**:
+  - `build.ps1` 1단계에 `verify-core-files.cjs --clean` 사전 감사 단계를 통합하고, `-Clean` 옵션이 Rust 의존성 빌드 캐시(`src-tauri/target`) 전체를 지우지 않고 번들 산출물(`src-tauri/target/release/bundle`)만 정리하도록 `build.bat`과 규격 통일.
+  - `docs/ROADMAP.md` 말미에 중복 기재된 `[ROADMAP-018]` 항목을 정리하고 `v1.13.3`(`[ROADMAP-019]`) 감사 기록 및 전 문서 버전 삼중 동기화 완료.
+
+---
+
 ## [v1.13.2] - 2026-11-15
 
 ### 1. GitHub 공개 저장소 위생 점검, 미사용 패키지·중복 에셋 정리 (`package.json`, `Footer.tsx`, `.env.example`, `fix-icon.cjs`)

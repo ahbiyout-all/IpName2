@@ -12,7 +12,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg)](https://www.typescriptlang.org/)
 [![C99 Native DLL](https://img.shields.io/badge/C--ABI-ipname__core.dll-green.svg)](docs/DLL_SPECIFICATION.md)
 
-**제작자**: AhBiYout ([GitHub](https://github.com/AhBiYout-all)) | **공식 블로그**: [AhBiYout Vibe](https://ahbiyoutvibe.blogspot.com/) | **소속**: [씨아이에스넷(CISNET)](https://cisnet.co.kr)
+**제작자**: AhBiYout ([GitHub](https://github.com/AhBiYout-all)) | **공식 블로그**: [AhBiYout Vibe](https://ahbiyoutvibe.blogspot.com/) | **소속**: [(주)청운정보시스템 ( cisnet.co.kr )](https://cisnet.co.kr)
 
 </div>
 

@@ -115,14 +115,19 @@ const AppContent: React.FC = () => {
     repoUrl
   } = useGitHubUpdate();
 
-  // Categorize adapters
-  const physicalAdapters = useMemo(() => {
-    return adapters.filter(a => a.type !== 'Virtual' && !a.isVirtual && !isVirtualAdapter(a.name, a.type, a.description, a.isVirtual, a.macAddress) && !isGhostOrInvalidAdapter(a));
+  // Valid non-placeholder, non-ghost adapters
+  const validAdapters = useMemo(() => {
+    return adapters.filter(a => a.id !== 'loading' && a.id !== 'error' && !isGhostOrInvalidAdapter(a));
   }, [adapters]);
 
+  // Categorize adapters
+  const physicalAdapters = useMemo(() => {
+    return validAdapters.filter(a => a.type !== 'Virtual' && !a.isVirtual && !isVirtualAdapter(a.name, a.type, a.description, a.isVirtual, a.macAddress));
+  }, [validAdapters]);
+
   const virtualAdapters = useMemo(() => {
-    return adapters.filter(a => (a.type === 'Virtual' || a.isVirtual === true || isVirtualAdapter(a.name, a.type, a.description, a.isVirtual, a.macAddress)) && !isGhostOrInvalidAdapter(a));
-  }, [adapters]);
+    return validAdapters.filter(a => a.type === 'Virtual' || a.isVirtual === true || isVirtualAdapter(a.name, a.type, a.description, a.isVirtual, a.macAddress));
+  }, [validAdapters]);
 
   // Determine displayed adapters based strictly on the user-selected filter (NO fallback to mixed adapters)
   const displayAdapters = useMemo(() => {
@@ -132,8 +137,8 @@ const AppContent: React.FC = () => {
     if (adapterFilter === 'virtual') {
       return virtualAdapters;
     }
-    return adapters.filter(a => !isGhostOrInvalidAdapter(a));
-  }, [adapters, adapterFilter, physicalAdapters, virtualAdapters]);
+    return validAdapters;
+  }, [validAdapters, adapterFilter, physicalAdapters, virtualAdapters]);
 
   // Derive selectedAdapter strictly from displayAdapters so selecting 'physical' NEVER shows a virtual card!
   const selectedAdapter = useMemo(() => {
@@ -286,9 +291,9 @@ const AppContent: React.FC = () => {
                 <Network size={14} className="text-primary" />
                 {t('networkAdapters')}
               </h2>
-              {adapters.length > 0 && (
+              {validAdapters.length > 0 && (
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)]">
-                  {displayAdapters.length}/{adapters.length}
+                  {displayAdapters.length}/{validAdapters.length}
                 </span>
               )}
               {isBackgroundSyncing && (
@@ -303,7 +308,7 @@ const AppContent: React.FC = () => {
             </div>
 
             {/* Filter Segmented Controls */}
-            {adapters.length > 0 && (virtualAdapters.length > 0 || physicalAdapters.length > 0) && (
+            {validAdapters.length > 0 && (virtualAdapters.length > 0 || physicalAdapters.length > 0) && (
               <div className="flex items-center gap-1 bg-[var(--card)] p-0.5 rounded-lg border border-[var(--border)] text-[10px]">
                 <button
                   type="button"
@@ -341,7 +346,7 @@ const AppContent: React.FC = () => {
                   }`}
                   title={t('filterAll')}
                 >
-                  {t('filterAll')} ({adapters.length})
+                  {t('filterAll')} ({validAdapters.length})
                 </button>
               </div>
             )}
@@ -417,7 +422,7 @@ const AppContent: React.FC = () => {
           )}
         </section>
 
-        {adapters.length > 0 && (
+        {validAdapters.length > 0 && (
           <>
             <QuickDnsSettings 
               selectedAdapterId={selectedAdapter?.id || ''} 

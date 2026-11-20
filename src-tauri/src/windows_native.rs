@@ -557,6 +557,11 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                     let ip_bytes = (*ipv4).sin_addr.S_un.S_un_b;
                     let curr_ip = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
                     
+                    if curr_ip == "0.0.0.0" {
+                        unicast = uaddr.Next;
+                        continue;
+                    }
+
                     // Convert OnLinkPrefixLength to Subnet Mask safely
                     let prefix_len = uaddr.OnLinkPrefixLength;
                     let mask_val: u32 = if prefix_len == 0 {
@@ -597,8 +602,11 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 if sa.sa_family == AF_INET {
                     let ipv4: *const SOCKADDR_IN = gw_addr.Address.lpSockaddr as *const _;
                     let ip_bytes = (*ipv4).sin_addr.S_un.S_un_b;
-                    gateway = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
-                    break;
+                    let gw_str = format!("{}.{}.{}.{}", ip_bytes.s_b1, ip_bytes.s_b2, ip_bytes.s_b3, ip_bytes.s_b4);
+                    if gw_str != "0.0.0.0" {
+                        gateway = gw_str;
+                        break;
+                    }
                 }
                 gw = gw_addr.Next;
             }
@@ -636,8 +644,11 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                 curr = addr.Next;
                 continue;
             }
+
+            // 9. DHCP status (Dhcpv4Enabled is bit 2 of addr.Anonymous2.Flags)
+            let is_dhcp = (addr.Anonymous2.Flags & 0x04) != 0;
             
-            // 8. Multi-IP Sequence Alignment: Ensure Main IP and Secondary IPs are in correct order
+            // 10. Multi-IP Sequence Alignment: Ensure Main IP and Secondary IPs are in correct order
             let mut all_ips: Vec<(String, String)> = Vec::new();
             if !ip_address.is_empty() {
                 all_ips.push((ip_address.clone(), subnet_mask.clone()));
@@ -651,15 +662,18 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             if all_ips.len() > 1 {
                 let mut reordered = false;
 
-                // Priority A: Check Windows Tcpip Registry for official IPAddress order
-                use windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE;
-                let subkey = format!("SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{}", id);
-                if let Some(reg_list) = read_registry_strings(HKEY_LOCAL_MACHINE, &subkey, "IPAddress") {
-                    if let Some(first_reg_ip) = reg_list.first() {
-                        if let Some(pos) = all_ips.iter().position(|(ip, _)| ip == first_reg_ip) {
-                            if pos != 0 {
-                                let item = all_ips.remove(pos);
-                                all_ips.insert(0, item);
+                // Priority A: Check Windows Tcpip Registry for active DHCP lease or static IPAddress order
+                if !id.is_empty() {
+                    use windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE;
+                    let subkey = format!("SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{}", id);
+                    let reg_value_name = if is_dhcp { "DhcpIPAddress" } else { "IPAddress" };
+                    if let Some(reg_list) = read_registry_strings(HKEY_LOCAL_MACHINE, &subkey, reg_value_name) {
+                        if let Some(first_reg_ip) = reg_list.first() {
+                            if let Some(pos) = all_ips.iter().position(|(ip, _)| ip == first_reg_ip) {
+                                if pos != 0 {
+                                    let item = all_ips.remove(pos);
+                                    all_ips.insert(0, item);
+                                }
                                 reordered = true;
                             }
                         }
@@ -687,7 +701,18 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                         if let Some(pos) = all_ips.iter().position(|(ip, mask)| matches_gw(ip, mask)) {
                             let item = all_ips.remove(pos);
                             all_ips.insert(0, item);
+                            reordered = true;
                         }
+                    } else {
+                        reordered = true;
+                    }
+                }
+
+                // Priority C: Prefer non-APIPA address if leading address is 169.254.x.x
+                if !reordered && all_ips[0].0.starts_with("169.254.") {
+                    if let Some(pos) = all_ips.iter().position(|(ip, _)| !ip.starts_with("169.254.")) {
+                        let item = all_ips.remove(pos);
+                        all_ips.insert(0, item);
                     }
                 }
 
@@ -704,9 +729,6 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
                         .collect();
                 }
             }
-            
-            // 9. DHCP status (Dhcpv4Enabled is bit 2 of addr.Anonymous2.Flags)
-            let is_dhcp = (addr.Anonymous2.Flags & 0x04) != 0;
             
             adapters.push(NetworkAdapter {
                 id,

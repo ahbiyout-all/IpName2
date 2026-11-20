@@ -191,13 +191,35 @@ This document tracks high-priority features, reliability fixes, and architecture
   3. Enable `cache: 'npm'`, `Swatinem/rust-cache@v2`, `verify-core-files.cjs`, and `npm run lint` fast-fail gates in `.github/workflows/release.yml`.
 - **Validation**: Triple Lockstep version `1.13.2` synchronized; 6-stage `verify-core-files.cjs --clean`, Vite production build, and TypeScript lint verified.
 
-#### [ROADMAP-018] GitHub Repository Hygiene, 6-Stage Secret/Lockstep Gate & CI Caching (v1.13.2)
+#### [ROADMAP-019] Round 5 Deep Audit: Placeholder Filtering, ARP Race Guards, Win32 DHCP Alignment & Strict OUI Prefix (v1.13.3)
 - **Priority**: P1
 - **Status**: VERIFIED
-- **Target Files**: `package.json`, `package-lock.json`, `fix-icon.cjs`, `.env.example`, `src/components/Footer.tsx`, `scripts/github/{core-manifest.json,verify-core-files.cjs}`, `.github/workflows/release.yml`, `README.md`, `docs/*`
-- **Description**: Clean unused dependencies/native addons and duplicate unreferenced binary icon assets before GitHub upload, upgrade `verify-core-files.cjs` to a 6-stage hygiene/secret/version-lockstep gate covering 48 essential files, add npm/Rust caching and fast-fail validation steps to CI/CD while preserving `main` + `v*` dual auto-release triggers, and align all repository documentation.
+- **Target Files**: `src/App.tsx`, `src/components/{AdapterItem,UpdateModal}.tsx`, `src/hooks/useSystemConfig.ts`, `src-tauri/src/windows_native.rs`, `native/ipname_core/src/ipname_core.c`, `build.ps1`, `docs/*`
+- **Description**: Resolve Round 5 self-reflection findings across frontend placeholder isolation, async ARP conflict race conditions, safe external link handling, disabled adapter GUID continuity, Win32 `0.0.0.0` & DHCP registry priority alignment, C99 DLL strict 6-hex OUI prefix matching, PowerShell build hygiene parity, and duplicate ROADMAP cleanup.
 - **Acceptance Criteria**:
-  1. Remove unused packages (`@google/genai`, `better-sqlite3`, `dotenv`, `express`, `@types/express`, `autoprefixer`, `tsx`, `vite-plugin-pwa`), move `jimp` to `devDependencies`, clean `Footer.tsx` & `.env.example`, delete duplicate `public/appIcon.png` & `public/icon1.ico`, and regenerate `package-lock.json`.
-  2. Expand `core-manifest.json` to 48 required core files and upgrade `verify-core-files.cjs` with whitelist extra-file detection, secret/PII leak scanning, and 10-target Triple Lockstep version validation.
-  3. Enable `cache: 'npm'`, `Swatinem/rust-cache@v2`, `verify-core-files.cjs`, and `npm run lint` fast-fail gates in `.github/workflows/release.yml`.
-- **Validation**: Triple Lockstep version `1.13.2` synchronized; 6-stage `verify-core-files.cjs --clean`, Vite production build, and TypeScript lint verified.
+  1. Derive `validAdapters` in `App.tsx` so `loading`/`error`/ghost stubs never inflate counts or expose bottom controls; add request-generation tracking in `AdapterItem.tsx` conflict probes and replace `window.open` in `UpdateModal.tsx` with guarded `<a target="_blank">`.
+  2. Select `InterfaceGuid` in `useSystemConfig.ts` Phase 2 `Get-NetAdapter` enrichment; skip `0.0.0.0` unicast/gateway entries and prioritize `DhcpIPAddress` when `is_dhcp` is true in `windows_native.rs`.
+  3. Replace OUI substring matching in `ipname_core.c` with strict 6-hex prefix comparison including Xen (`00:16:3E`) and Parallels (`00:1C:42`), align `build.ps1` with `build.bat`, and clean duplicated `ROADMAP-018`.
+- **Validation**: Triple Lockstep version `1.13.3` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-020] Footer & About Modal Affiliation Branding Update (v1.13.4)
+- **Priority**: P2
+- **Status**: VERIFIED
+- **Target Files**: `src/components/Footer.tsx`, `README.md`, `docs/*`
+- **Description**: Update the bottom footer and About modal affiliation link/tooltip to `(주)청운정보시스템 ( cisnet.co.kr )` (`https://cisnet.co.kr`) with `whitespace-nowrap` layout protection for the 650px fixed desktop viewport.
+- **Acceptance Criteria**:
+  1. Display `(주)청운정보시스템 ( cisnet.co.kr )` cleanly in both the footer bar and the About modal without mid-phrase line breaking.
+  2. Synchronize Triple Lockstep version `1.13.4` across all 10 targets and documentation.
+- **Validation**: Triple Lockstep version `1.13.4` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-021] Round 6 Deep Audit: Tauri External Link Guard, ARP Rejection Safety, Save Re-entrancy Lock & Mask Polling (v1.13.5)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `src/components/{Footer,AdapterItem}.tsx`, `src/hooks/{useSystemConfig,useGitHubUpdate}.ts`, `src-tauri/src/windows_native.rs`, `.github/workflows/release.yml`, `docs/*`
+- **Description**: Resolve Round 6 self-reflection findings across desktop WebView2 external navigation, Tauri string error handling in ARP probes, synchronous single-flight save locking, subnet mask adaptive polling, overlapping update check cancellation, and empty GUID registry safety.
+- **Acceptance Criteria**:
+  1. Route all external links in `Footer.tsx` through `isTauriEnv()` + `@tauri-apps/plugin-shell` `open()`.
+  2. Validate host IPv4 upfront in `AdapterItem.tsx` conflict probes and treat Tauri string rejections as `is_conflict: true` warnings rather than green success.
+  3. Enforce `isSavingRef` single-flight guard and `subnetMask` adaptive polling parity in `useSystemConfig.ts`; cancel overlapping fetches via `AbortController` + generation counter in `useGitHubUpdate.ts`.
+  4. Guard empty adapter GUIDs in `windows_native.rs` registry reads and align `release.yml` affiliation text.
+- **Validation**: Triple Lockstep version `1.13.5` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.

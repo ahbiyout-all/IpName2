@@ -1,6 +1,6 @@
 # IpNameCore 순수 창작 DLL 명세서 (DLL Specification)
 
-본 문서는 **AhBiYout IpName2 v1.13.2**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
+본 문서는 **AhBiYout IpName2 v1.13.5**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
 
 ---
 
@@ -10,12 +10,12 @@
 | :--- | :--- |
 | **모듈 명칭** | `ipname_core.dll` (IpNameCore Native Engine) |
 | **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지 및 자체 MAC 오탐 방지(Whitelist), TCP 포트 진단 및 서브넷 연산 수행 |
-| **버전** | v1.13.2 (IpName2 v1.13.2 정식 탑재) |
+| **버전** | v1.13.5 (IpName2 v1.13.5 정식 탑재) |
 | **아키텍처** | Windows x64 / x86 호환 C-ABI (`__stdcall` / `__cdecl`) |
 | **표준 규격** | ISO C99 / Win32 Native API |
 | **의존성** | 독립 실행형 (Zero External Dependencies, Windows OS 표준 `ws2_32.dll`, `iphlpapi.dll`만 동적 링킹) |
 | **제작자** | AhBiYout (GitHub: [https://github.com/AhBiYout-all](https://github.com/AhBiYout-all)) / [https://ahbiyoutvibe.blogspot.com/](https://ahbiyoutvibe.blogspot.com/) |
-| **소속** | [https://cisnet.co.kr](https://cisnet.co.kr) |
+| **소속** | [(주)청운정보시스템 ( cisnet.co.kr )](https://cisnet.co.kr) |
 
 ---
 
@@ -295,8 +295,9 @@ IPNAME_API IpNameStatus IPNAME_CALL IpName_DistinguishAdapter(
 
 IpName2 프로젝트에서 사용하는 기존 Windows 시스템 DLL 및 내부 C/Rust 계층의 호출 내역을 정밀 감사한 결과는 다음과 같습니다:
 
-| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.12.10) |
+| 모듈 / DLL | 호출 함수 / 위치 | 기존 잠재적 결함 및 오류 | 개선 및 해결 조치 (v1.9.0 ~ v1.13.3) |
 | :--- | :--- | :--- | :--- |
+| **`ipname_core.dll` / `windows_native.rs`** | `IpName_DistinguishAdapter` / `get_adapters_native` | MAC OUI 부분 문자열 검색의 오탐 위험 및 Xen/Parallels OUI 누락; Win32 `0.0.0.0` 유니캐스트/게이트웨이·DHCP 어댑터 정적 `IPAddress` 레지스트리 우선순위 역전 | 정규화 6-Hex 접두사 대조(`mac_oui_matches`) + Xen(`00:16:3E`)·Parallels(`00:1C:42`) 보완, `0.0.0.0` 필터링 및 `DhcpIPAddress`·비-APIPA 우선 정렬 적용(v1.13.3) |
 | **`windows_native.rs` / `ipname_core.dll`** | `get_adapters_native` / IPv4 파서 / `DistinguishAdapter` | `AdapterName`/`FriendlyName` NULL 역참조 위험, Rust `calculate_subnet_native`/`classify_ip_native`의 선행 `0`·부호 허용, `로컬 영역 연결*` 필터 누락 | Win32 포인터 `.is_null()` 가드 추가, `Ipv4Addr::from_str` 엄격 파싱 통일, C/Rust 어댑터 필터·Wi-Fi 판별 규칙 동기화(v1.12.10) |
 | **`ipname_core.dll`** | `parse_ipv4_string` / `strncpy` 전수 | `sscanf` 기반 파서가 공백·`+` 부호를 허용하고 `C4996` 경고 유발; 일부 분류/어댑터 문자열 복사에서 잔여 `strncpy` 사용 | 엄격한 문자 단위 점 표기 IPv4 파서(0~255, 선행 0 다자리 금지)로 교체하고 `snprintf(..., "%s", ...)` 및 `toupper((unsigned char))` 전면 적용(v1.12.9) |
 | **`windows_native.rs`** | `check_ip_conflict_native` / MAC 파싱 | `SendARP` 응답 MAC이 타 장비임에도 `adapter.ipAddress == target_ip` 조건으로 외부 충돌이 은폐될 위험; `PhysicalAddressLength` 미클램핑 | MAC 화이트리스트(`own_mac` / 로컬 어댑터 MAC)만 허용하여 외부 IP 가로채기 정확 탐지 및 `PhysicalAddressLength.min(8)` 경계 보호(v1.12.9) |

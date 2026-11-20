@@ -57,7 +57,7 @@ function isValidIPv4(ip: string): boolean {
   });
 }
 
-function isValidHostIPv4(ip: string): boolean {
+export function isValidHostIPv4(ip: string): boolean {
   if (!isValidIPv4(ip)) return false;
   const trimmed = ip.trim();
   return trimmed !== '0.0.0.0' && trimmed !== '255.255.255.255';
@@ -468,11 +468,11 @@ export function useSystemConfig() {
               await new Promise(resolve => setTimeout(resolve, 16));
               if (!isMountedRef.current || fetchGenerationRef.current !== gen) return;
 
-              let disabledNetAdapters: Array<{ name: string; macAddress?: string; isVirtual?: boolean; description?: string }> = [];
+              let disabledNetAdapters: Array<{ id?: string; name: string; macAddress?: string; isVirtual?: boolean; description?: string }> = [];
               const virtualNetNames = new Set<string>();
 
               const psPresent = await executePowerShell(
-                `try { @(Get-NetAdapter -IncludeHidden:$false -ErrorAction SilentlyContinue | Select-Object -Property Name,Status,MacAddress,Virtual,InterfaceDescription) | ConvertTo-Json -Compress } catch { '[]' }`,
+                `try { @(Get-NetAdapter -IncludeHidden:$false -ErrorAction SilentlyContinue | Select-Object -Property Name,Status,MacAddress,Virtual,InterfaceDescription,InterfaceGuid) | ConvertTo-Json -Compress } catch { '[]' }`,
                 false
               );
 
@@ -497,6 +497,7 @@ export function useSystemConfig() {
                       }
                       if (item.Status === 'Disabled') {
                         disabledNetAdapters.push({
+                          id: item.InterfaceGuid ? String(item.InterfaceGuid).trim() : undefined,
                           name: item.Name,
                           macAddress: item.MacAddress,
                           isVirtual: isItemVirt,
@@ -530,7 +531,7 @@ export function useSystemConfig() {
                   const isVirt = dis.isVirtual ?? isVirtualAdapter(dis.name, 'Ethernet', dis.description, undefined, dis.macAddress);
                   const normalizedMac = dis.macAddress ? dis.macAddress.replace(/-/g, ':').toUpperCase() : '';
                   merged.push({
-                    id: normalizedMac || dis.name,
+                    id: dis.id || normalizedMac || dis.name,
                     name: dis.name,
                     type: isVirt ? 'Virtual' : (dis.name.toLowerCase().includes('wi-fi') || dis.name.toLowerCase().includes('wireless') || dis.name.toLowerCase().includes('와이파이') ? 'Wi-Fi' : 'Ethernet'),
                     status: 'Disabled',
@@ -675,6 +676,7 @@ export function useSystemConfig() {
   }, [fetchInitialData]);
 
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const [toast, setToast] = useState<{show: boolean, message: string, type: 'success' | 'error'}>({
     show: false,
     message: '',
@@ -706,6 +708,8 @@ export function useSystemConfig() {
   }, []);
 
   const saveSystemInfo = useCallback(async () => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
       let script = '';
@@ -814,6 +818,7 @@ export function useSystemConfig() {
         showToast(t('applyError'), 'error');
       }
     } finally {
+      isSavingRef.current = false;
       if (isMountedRef.current) {
         setIsSaving(false);
       }
@@ -821,6 +826,8 @@ export function useSystemConfig() {
   }, [systemInfo, originalSystemInfo, fetchInitialData, t, showToast]);
 
   const saveNetworkConfig = useCallback(async (selectedAdapterId: string) => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
       let script = '';
@@ -975,6 +982,7 @@ export function useSystemConfig() {
           const expectedEnabled = adapter.isEnabled;
           const expectedDhcp = adapter.isDhcp;
           const expectedIp = !expectedDhcp ? (adapter.ipAddress || '').trim() : '';
+          const expectedMask = !expectedDhcp ? (adapter.subnetMask || '').trim() : '';
           const expectedGw = !expectedDhcp ? (adapter.gateway || '').trim() : '';
           const rawDns1 = !expectedDhcp ? (adapter.primaryDns || '').trim() : '';
           const rawDns2 = !expectedDhcp ? (adapter.secondaryDns || '').trim() : '';
@@ -1004,6 +1012,7 @@ export function useSystemConfig() {
                   if (
                     !matched.isDhcp &&
                     matched.ipAddress === expectedIp &&
+                    matched.subnetMask === expectedMask &&
                     (matched.gateway || '') === expectedGw &&
                     (matched.primaryDns || '') === expectedDns1 &&
                     (matched.secondaryDns || '') === expectedDns2 &&
@@ -1036,6 +1045,7 @@ export function useSystemConfig() {
         showToast(t('applyError'), 'error');
       }
     } finally {
+      isSavingRef.current = false;
       if (isMountedRef.current) {
         setIsSaving(false);
       }
@@ -1071,6 +1081,8 @@ export function useSystemConfig() {
   }, []);
 
   const toggleAdapterEnabled = useCallback(async (adapterId: string, targetState?: boolean) => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
       const adapter = adapters.find(a => a.id === adapterId);
@@ -1163,6 +1175,7 @@ export function useSystemConfig() {
         }
       }
     } finally {
+      isSavingRef.current = false;
       if (isMountedRef.current) {
         setIsSaving(false);
       }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeStorage } from '../lib/storage';
 
-export const CURRENT_VERSION = '1.13.2';
+export const CURRENT_VERSION = '1.13.5';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -49,18 +49,26 @@ export function useGitHubUpdate() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
+  const checkGenRef = useRef(0);
+  const activeControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      activeControllerRef.current?.abort();
+      activeControllerRef.current = null;
     };
   }, []);
 
   const checkUpdate = useCallback(async (manual = false) => {
+    const gen = ++checkGenRef.current;
+    activeControllerRef.current?.abort();
+    const controller = new AbortController();
+    activeControllerRef.current = controller;
+
     setIsChecking(true);
     setStatusMessage(null);
-    const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
     try {
       const response = await fetch(
@@ -73,7 +81,7 @@ export function useGitHubUpdate() {
         }
       );
 
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || checkGenRef.current !== gen) return;
 
       if (!response.ok) {
         // If 404 (no releases published yet), handle gracefully
@@ -88,7 +96,7 @@ export function useGitHubUpdate() {
       }
 
       const data = await response.json();
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || checkGenRef.current !== gen) return;
 
       const tagName: string = data.tag_name || '';
       const remoteVersion = tagName.replace(/^v/i, '');
@@ -134,7 +142,7 @@ export function useGitHubUpdate() {
         }
       }
     } catch (err: any) {
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || checkGenRef.current !== gen) return;
       console.warn('[GitHub Update Check] Failed to check for updates:', err?.message || err);
       if (manual) {
         setStatusMessage('GitHub 릴리스 서버 연결 실패. 잠시 후 다시 시도해 주세요.');
@@ -142,7 +150,10 @@ export function useGitHubUpdate() {
       }
     } finally {
       clearTimeout(timeoutId);
-      if (isMountedRef.current) {
+      if (activeControllerRef.current === controller) {
+        activeControllerRef.current = null;
+      }
+      if (isMountedRef.current && checkGenRef.current === gen) {
         setIsChecking(false);
       }
     }

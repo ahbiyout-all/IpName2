@@ -3,6 +3,7 @@ import { Settings, AlertCircle, User, Building, Globe, ShieldCheck, ExternalLink
 import { useLanguage } from '../contexts/LanguageContext';
 import { Modal } from './Modal';
 import { CURRENT_VERSION } from '../hooks/useGitHubUpdate';
+import { isTauriEnv } from '../lib/powershell';
 
 interface FooterProps {
   onCheckUpdate?: () => void;
@@ -11,6 +12,19 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
   const { t } = useLanguage();
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+
+  const handleExternalLinkClick = async (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    if (!isTauriEnv()) {
+      return;
+    }
+    e.preventDefault();
+    try {
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(url);
+    } catch (err) {
+      console.error('Failed to open external URL in Tauri:', err);
+    }
+  };
 
   const openSourceLicenses = [
     { name: 'React', version: 'v19.0.0', license: 'MIT', copyright: 'Copyright (c) Meta Platforms, Inc. and affiliates.', url: 'https://react.dev' },
@@ -49,6 +63,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
               href="https://github.com/AhBiYout-all" 
               target="_blank" 
               rel="noopener noreferrer" 
+              onClick={(e) => handleExternalLinkClick(e, 'https://github.com/AhBiYout-all')}
               className="hover:text-primary transition-colors font-medium text-foreground/70"
             >
               GitHub
@@ -60,20 +75,22 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
               href="https://ahbiyoutvibe.blogspot.com/" 
               target="_blank" 
               rel="noopener noreferrer" 
+              onClick={(e) => handleExternalLinkClick(e, 'https://ahbiyoutvibe.blogspot.com/')}
               className="hover:text-primary transition-colors font-medium text-foreground/70"
             >
               ahbiyoutvibe.blogspot.com
             </a>
           </div>
-          <div className="flex items-center gap-1" title={`${t('affiliation')}: https://www.cisnet.co.kr`}>
-            <Building size={11} className="text-primary/70" />
+          <div className="flex items-center gap-1" title={`${t('affiliation')}: (주)청운정보시스템 ( https://cisnet.co.kr )`}>
+            <Building size={11} className="text-primary/70 shrink-0" />
             <a 
-              href="https://www.cisnet.co.kr" 
+              href="https://cisnet.co.kr" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="hover:text-primary transition-colors font-medium text-foreground/70"
+              onClick={(e) => handleExternalLinkClick(e, 'https://cisnet.co.kr')}
+              className="hover:text-primary transition-colors font-medium text-foreground/70 whitespace-nowrap"
             >
-              www.cisnet.co.kr
+              (주)청운정보시스템 ( cisnet.co.kr )
             </a>
           </div>
         </div>
@@ -134,6 +151,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
                     href="https://github.com/AhBiYout-all"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleExternalLinkClick(e, 'https://github.com/AhBiYout-all')}
                     className="text-primary hover:underline font-medium flex items-center gap-0.5"
                   >
                     github.com/AhBiYout-all
@@ -147,6 +165,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
                     href="https://ahbiyoutvibe.blogspot.com/"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleExternalLinkClick(e, 'https://ahbiyoutvibe.blogspot.com/')}
                     className="text-primary hover:underline font-medium flex items-center gap-0.5"
                   >
                     ahbiyoutvibe.blogspot.com
@@ -157,12 +176,13 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
                   <Building size={12} className="text-primary/70 shrink-0" />
                   <span>{t('affiliation')}: </span>
                   <a
-                    href="https://www.cisnet.co.kr"
+                    href="https://cisnet.co.kr"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleExternalLinkClick(e, 'https://cisnet.co.kr')}
                     className="text-primary hover:underline font-medium flex items-center gap-0.5"
                   >
-                    www.cisnet.co.kr
+                    (주)청운정보시스템 ( cisnet.co.kr )
                     <ExternalLink size={9} />
                   </a>
                 </div>
@@ -215,6 +235,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
                       href={lib.url} 
                       target="_blank" 
                       rel="noopener noreferrer" 
+                      onClick={(e) => handleExternalLinkClick(e, lib.url)}
                       className="text-[10px] text-primary/80 hover:text-primary hover:underline flex items-center gap-0.5 transition-colors"
                     >
                       {lib.url.replace(/^https?:\/\//, '')}

@@ -223,3 +223,14 @@ This document tracks high-priority features, reliability fixes, and architecture
   3. Enforce `isSavingRef` single-flight guard and `subnetMask` adaptive polling parity in `useSystemConfig.ts`; cancel overlapping fetches via `AbortController` + generation counter in `useGitHubUpdate.ts`.
   4. Guard empty adapter GUIDs in `windows_native.rs` registry reads and align `release.yml` affiliation text.
 - **Validation**: Triple Lockstep version `1.13.5` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-022] Vertical Viewport Expansion (650x920) & ExternalLink Duplicate Launch Fix (v1.13.6)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `src-tauri/tauri.conf.json`, `src/App.tsx`, `src/components/{ExternalLink,Footer,UpdateModal}.tsx`, `AGENTS.md`, `README.md`, `docs/*`
+- **Description**: Expand the desktop window vertical height from `800px` to `920px` so the entire interface down to the bottom footer fits in a single view without vertical scrolling, and eliminate simultaneous duplicate browser window launches when clicking external links in Tauri WebView2.
+- **Acceptance Criteria**:
+  1. Set Tauri main window dimensions to `650x920` (`minWidth: 650`, `minHeight: 760`) and refine `App.tsx` / `Footer.tsx` spacing so all panels and footer items display together cleanly.
+  2. Introduce `ExternalLink.tsx` rendering a cooldown-guarded `<button>` backed by `@tauri-apps/plugin-shell` `open()` inside Tauri and a standard `<a target="_blank">` in web preview, replacing raw external anchors in `Footer.tsx` and `UpdateModal.tsx`.
+  3. Synchronize documentation and Triple Lockstep version `1.13.6` across all 10 targets.
+- **Validation**: Triple Lockstep version `1.13.6` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.

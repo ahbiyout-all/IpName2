@@ -51,7 +51,7 @@
 
 | 구분 | 기술 스택 | 설명 |
 | :--- | :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite 6 | 컴포넌트 기반 반응형 UI (650x800 고정 규격) |
+| **Frontend** | React 19, TypeScript, Vite 6 | 컴포넌트 기반 반응형 UI (650x920 단일 화면 규격) |
 | **Styling** | Tailwind CSS 4, Lucide React, Framer Motion | Windows 11 Fluent 스타일 다크/라이트 테마 |
 | **Desktop Core** | Rust (Tauri v2.11) | 초경량 네이티브 IPC 및 Win32 API 래퍼 |
 | **Native Engine** | ISO C99 (`ipname_core.dll`) | Layer-2 ARP 충돌 감지 및 네트워크 진단 엔진 |

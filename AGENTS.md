@@ -33,7 +33,7 @@
 ---
 
 ## 3. 프로젝트 핵심 규격 및 불변 사양
-- **기본 데스크톱 창 크기**: 가로(Width) 650px x 세로(Height) 800px (고정 크기 유지)
+- **기본 데스크톱 창 크기**: 가로(Width) 650px x 세로(Height) 920px (하단 푸터 일괄 표시 규격, 최소 650x760)
 - **기본 통신 및 개발 포트**: 3030 (`vite.config.ts`, `tauri.conf.json`, `build.bat`, `build.ps1` 통일)
 - **공식 블로그 주소**: `https://ahbiyoutvibe.blogspot.com/`
 - **공식 웹사이트**: `https://cisnet.co.kr`

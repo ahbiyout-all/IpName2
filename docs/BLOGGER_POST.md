@@ -1,6 +1,6 @@
 # 구글 블로거(Google Blogger) 공식 포스팅 가이드 및 콘텐츠
 
-본 문서는 공식 블로그 [AhBiYout Vibe (https://ahbiyoutvibe.blogspot.com/)](https://ahbiyoutvibe.blogspot.com/)에 게시할 수 있도록 최적화된 **AhBiYout IpName2 (v1.13.5)** 공식 배포 소개 글입니다.
+본 문서는 공식 블로그 [AhBiYout Vibe (https://ahbiyoutvibe.blogspot.com/)](https://ahbiyoutvibe.blogspot.com/)에 게시할 수 있도록 최적화된 **AhBiYout IpName2 (v1.13.6)** 공식 배포 소개 글입니다.
 
 구글 블로거의 **[작성 모드 (서식 있는 텍스트)]** 및 **[HTML 편집 모드]** 모두에서 즉시 복사하여 발행할 수 있도록 메타데이터, 마크다운 본문, 완성형 HTML 코드를 함께 수록하였습니다.
 
@@ -10,11 +10,11 @@
 
 | 설정 항목 | 권장 입력값 |
 | :--- | :--- |
-| **포스트 제목 (Title)** | **[추천]** [Windows 유틸리티] AhBiYout IpName2 v1.13.5 - 초고속 네트워크 IP 설정 & 관리자 도구 (다중 IP, Layer-2 충돌 감지, 가상 랜카드 완벽 분리) |
+| **포스트 제목 (Title)** | **[추천]** [Windows 유틸리티] AhBiYout IpName2 v1.13.6 - 초고속 네트워크 IP 설정 & 관리자 도구 (다중 IP, Layer-2 충돌 감지, 가상 랜카드 완벽 분리) |
 | **대체 제목 (영문/간결)** | AhBiYout IpName2: The Ultimate Windows Network & IP Management Tool |
 | **커스텀 퍼머링크 (Permalink)** | `ahbiyout-ipname2-network-manager-v1-13` |
 | **라벨 / 태그 (Labels)** | `Windows 유틸리티`, `네트워크 관리`, `IP설정`, `Tauri v2`, `IpName2`, `오픈소스`, `CisNet`, `청운정보시스템`, `AhBiYout`, `고정IP`, `DNS설정`, `네트워크유틸리티` |
-| **검색 설명 (Meta Description)** | Windows 10/11 전용 초경량 네트워크 관리 도구 AhBiYout IpName2 v1.13.5 출시! SWR 즉시 화면 복원, 원클릭 IP/DNS/컴퓨터 이름 변경, 단일 랜카드 다중 IP 할당, Layer-2 ARP 기반 IP 충돌 감지, 물리/가상 랜카드 자동 판별 기능을 무료로 만나보세요. |
+| **검색 설명 (Meta Description)** | Windows 10/11 전용 초경량 네트워크 관리 도구 AhBiYout IpName2 v1.13.6 출시! SWR 즉시 화면 복원, 원클릭 IP/DNS/컴퓨터 이름 변경, 단일 랜카드 다중 IP 할당, Layer-2 ARP 기반 IP 충돌 감지, 물리/가상 랜카드 자동 판별 기능을 무료로 만나보세요. |
 
 ---
 
@@ -24,7 +24,7 @@
 
 ---
 
-### 복잡한 윈도우 네트워크 설정 창과 작별하세요! 초경량 초고속 네트워크 도구 AhBiYout IpName2 v1.13.5 공개
+### 복잡한 윈도우 네트워크 설정 창과 작별하세요! 초경량 초고속 네트워크 도구 AhBiYout IpName2 v1.13.6 공개
 
 사무실이나 개발 환경, 공장 인라인 장비 또는 데이터센터에서 네트워크 설정을 변경할 때, 윈도우 제어판의 '네트워크 연결'과 속성 창을 열고, IPv4 속성을 클릭하고, 관리자 창을 수없이 거치느라 번거로우셨나요?
 
@@ -73,7 +73,7 @@
 
 ### 📊 기존 도구와의 비교 분석
 
-| 비교 항목 | 기존 윈도우 기본 설정 창 | 일반 오픈소스 도구 (Electron 기반) | **AhBiYout IpName2 (v1.13.5)** |
+| 비교 항목 | 기존 윈도우 기본 설정 창 | 일반 오픈소스 도구 (Electron 기반) | **AhBiYout IpName2 (v1.13.6)** |
 | :--- | :--- | :--- | :--- |
 | **설치 용량** | 윈도우 내장 (진입 경로 복잡) | 120MB ~ 250MB | **단 15MB (경량 Inno Setup)** |
 | **메모리 점유율** | N/A | 180MB ~ 350MB | **25MB ~ 35MB (Rust 최적화)** |
@@ -86,7 +86,7 @@
 ---
 
 ### 💻 스크린샷 및 UI 디자인
-IpName2는 복잡한 창 크기 조절로 인한 시각적 피로를 없애기 위해 **가로 650px x 세로 800px의 컴팩트한 고정 뷰포트**와 세련된 **다크 테마 (Dark Slate & Neon Accent)** 레이아웃을 채택했습니다.
+IpName2는 복잡한 창 크기 조절로 인한 시각적 피로를 없애기 위해 **가로 650px x 세로 920px의 컴팩트한 단일 화면 전체 표시 뷰포트**와 세련된 **다크 테마 (Dark Slate & Neon Accent)** 레이아웃을 채택했습니다.
 
 > 📷 *(스크린샷 권장 위치 1: 메인 화면 - 물리 랜카드 목록 및 다중 IP 설정 UI)*  
 > 📷 *(스크린샷 권장 위치 2: IP 충돌 감지 및 네트워크 진단 팝업)*  
@@ -99,7 +99,7 @@ IpName2는 복잡한 창 크기 조절로 인한 시각적 피로를 없애기 �
 IpName2는 악성코드나 광고가 일절 포함되지 않은 100% 클린 오픈소스 소프트웨어입니다.
 
 * **최신 릴리스 다운로드**: [GitHub 공식 릴리스 페이지 (https://github.com/AhBiYout-all/IpName2/releases)](https://github.com/AhBiYout-all/IpName2/releases)
-* **공식 설치 파일명**: `IpName2_v1.13.5_Setup.exe`
+* **공식 설치 파일명**: `IpName2_v1.13.6_Setup.exe`
 * **지원 운영체제**: Microsoft Windows 10 / Windows 11 (64-bit 권장)
 * **필요 권한**: Windows 네트워크 어댑터 제어를 위한 관리자(UAC) 권한
 
@@ -131,13 +131,13 @@ IpName2는 악성코드나 광고가 일절 포함되지 않은 100% 클린 오�
       공식 출시 &middot; Windows 10 / 11 전용 유틸리티
     </div>
     <h1 style="font-size: 28px; font-weight: 800; margin: 0 0 12px 0; line-height: 1.3; color: #f8fafc;">
-      AhBiYout IpName2 v1.13.5
+      AhBiYout IpName2 v1.13.6
     </h1>
     <p style="font-size: 16px; color: #cbd5e1; max-width: 650px; margin: 0 auto 20px auto; line-height: 1.5;">
       원클릭 IP/DNS 변경 &middot; 다중 IP 바인딩 &middot; Layer-2 ARP 충돌 사전 감지 &middot; 물리/가상 랜카드 완벽 분리
     </p>
     <a href="https://github.com/AhBiYout-all/IpName2/releases" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 10px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); transition: background 0.2s;">
-      🚀 최신 릴리스 v1.13.5 무료 다운로드
+      🚀 최신 릴리스 v1.13.6 무료 다운로드
     </a>
   </div>
 

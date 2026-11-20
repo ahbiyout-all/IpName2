@@ -18,12 +18,12 @@
 ---
 
 ### [원칙 1] 프로젝트 핵심 불변 사양 준수
-1. **창 크기**: 가로(Width) 650px x 세로(Height) 800px (고정 크기, 단일 화면 내 모든 컨트롤 시인성 최적화, 스크롤 피로도 제거).
+1. **창 크기**: 가로(Width) 650px x 세로(Height) 920px (최소 650x760, 하단 푸터까지 단일 화면 내 모든 컨트롤 시인성 최적화, 스크롤 피로도 제거).
 2. **통신 및 개발 포트**: 3030 (`vite.config.ts`, `tauri.conf.json`, `build.bat`, `build.ps1` 통일).
 3. **공식 메타데이터**:
    - 제작자: AhBiYout (GitHub: https://github.com/ahbiyout-all)
    - 공식 블로그: https://ahbiyoutvibe.blogspot.com/
-   - 소속: 씨아이에스넷 (https://www.cisnet.co.kr)
+   - 소속: (주)청운정보시스템 (https://cisnet.co.kr)
    - 라이선스: MIT License
 
 ---

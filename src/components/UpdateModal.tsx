@@ -1,8 +1,8 @@
 import React from 'react';
-import { Sparkles, Download, ExternalLink, CheckCircle, Github } from 'lucide-react';
+import { Sparkles, Download, ExternalLink as ExternalLinkIcon, CheckCircle, Github } from 'lucide-react';
 import { Modal } from './Modal';
 import { GitHubReleaseInfo } from '../hooks/useGitHubUpdate';
-import { isTauriEnv } from '../lib/powershell';
+import { ExternalLink } from './ExternalLink';
 
 interface UpdateModalProps {
   isOpen: boolean;
@@ -30,19 +30,6 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   const downloadTargetUrl = latestRelease?.downloadUrl || latestRelease?.htmlUrl || repoUrl;
   const repoTargetUrl = latestRelease?.htmlUrl || `${repoUrl}/releases`;
-
-  const handleLinkClick = async (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
-    if (!isTauriEnv()) {
-      return;
-    }
-    e.preventDefault();
-    try {
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(url);
-    } catch (err) {
-      console.error('Failed to open external URL in Tauri:', err);
-    }
-  };
 
   return (
     <Modal
@@ -86,16 +73,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               닫기
             </button>
             {updateAvailable && (
-              <a
+              <ExternalLink
                 href={downloadTargetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => handleLinkClick(e, downloadTargetUrl)}
                 className="btn-primary py-1.5 px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
               >
                 <Download size={13} />
                 <span>업데이트 다운로드</span>
-              </a>
+              </ExternalLink>
             )}
           </div>
         </div>
@@ -158,16 +142,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               <Github size={13} className="text-primary" />
               <span>공식 GitHub 저장소 경로</span>
             </div>
-            <a
+            <ExternalLink
               href={repoTargetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => handleLinkClick(e, repoTargetUrl)}
               className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
             >
               <span>저장소 방문</span>
-              <ExternalLink size={10} />
-            </a>
+              <ExternalLinkIcon size={10} />
+            </ExternalLink>
           </div>
           <p className="text-[10px] font-mono text-muted-foreground break-all bg-input-bg p-1.5 rounded border border-border/40 select-all">
             {latestRelease?.htmlUrl || repoUrl}

@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.13.5**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.13.6**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -23,7 +23,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ┌────────────────────────────────▼────────────────────────────────┐
 │                   Desktop Core (Rust / Tauri v2)                │
 │   - src-tauri/src/lib.rs (IPC + spawn_blocking Thread Pool)     │
-│   - Single-Instance Lock, Fixed Window Sizing (650x800)         │
+│   - Single-Instance Lock, Window Sizing (650x920, min 650x760) │
 │   - Shell Plugin (tauri_plugin_shell), Process Plugin           │
 └────────────────────────────────┬────────────────────────────────┘
                                  │ Direct Win32 FFI / C-ABI / Elevated Execution
@@ -57,6 +57,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 * `src/components/RealIpSection.tsx`: 리얼 IP(공인 WAN IP), ISP 통신사, 위치 정보 실시간 표시 위젯.
 * `src/hooks/useRealIp.ts`: `ipwho.is` 및 `api.ipify.org` 병렬 비동기 조회와 PowerShell 무정지 폴백 엔진.
 * `src/components/AdapterItem.tsx`: 네트워크 어댑터 상세 카드 컴포넌트, 랜카드 전원 제어, [IP 충돌 검사] 배지 및 스마트 IP 동기화 연동.
+* `src/components/ExternalLink.tsx`: Tauri 데스크톱 환경에서 `<a target="_blank">` 중복 실행을 차단하고 `@tauri-apps/plugin-shell` `open()` 단일 호출을 보장하는 공용 외부 링크 컴포넌트.
 * `src/components/UpdateModal.tsx`: GitHub Releases 실시간 업데이트 알림 모달 (버전 차이 비교, 직접 다운로드 및 외부 브라우저 런처).
 * `src/hooks/useGitHubUpdate.ts`: GitHub REST API 비동기 쿼리 및 Semantic Versioning 비교 엔진.
 * `src/components/SubnetMaskSelector.tsx`: `/24`, `/25`, `/26`, `/29`, `/16` 서브넷 마스크 프리셋 오버레이 셀렉터.
@@ -67,7 +68,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ### 2.2. 백엔드 및 Native 계층 (`/src-tauri`)
 * `src-tauri/src/lib.rs`: Tauri IPC 커맨드 라우팅 (`get_system_info`, `get_adapters`, `ping_ipv4`, `calculate_subnet`, `check_ip_conflict`, `check_tcp_port`, `classify_ip`).
 * `src-tauri/src/windows_native.rs`: Windows Win32 API FFI 바인딩. `GetAdaptersAddresses`를 호출하여 어댑터 상태, IP, MAC, 활성화 여부를 마이크로초 단위로 쿼리 (`#[allow(non_snake_case)]` 적용으로 0 Warnings 달성).
-* `src-tauri/tauri.conf.json`: 고정 창 크기(650x800), 단일 인스턴스 락, NSIS 타깃 번들 설정.
+* `src-tauri/tauri.conf.json`: 창 크기(650x920, 최소 650x760), 단일 인스턴스 락, NSIS 타깃 번들 설정.
 * `src-tauri/build.rs`: `tauri_build::WindowsAttributes::new().app_manifest(...)`를 통한 UAC `requireAdministrator` 실행 권한 매니페스트 및 Common Controls v6 내장.
 
 ### 2.3. 순수 창작 네이티브 DLL (`/native/ipname_core`)
@@ -119,7 +120,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
                                      ▼                                                           ▼
                            [remoteVer > currentVer]                                    [최신 버전 유지 중]
                         UpdateModal 팝업 창 자동 실행                                   최신 상태 안내 배너
-                        - 버전 차이(v1.13.5 vs vX.Y.Z)
+                        - 버전 차이(v1.13.6 vs vX.Y.Z)
                         - 전용 인스톨러 직접 다운로드
                         - 이번 버전 건너뛰기
 ```
@@ -201,7 +202,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ```
 [docs/UPDATE_WORK_INSTRUCTION.md] (8대 엔지니어링 표준 프롬프트)
         │
-        ├── 불변 사양 보장 (창 크기 650x800, 포트 3030, 공식 메타데이터)
+        ├── 불변 사양 보장 (창 크기 650x920, 포트 3030, 공식 메타데이터)
         ├── 순수 창작 C DLL (Layer-2 ARP SendARP 본인 MAC 오탐 방어)
         ├── 어댑터 Primary IP 정렬 & 물리/가상 NIC 엄격 필터링
         ├── Tauri v2 클린 컴파일 & GitHub Actions Node 24 + 캐시 + Fast-Fail 승급

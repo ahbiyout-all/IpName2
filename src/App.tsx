@@ -256,7 +256,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-full p-3 max-w-[600px] mx-auto flex flex-col overflow-hidden selection:bg-primary/20">
+    <div className="h-screen w-full px-3 py-2.5 max-w-[624px] mx-auto flex flex-col overflow-hidden selection:bg-primary/20">
       <Header 
         isAdmin={systemInfo.isAdmin} 
         onReboot={() => setConfirmAction({ type: 'reboot' })} 
@@ -265,7 +265,7 @@ const AppContent: React.FC = () => {
       />
 
       {pendingComputerName && (
-        <div className="bg-red-100 border border-red-300 text-red-800 px-3 py-2 rounded-lg text-xs flex items-center gap-2 mb-3 shrink-0 shadow-sm animate-in slide-in-from-top-2">
+        <div className="bg-red-100 border border-red-300 text-red-800 px-3 py-2 rounded-lg text-xs flex items-center gap-2 mb-2 shrink-0 shadow-sm animate-in slide-in-from-top-2">
           <ShieldAlert size={14} className="shrink-0 text-red-600" />
           <span>
             {t('pendingComputerNameNotice')} <strong className="text-red-600 text-[13px] ml-1">{pendingComputerName}</strong>
@@ -273,7 +273,7 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      <main className="flex flex-col gap-2.5 flex-1 overflow-y-auto overflow-x-hidden pb-1 pr-1 custom-scrollbar">
+      <main className="flex flex-col gap-2 flex-1 overflow-y-auto overflow-x-hidden pb-0.5 pr-1 custom-scrollbar">
         <SystemSection 
           info={systemInfo} 
           originalInfo={originalSystemInfo}
@@ -430,7 +430,7 @@ const AppContent: React.FC = () => {
               onApply={applyDns} 
             />
             
-            <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="grid grid-cols-2 gap-2">
               <button 
                 type="button"
                 onClick={handleOpenCmd}

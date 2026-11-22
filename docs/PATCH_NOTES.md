@@ -2,6 +2,24 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.13] - 2026-11-22
+
+### 1. Inno Setup 6단계 진행 순서 정밀 보강 & Windows 프로그램 추가/제거 정식 등록 (`installer/setup.iss`)
+* **Windows 프로그램 추가/제거 (Apps & Features) 정식 등록 및 메타데이터 보강**:
+  - `[Setup]` 섹션에 `Uninstallable=yes`, `CreateUninstallRegKey=yes`, `UninstallDisplayIcon`, `UninstallDisplayName`, `AppPublisher`, `AppPublisherURL`, `AppSupportURL`, `AppUpdatesURL` 및 `VersionInfoVersion`/`VersionInfoCompany`/`VersionInfoDescription`/`VersionInfoProductName`/`VersionInfoProductVersion`을 명시해 Windows 제어판 **프로그램 추가/제거** 및 **설정 > 설치된 앱**에 정식으로 등록·관리되도록 구성했습니다.
+* **기존 설치 레지스트리 탐지(`{{` 이스케이프 버그) 완전 해결 (`MyAppGuid`, `QueryUninstallKey`)**:
+  - 기존 `[Code]` Pascal Script에서 `[Setup]`용 이중 중괄호(`{{42CD...}`)를 그대로 레지스트리 조회 경로에 사용해 실제 등록 키(`{42CD...}_is1`)와 불일치하던 결함을 교정했습니다.
+  - `#define MyAppGuid "{42CD47A3-...}"`와 `#define MyAppId "{" + MyAppGuid`로 분리하고 `{#MyAppGuid}_is1` 및 `{#MyAppName}_is1` 레지스트리(`HKLM`/`HKCU`/`HKLM32`/`HKCU32`)를 정밀 조회하여 기존 설치 감지 ➔ **삭제 / 덮어쓰기 / 취소** 대화상자가 100% 정확히 작동합니다.
+* **6단계 설치 흐름 최종 완결**:
+  1. **기존 앱 실행 시 강제 종료**: `InitializeSetup()`, `InitializeUninstall()` 및 `CurStepChanged(ssInstall)` 파일 복사 직전까지 `ForceKillRunningApp()` 이중 가드 적용.
+  2. **기존 앱 설치 시 삭제/덮어쓰기 선택**: 레지스트리 조회 기반 `MB_YESNOCANCEL` 안내.
+  3. **라이선스 선언**: `DisableWelcomePage=yes` + `LicenseFile=..\LICENSE`.
+  4. **설치 및 Windows 프로그램 추가/제거·방화벽 등록**: 바이너리·아이콘·방화벽 규칙·언인스톨 레지스트리 일괄 등록.
+  5. **완료 화면 바탕화면 바로가기 체크**: `wpFinished` 상단에 기본 체크된 바로가기 생성 체크박스 배치(`IpName2.lnk` 단일 유지 및 `[UninstallDelete]`로 `{autodesktop}`/`{userdesktop}` 정리).
+  6. **앱 실행**: 완료 화면 하단 체크박스(`shellexec` UAC 지원)로 즉시 실행.
+
+---
+
 ## [v1.13.12] - 2026-11-22
 
 ### 1. GitHub Releases 최신 3개 릴리즈 바이너리 유지 & 이전 릴리즈 에셋 자동 정리 (`.github/workflows/release.yml`)

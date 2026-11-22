@@ -61,6 +61,7 @@
   - Inno Setup 인스톨러 6단계 표준 진행 순서(실행 앱 강제 종료 → 기존 설치 삭제/덮어쓰기 선택 → MIT 라이선스 선언 → 설치 → 완료 화면 바탕화면 바로가기 체크 → 앱 실행) 개편 (v1.13.10)
   - GitHub Releases 포터블 배포본(`_Portable.exe`, `_Portable.zip`) CI/CD 자동 생성 및 인앱 자동 업데이터 인스톨러(`_Setup.exe`) 우선순위 보호 (v1.13.11)
   - GitHub Releases 배포 완료 후 최신 3개 릴리즈 바이너리 유지 및 이전 릴리즈 첨부 바이너리 에셋만 자동 삭제(노트·제목·태그·이력 보존, 로컬 정리 로직 무변경) (v1.13.12)
+  - Inno Setup Windows 프로그램 추가/제거(Apps & Features) 정식 등록(`Uninstallable`/`CreateUninstallRegKey`/`VersionInfo*`), 기존 설치 레지스트리 `{{` 탐지 버그 교정(`MyAppGuid`) 및 6단계 설치 순서 보강 (v1.13.13)
   - 배치 스크립트 특수문자(`&`) 구문 오류 방지 및 CMD 중첩 괄호 파싱 결함 해결
 
 ---

@@ -12,12 +12,13 @@
 ; ======================================================================
 
 #define MyAppName "IpName2"
-#define MyAppVersion "1.13.12"
+#define MyAppVersion "1.13.13"
 #define MyAppPublisher "AhBiYout"
 #define MyAppURL "https://github.com/AhBiYout-all/IpName2"
 #define MyAppBlogURL "https://ahbiyoutvibe.blogspot.com/"
 #define MyAppExeName "IpName2.exe"
-#define MyAppId "{{42CD47A3-E248-4866-B615-90BC4296A253}"
+#define MyAppGuid "{42CD47A3-E248-4866-B615-90BC4296A253}"
+#define MyAppId "{" + MyAppGuid
 
 [Setup]
 AppId={#MyAppId}
@@ -45,8 +46,16 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 CloseApplicationsFilter=*.exe,*.dll
 RestartApplications=no
+; Windows Add/Remove Programs (Apps & Features) Official Registration
+Uninstallable=yes
+CreateUninstallRegKey=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName} v{#MyAppVersion}
+VersionInfoVersion={#MyAppVersion}.0
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Windows Setup
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
 
 [Languages]
 Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
@@ -87,6 +96,8 @@ Name: "{group}\{#MyAppName} 제거"; Filename: "{uninstallexe}"
 [UninstallDelete]
 Type: files; Name: "{autodesktop}\{#MyAppName} v*.lnk"
 Type: files; Name: "{autodesktop}\{#MyAppName}.lnk"
+Type: files; Name: "{userdesktop}\{#MyAppName} v*.lnk"
+Type: files; Name: "{userdesktop}\{#MyAppName}.lnk"
 
 [Run]
 ; 1. Silently pre-register Windows Firewall Inbound/Outbound Rules (Base Name: IpName2)
@@ -125,13 +136,13 @@ begin
 end;
 
 // Lookup existing installation uninstaller path in 64-bit and 32-bit registry views
-function GetUninstallString(): String;
+function QueryUninstallKey(const KeySuffix: String): String;
 var
   sUninstPath: String;
   sRegKey: String;
 begin
   sUninstPath := '';
-  sRegKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#MyAppId}_is1';
+  sRegKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + KeySuffix;
   if not RegQueryStringValue(HKLM, sRegKey, 'UninstallString', sUninstPath) then
     if not RegQueryStringValue(HKCU, sRegKey, 'UninstallString', sUninstPath) then
       if IsWin64 then
@@ -140,6 +151,13 @@ begin
           RegQueryStringValue(HKCU32, sRegKey, 'UninstallString', sUninstPath);
       end;
   Result := Trim(RemoveQuotes(sUninstPath));
+end;
+
+function GetUninstallString(): String;
+begin
+  Result := QueryUninstallKey('{#MyAppGuid}_is1');
+  if (Result = '') or (not FileExists(Result)) then
+    Result := QueryUninstallKey('{#MyAppName}_is1');
 end;
 
 function InitializeSetup(): Boolean;
@@ -215,7 +233,7 @@ procedure CreateDesktopShortcut();
 var
   sShortcutPath: String;
 begin
-  sShortcutPath := ExpandConstant('{autodesktop}\{#MyAppName} v{#MyAppVersion}.lnk');
+  sShortcutPath := ExpandConstant('{autodesktop}\{#MyAppName}.lnk');
   CreateShellLink(
     sShortcutPath,
     '{#MyAppName} v{#MyAppVersion}',
@@ -267,7 +285,12 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssPostInstall then
+  if CurStep = ssInstall then
+  begin
+    // Re-ensure running app is closed right before copying binaries
+    ForceKillRunningApp();
+  end
+  else if CurStep = ssPostInstall then
   begin
     if WizardSilent then
     begin

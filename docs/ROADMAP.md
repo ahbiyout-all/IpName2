@@ -307,5 +307,17 @@ This document tracks high-priority features, reliability fixes, and architecture
   4. Synchronize Triple Lockstep version `1.13.12` across all 10 targets, multilingual READMEs, and documentation.
 - **Validation**: Triple Lockstep version `1.13.12` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
 
+#### [ROADMAP-029] Inno Setup Windows Add/Remove Programs Registration & Existing Install Detection Fix (v1.13.13)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `installer/setup.iss`, `docs/*`, `README*.md`
+- **Description**: Explicitly register IpName2 in Windows Add/Remove Programs (Apps & Features) with complete `VersionInfo*` and uninstall metadata, fix the Pascal Script `{{` AppId brace mismatch that prevented existing installation registry detection, reinforce `ssInstall` pre-copy force-termination, and standardize desktop shortcut creation/cleanup across all 6 setup stages.
+- **Acceptance Criteria**:
+  1. Set `Uninstallable=yes`, `CreateUninstallRegKey=yes`, `VersionInfo*`, `UninstallDisplayName`, and `UninstallDisplayIcon` in `[Setup]`.
+  2. Separate `#define MyAppGuid` (single `{`) from `#define MyAppId` (double `{{`) so `QueryUninstallKey` accurately detects `{42CD47A3-...}_is1` and fallback `IpName2_is1` across 64-bit/32-bit registry views before prompting Uninstall/Overwrite/Cancel.
+  3. Enforce `ForceKillRunningApp()` in `InitializeSetup`, `InitializeUninstall`, and `CurStepChanged(ssInstall)`, keep `wpLicense`, place Desktop Shortcut (`{autodesktop}\IpName2.lnk`) checkbox above Launch Application (`shellexec`) on `wpFinished`, and clean both `{autodesktop}`/`{userdesktop}` shortcuts on uninstall.
+  4. Synchronize Triple Lockstep version `1.13.13` across all 10 targets, multilingual READMEs, and documentation.
+- **Validation**: Triple Lockstep version `1.13.13` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
+
 
 

@@ -4,11 +4,11 @@
 
 ![IpName2 Logo](app-icon.png)
 
-### Windows System Name & High-Performance Network Adapter / Multi-IP Management Desktop Utility (v1.13.12)
+### Windows System Name & High-Performance Network Adapter / Multi-IP Management Desktop Utility (v1.13.13)
 
 🌍 **Languages**: [🇰🇷 한국어](README.md) | [🇺🇸 English](README_EN.md) | [🇯🇵 日本語](README_JA.md) | [🇨🇳 中文](README_ZH.md)
 
-[![Version](https://img.shields.io/badge/Version-v1.13.12-0284c7.svg)](docs/PATCH_NOTES.md)
+[![Version](https://img.shields.io/badge/Version-v1.13.13-0284c7.svg)](docs/PATCH_NOTES.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](docs/LICENSE_NOTICE.md)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.11-orange.svg)](https://tauri.app/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
@@ -25,7 +25,7 @@
 
 **AhBiYout IpName2** is a high-performance desktop application designed for Windows 10 and Windows 11 (64-bit) to intuitively manage computer names, workgroups, and network adapter IP, subnet mask, gateway, and DNS settings.
 
-Combining **SWR instant state restoration**, **Rust + Win32 native parallel polling**, and a **pure C99 native DLL (`ipname_core.dll`)**, it starts with zero lag and supports standalone portable execution (`IpName2_v1.13.12_Portable.exe` / `_Portable.zip`) as well as official Inno Setup installer (`IpName2_v1.13.12_Setup.exe`) distribution.
+Combining **SWR instant state restoration**, **Rust + Win32 native parallel polling**, and a **pure C99 native DLL (`ipname_core.dll`)**, it starts with zero lag and supports standalone portable execution (`IpName2_v1.13.13_Portable.exe` / `_Portable.zip`) as well as official Inno Setup installer (`IpName2_v1.13.13_Setup.exe`) distribution.
 
 ### Key Features
 
@@ -103,12 +103,12 @@ build.bat
 Detailed project architecture, GitHub operations, and blog publishing guides are systematically organized in the [`/docs`](docs/README.md) directory:
 
 - **[GitHub Operations & Release Guide (GITHUB_GUIDE.md)](docs/GITHUB_GUIDE.md)**: 6-stage repo audit, auto-push, GitHub Actions Node 24 CI/CD, and release templates.
-- **[Google Blogger Official Posting Guide (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: Latest v1.13.12 release introduction for Compose (Rich Text) and HTML editing modes.
+- **[Google Blogger Official Posting Guide (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: Latest v1.13.13 release introduction for Compose (Rich Text) and HTML editing modes.
 - **[Development Specification (DEVELOPMENT.md)](docs/DEVELOPMENT.md)**: Complete development environment, build procedures, window dimensions (`650x920`), port (`3030`), and pipeline guide.
 - **[System Architecture (ARCHITECTURE.md)](docs/ARCHITECTURE.md)**: Multi-layer architecture, Win32/Rust IPC structure, SWR boot, and network control flows.
 - **[Pure Native DLL Specification (DLL_SPECIFICATION.md)](docs/DLL_SPECIFICATION.md)**: `ipname_core.dll` C-ABI interface specifications and system DLL audit report.
 - **[Patch Notes (PATCH_NOTES.md)](docs/PATCH_NOTES.md)**: Detailed version changelogs and in-depth audit defect resolution history.
-- **[Technical Roadmap (ROADMAP.md)](docs/ROADMAP.md)**: Project milestones and verification history (`ROADMAP-001` ~ `ROADMAP-028`).
+- **[Technical Roadmap (ROADMAP.md)](docs/ROADMAP.md)**: Project milestones and verification history (`ROADMAP-001` ~ `ROADMAP-029`).
 - **[Versioning Policy (VERSIONING_POLICY.md)](docs/VERSIONING_POLICY.md)**: Semantic Versioning and Triple Lockstep rules.
 - **[AI Standard Upgrade Work Instruction (UPDATE_WORK_INSTRUCTION.md)](docs/UPDATE_WORK_INSTRUCTION.md)**: Integrated AI prompt template for upgrading other IP Name applications.
 - **[License Notice (LICENSE_NOTICE.md)](docs/LICENSE_NOTICE.md)**: Open-source license notices and full MIT License text.

@@ -1,6 +1,6 @@
 # GitHub 저장소 운영, 배포 및 릴리스 가이드 (GitHub Repository & Release Guide)
 
-본 문서는 **AhBiYout IpName2 (v1.13.12)** 공식 GitHub 저장소([https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2))의 코드 동기화, 6단계 무결성·보안 감사, GitHub Actions 자동 빌드/릴리스 배포 및 릴리스 노트 작성을 위한 공식 운영 지침서입니다.
+본 문서는 **AhBiYout IpName2 (v1.13.13)** 공식 GitHub 저장소([https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2))의 코드 동기화, 6단계 무결성·보안 감사, GitHub Actions 자동 빌드/릴리스 배포 및 릴리스 노트 작성을 위한 공식 운영 지침서입니다.
 
 ---
 
@@ -9,7 +9,7 @@
 | 항목 | 공식 정보 |
 | :--- | :--- |
 | **저장소 URL** | [https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2) |
-| **최신 안정 버전** | `v1.13.12` (`IpName2 v1.13.12`) |
+| **최신 안정 버전** | `v1.13.13` (`IpName2 v1.13.13`) |
 | **제작자 (Author)** | **AhBiYout** ([https://github.com/AhBiYout-all](https://github.com/AhBiYout-all)) |
 | **공식 블로그** | [https://ahbiyoutvibe.blogspot.com/](https://ahbiyoutvibe.blogspot.com/) |
 | **소속 (Affiliation)** | [(주)청운정보시스템 ( cisnet.co.kr )](https://cisnet.co.kr) |
@@ -39,7 +39,7 @@ npm run lint
 2. **Stage 2 (금지·스크래치 파일 정리)**: `bun.lock`, `yarn.lock`, `pnpm-lock.yaml`, `*.tmp`, `*.bak`, `*.log`, 임시 아이콘 변환 스크립트 등 자동 탐지 및 `--clean` 옵션 시 삭제.
 3. **Stage 3 (화이트리스트 구조 검증)**: 루트 디렉터리 및 `public/` 내 미등록 잔여 파일·디렉터리 탐지.
 4. **Stage 4 (시크릿·개인정보 스캔)**: API 키(Google, AWS), GitHub PAT 토큰, 개인 키 블록, 개인 이메일 유출 여부 전수 검사.
-5. **Stage 5 (10지점 버전 삼중 동기화 검증)**: 아래 10개 대상이 모두 `package.json` 버전(`1.13.12`)과 일치하는지 자동 검증:
+5. **Stage 5 (10지점 버전 삼중 동기화 검증)**: 아래 10개 대상이 모두 `package.json` 버전(`1.13.13`)과 일치하는지 자동 검증:
    - `package.json` (`version`)
    - `package-lock.json` (`version` & `packages[""].version`)
    - `scripts/github/core-manifest.json` (`version`)
@@ -61,9 +61,9 @@ npm run lint
 ### 3.1. 로컬 원클릭 푸시 (`git-push.bat` — 원격 업로드 제외)
 * **격리 원칙**: `git-push.bat`은 `.gitignore` 및 `excludedFiles`에 의해 GitHub 원격 저장소에는 업로드되지 않습니다.
 * **동작 순서**:
-  1. `package.json` ➔ PowerShell ➔ `docs/PATCH_NOTES.md` 순으로 최신 버전(`1.13.12`) 동적 추출.
+  1. `package.json` ➔ PowerShell ➔ `docs/PATCH_NOTES.md` 순으로 최신 버전(`1.13.13`) 동적 추출.
   2. `node scripts\github\verify-core-files.cjs --clean` 실행으로 스테이징 전 6단계 감사 통과 확인.
-  3. `git-push.bat` 자체 인덱스 격리 후 `v1.13.12` 커밋 및 태그 생성, `origin main --tags` 푸시.
+  3. `git-push.bat` 자체 인덱스 격리 후 `v1.13.13` 커밋 및 태그 생성, `origin main --tags` 푸시.
 
 ### 3.2. GitHub Actions 자동 빌드 & 인스톨러 릴리스 (`.github/workflows/release.yml`)
 * **트리거 조건**:
@@ -75,32 +75,32 @@ npm run lint
   2. **Fast-Fail 선행 게이트**: Rust 컴파일 전에 `verify-core-files.cjs` 및 `npm run lint` (`tsc --noEmit`) 우선 검증.
   3. **Rust 툴체인 & 캐시**: `dtolnay/rust-toolchain@stable` (`x86_64-pc-windows-msvc`) + `Swatinem/rust-cache@v2` (`workspaces: src-tauri`).
   4. **C99 DLL + Frontend + Tauri 빌드**: `native/ipname_core/build.bat` ➔ `npm run build` ➔ `npm run tauri build`.
-  5. **Inno Setup 6 인스톨러 & 포터블 패키지 생성 및 배포**: `installer/setup.iss` 컴파일(`dist-installer/IpName2_v1.13.12_Setup.exe`)과 동시에 단일 실행 포터블(`dist-portable/IpName2_v1.13.12_Portable.exe`) 및 DLL 포함 포터블 압축본(`dist-portable/IpName2_v1.13.12_Portable.zip`)을 패키징하여 `softprops/action-gh-release@v3`로 GitHub Releases에 일괄 첨부.
+  5. **Inno Setup 6 인스톨러 & 포터블 패키지 생성 및 배포**: `installer/setup.iss` 컴파일(`dist-installer/IpName2_v1.13.13_Setup.exe`)과 동시에 단일 실행 포터블(`dist-portable/IpName2_v1.13.13_Portable.exe`) 및 DLL 포함 포터블 압축본(`dist-portable/IpName2_v1.13.13_Portable.zip`)을 패키징하여 `softprops/action-gh-release@v3`로 GitHub Releases에 일괄 첨부.
   6. **최신 3개 릴리즈 바이너리 유지 & 이전 릴리즈 에셋 정리**: 배포 완료 후 GitHub Releases 목록을 최신순으로 조회하여 **최신 3개 릴리즈의 바이너리 파일만 유지**하고, 그 이전 릴리즈는 릴리즈 노트·제목·태그·이력을 그대로 남긴 채 첨부된 바이너리 에셋만 자동 삭제 (로컬 빌드 정리 로직은 변경하지 않음).
 
 ---
 
-## 4. GitHub Release 노트 복사용 템플릿 (v1.13.12)
+## 4. GitHub Release 노트 복사용 템플릿 (v1.13.13)
 
 새 버전 릴리스 시 GitHub Releases 본문 작성에 바로 활용할 수 있는 표준 템플릿입니다:
 
 ```markdown
-## AhBiYout IpName2 v1.13.12 Release
+## AhBiYout IpName2 v1.13.13 Release
 
-Windows 10/11(64-bit)용 초고속 시스템 이름 및 네트워크 어댑터·다중 IP 관리 유틸리티 **IpName2 v1.13.12** 정식 배포입니다.
+Windows 10/11(64-bit)용 초고속 시스템 이름 및 네트워크 어댑터·다중 IP 관리 유틸리티 **IpName2 v1.13.13** 정식 배포입니다.
 
-### ✨ 주요 개선 사항 (v1.13.6 ~ v1.13.12)
+### ✨ 주요 개선 사항 (v1.13.6 ~ v1.13.13)
 - **GitHub Releases 최신 3개 릴리즈 바이너리 유지 정책 적용**: 배포 완료 후 최신 3개 릴리즈의 바이너리 자산만 유지하고, 이전 릴리즈는 릴리즈 노트·제목·태그·이력을 보존한 채 첨부된 바이너리 에셋만 자동 정리합니다.
-- **GitHub Releases 포터블 배포본(`_Portable.exe` & `_Portable.zip`) 동시 제공**: 무설치 단독 실행 파일(`IpName2_v1.13.12_Portable.exe`)과 C99 DLL 포함 무설치 압축 패키지(`IpName2_v1.13.12_Portable.zip`)를 CI/CD에서 자동 생성·업로드하며 인앱 자동 업데이터가 항상 정식 인스톨러(`_Setup.exe`)를 최우선 선택하도록 보호합니다.
-- **Inno Setup 6단계 스마트 인스톨러 적용**: `실행 중 앱 자동 강제 종료 ➔ 기존 설치 삭제/덮어쓰기 선택 ➔ MIT 라이선스 동의 ➔ 설치 및 방화벽 등록 ➔ 완료 화면 바탕화면 바로가기 체크 ➔ 앱 실행` 순서로 매끄러운 설치·업데이트 경험을 제공합니다.
+- **GitHub Releases 포터블 배포본(`_Portable.exe` & `_Portable.zip`) 동시 제공**: 무설치 단독 실행 파일(`IpName2_v1.13.13_Portable.exe`)과 C99 DLL 포함 무설치 압축 패키지(`IpName2_v1.13.13_Portable.zip`)를 CI/CD에서 자동 생성·업로드하며 인앱 자동 업데이터가 항상 정식 인스톨러(`_Setup.exe`)를 최우선 선택하도록 보호합니다.
+- **Inno Setup 6단계 스마트 인스톨러 & Windows 프로그램 추가/제거 정식 등록**: `실행 중 앱 자동 강제 종료 ➔ 기존 설치 감지 시 삭제/덮어쓰기 선택 ➔ MIT 라이선스 동의 ➔ 설치 및 프로그램 추가/제거·방화벽 등록 ➔ 완료 화면 바탕화면 바로가기 체크 ➔ 앱 실행` 순서로 매끄러운 설치·업데이트 경험을 제공합니다.
 - **사용자 기본 언어 자동 감지 & 4개 국어(KO/EN/JA/ZH) 완전 동적 지원**: OS/브라우저 로캘 자동 감지와 상·하단 원클릭 4개 국어 전환, 모든 UI 레이블·업데이트 모달·ARP/Ping 진단 메시지 및 생성된 PowerShell 스크립트 주석의 실시간 다국어 동적 생성을 구현했습니다.
 - **7차 심층 감사 및 Win32 네이티브 안정화**: 언어 전환 시 스크립트 주석 클로저 동기화(`useSystemConfig.ts`), `<html lang>` 속성 연동, Rust Win32 레지스트리 `u16` 정렬 UB 제거 및 `lpSockaddr.is_null()` 방어 가드를 적용했습니다.
 - **단일 화면 전체 표시 창 크기 확장 (`650x920`) & `ExternalLink` 단일 실행 보호**: 데스크톱 창 높이(`650x920`, 최소 `650x760`) 내 하단 푸터까지 일괄 표시하며 WebView2 외부 링크 중복 실행 현상을 완벽히 차단합니다.
 
 ### 📦 다운로드 및 설치
-- **`IpName2_v1.13.12_Setup.exe`**: Windows 10/11 64비트 공식 Inno Setup 설치 프로그램 (관리자 권한 UAC 실행 지원)
-- **`IpName2_v1.13.12_Portable.exe`**: 별도 설치 없이 바로 실행 가능한 단일 포터블 실행 파일
-- **`IpName2_v1.13.12_Portable.zip`**: `IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE` 포함 무설치 포터블 압축 패키지
+- **`IpName2_v1.13.13_Setup.exe`**: Windows 10/11 64비트 공식 Inno Setup 설치 프로그램 (관리자 권한 UAC 실행 지원)
+- **`IpName2_v1.13.13_Portable.exe`**: 별도 설치 없이 바로 실행 가능한 단일 포터블 실행 파일
+- **`IpName2_v1.13.13_Portable.zip`**: `IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE` 포함 무설치 포터블 압축 패키지
 
 ### 🔗 공식 링크
 - **공식 블로그**: https://ahbiyoutvibe.blogspot.com/

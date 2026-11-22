@@ -1,6 +1,6 @@
 # 구글 블로거(Google Blogger) 공식 포스팅 가이드 및 콘텐츠
 
-본 문서는 공식 블로그 [AhBiYout Vibe (https://ahbiyoutvibe.blogspot.com/)](https://ahbiyoutvibe.blogspot.com/)에 게시할 수 있도록 최신 **AhBiYout IpName2 (v1.13.12)** 사양으로 작성된 공식 배포 소개 글입니다.
+본 문서는 공식 블로그 [AhBiYout Vibe (https://ahbiyoutvibe.blogspot.com/)](https://ahbiyoutvibe.blogspot.com/)에 게시할 수 있도록 최신 **AhBiYout IpName2 (v1.13.13)** 사양으로 작성된 공식 배포 소개 글입니다.
 
 구글 블로거 글쓰기 화면의 **`[작성 모드 (서식 있는 텍스트)]`**와 **`[HTML 편집 모드]`** 모두에 바로 붙여넣어 발행할 수 있도록 메타데이터, 일반 서식 본문, 완성형 반응형 HTML 소스 코드를 함께 제공합니다.
 
@@ -10,11 +10,11 @@
 
 | 설정 항목 | 권장 입력값 |
 | :--- | :--- |
-| **포스트 제목 (Title)** | **[추천]** [Windows 유틸리티] AhBiYout IpName2 v1.13.12 - 초고속 네트워크 IP 설정 & 관리자 도구 (4개 국어 자동 감지, 다중 IP, Layer-2 충돌 감지, 포터블 지원) |
-| **대체 제목 (영문/간결)** | AhBiYout IpName2 v1.13.12: The Ultimate Windows Network & IP Management Tool |
+| **포스트 제목 (Title)** | **[추천]** [Windows 유틸리티] AhBiYout IpName2 v1.13.13 - 초고속 네트워크 IP 설정 & 관리자 도구 (4개 국어 자동 감지, 다중 IP, Layer-2 충돌 감지, 포터블 지원) |
+| **대체 제목 (영문/간결)** | AhBiYout IpName2 v1.13.13: The Ultimate Windows Network & IP Management Tool |
 | **커스텀 퍼머링크 (Permalink)** | `ahbiyout-ipname2-network-manager-v1-13` |
 | **라벨 / 태그 (Labels)** | `Windows 유틸리티`, `네트워크 관리`, `IP설정`, `Tauri v2`, `IpName2`, `오픈소스`, `CisNet`, `청운정보시스템`, `AhBiYout`, `고정IP`, `DNS설정`, `다중IP`, `다국어지원`, `포터블` |
-| **검색 설명 (Meta Description)** | Windows 10/11 전용 초경량 네트워크 관리 도구 AhBiYout IpName2 v1.13.12 출시! 설치본(_Setup.exe)과 무설치 포터블(_Portable.exe/.zip) 동시 지원, 6단계 스마트 인스톨러, 4개 국어 자동 감지 및 동적 스크립트 생성, 다중 IP 바인딩, Layer-2 ARP IP 충돌 감지를 무료로 만나보세요. |
+| **검색 설명 (Meta Description)** | Windows 10/11 전용 초경량 네트워크 관리 도구 AhBiYout IpName2 v1.13.13 출시! 설치본(_Setup.exe)과 무설치 포터블(_Portable.exe/.zip) 동시 지원, 6단계 스마트 인스톨러, 4개 국어 자동 감지 및 동적 스크립트 생성, 다중 IP 바인딩, Layer-2 ARP IP 충돌 감지를 무료로 만나보세요. |
 
 ---
 
@@ -24,7 +24,7 @@
 
 ---
 
-### 복잡한 윈도우 네트워크 설정 창과 작별하세요! 초경량 초고속 네트워크 도구 AhBiYout IpName2 v1.13.12 공개
+### 복잡한 윈도우 네트워크 설정 창과 작별하세요! 초경량 초고속 네트워크 도구 AhBiYout IpName2 v1.13.13 공개
 
 사무실이나 개발 환경, 공장 인라인 장비 또는 데이터센터에서 네트워크 설정을 변경할 때, 윈도우 제어판의 '네트워크 연결'과 속성 창을 열고, IPv4 속성을 클릭하고, 관리자 창을 수없이 거치느라 번거로우셨나요?
 
@@ -34,7 +34,7 @@
 
 ---
 
-#### 🚀 IpName2 v1.13.12의 9대 핵심 기능
+#### 🚀 IpName2 v1.13.13의 9대 핵심 기능
 
 1. **원클릭 네트워크 속성 변경 & 재부팅 없는 즉각 반영**
    - IP 주소, 서브넷 마스크(`/24`~`/30` 프리셋 지원), 기본 게이트웨이, 기본/보조 DNS 서버를 직관적인 입력 폼에서 한 번에 수정합니다.
@@ -75,7 +75,7 @@
 
 #### 📊 기존 도구와의 비교 분석
 
-| 비교 항목 | 기존 윈도우 기본 설정 창 | 일반 오픈소스 도구 (Electron 기반) | **AhBiYout IpName2 (v1.13.12)** |
+| 비교 항목 | 기존 윈도우 기본 설정 창 | 일반 오픈소스 도구 (Electron 기반) | **AhBiYout IpName2 (v1.13.13)** |
 | :--- | :--- | :--- | :--- |
 | **설치 용량** | 윈도우 내장 (진입 경로 복잡) | 120MB ~ 250MB | **단 15MB (경량 인스톨러 & 포터블)** |
 | **메모리 점유율** | N/A | 180MB ~ 350MB | **25MB ~ 35MB (Rust 최적화)** |
@@ -93,9 +93,9 @@
 IpName2는 광고나 불필요한 번들이 일절 없는 100% 클린 오픈소스 소프트웨어입니다.
 
 * **최신 릴리스 다운로드**: [GitHub 공식 릴리스 페이지 (https://github.com/AhBiYout-all/IpName2/releases)](https://github.com/AhBiYout-all/IpName2/releases)
-* **공식 설치 프로그램**: `IpName2_v1.13.12_Setup.exe`
-* **단일 실행 포터블**: `IpName2_v1.13.12_Portable.exe` (무설치 단독 실행)
-* **포터블 압축 패키지**: `IpName2_v1.13.12_Portable.zip` (`IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE` 포함)
+* **공식 설치 프로그램**: `IpName2_v1.13.13_Setup.exe`
+* **단일 실행 포터블**: `IpName2_v1.13.13_Portable.exe` (무설치 단독 실행)
+* **포터블 압축 패키지**: `IpName2_v1.13.13_Portable.zip` (`IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE` 포함)
 * **지원 운영체제**: Microsoft Windows 10 / Windows 11 (64-bit 권장)
 * **필요 권한**: Windows 네트워크 어댑터 제어를 위한 관리자(UAC) 권한
 
@@ -127,13 +127,13 @@ IpName2는 광고나 불필요한 번들이 일절 없는 100% 클린 오픈소�
       공식 출시 &middot; Windows 10 / 11 (64-bit) 전용 유틸리티
     </div>
     <h1 style="font-size: 28px; font-weight: 800; margin: 0 0 12px 0; line-height: 1.3; color: #f8fafc;">
-      AhBiYout IpName2 v1.13.12
+      AhBiYout IpName2 v1.13.13
     </h1>
     <p style="font-size: 15.5px; color: #cbd5e1; max-width: 660px; margin: 0 auto 22px auto; line-height: 1.55;">
       설치본 &amp; 포터블 동시 제공 &middot; 4개 국어 자동 감지 &middot; SWR 즉시 기동 &middot; 650x920 단일 화면 UI &middot; Layer-2 ARP 충돌 감지
     </p>
     <a href="https://github.com/AhBiYout-all/IpName2/releases" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 10px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);">
-      🚀 최신 릴리스 v1.13.12 무료 다운로드
+      🚀 최신 릴리스 v1.13.13 무료 다운로드
     </a>
   </div>
 
@@ -146,14 +146,14 @@ IpName2는 광고나 불필요한 번들이 일절 없는 100% 클린 오픈소�
       사무실, 연구실, 공장 자동화 현장 또는 데이터센터에서 네트워크 설정을 변경할 때, 제어판과 어댑터 속성 창을 수없이 클릭하느라 시간을 허비하셨나요?
     </p>
     <p style="font-size: 15px; color: #475569; margin: 0;">
-      <strong>AhBiYout IpName2 v1.13.12</strong>은 관리자가 단 한 번의 조작으로 <strong>IPv4 주소, 다중 보조 IP, 서브넷 마스크, 게이트웨이, DNS 서버, 컴퓨터 이름(NetBIOS)을 안전하고 신속하게 변경</strong>할 수 있는 스마트 네트워크 유틸리티입니다. <strong>Tauri v2 + Rust + 순수 C99 Win32 엔진(<code>ipname_core.dll</code>)</strong>을 결합해 설치 용량 단 15MB, SWR 즉시 부팅과 4개 국어 자동 감지·세로 스크롤 없는 한 화면 뷰포트를 제공합니다.
+      <strong>AhBiYout IpName2 v1.13.13</strong>은 관리자가 단 한 번의 조작으로 <strong>IPv4 주소, 다중 보조 IP, 서브넷 마스크, 게이트웨이, DNS 서버, 컴퓨터 이름(NetBIOS)을 안전하고 신속하게 변경</strong>할 수 있는 스마트 네트워크 유틸리티입니다. <strong>Tauri v2 + Rust + 순수 C99 Win32 엔진(<code>ipname_core.dll</code>)</strong>을 결합해 설치 용량 단 15MB, SWR 즉시 부팅과 4개 국어 자동 감지·세로 스크롤 없는 한 화면 뷰포트를 제공합니다.
     </p>
   </div>
 
-  <!-- v1.13.12 Highlight Banner -->
+  <!-- v1.13.13 Highlight Banner -->
   <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 18px 22px; margin-bottom: 26px;">
     <h3 style="font-size: 16.5px; font-weight: 700; color: #0369a1; margin: 0 0 10px 0;">
-      ✨ v1.13.12 주요 업데이트 하이라이트
+      ✨ v1.13.13 주요 업데이트 하이라이트
     </h3>
     <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #334155; line-height: 1.65;">
       <li><strong>GitHub Releases 포터블 배포본(_Portable.exe &amp; _Portable.zip) 추가</strong>: 별도 설치 없는 단일 실행 포터블 파일과 <code>ipname_core.dll</code>이 포함된 무설치 ZIP 패키지를 정식 릴리스에 함께 제공합니다.</li>
@@ -220,7 +220,7 @@ IpName2는 광고나 불필요한 번들이 일절 없는 100% 클린 오픈소�
           <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
             <th style="padding: 10px 12px; font-weight: 700; color: #334155;">비교 항목</th>
             <th style="padding: 10px 12px; font-weight: 700; color: #64748b;">윈도우 기본 제어판</th>
-            <th style="padding: 10px 12px; font-weight: 700; color: #0369a1;">AhBiYout IpName2 v1.13.12</th>
+            <th style="padding: 10px 12px; font-weight: 700; color: #0369a1;">AhBiYout IpName2 v1.13.13</th>
           </tr>
         </thead>
         <tbody>
@@ -266,7 +266,7 @@ IpName2는 광고나 불필요한 번들이 일절 없는 100% 클린 오픈소�
     </h3>
     <p style="font-size: 14px; color: #374151; margin: 0 0 15px 0;">
       IpName2는 모든 개인 및 기업 환경에서 100% 무료로 사용할 수 있는 순수 MIT 오픈소스 프로젝트입니다.<br>
-      (설치본: <code>IpName2_v1.13.12_Setup.exe</code> &middot; 포터블: <code>IpName2_v1.13.12_Portable.exe</code> / <code>IpName2_v1.13.12_Portable.zip</code>)
+      (설치본: <code>IpName2_v1.13.13_Setup.exe</code> &middot; 포터블: <code>IpName2_v1.13.13_Portable.exe</code> / <code>IpName2_v1.13.13_Portable.zip</code>)
     </p>
     <div style="display: flex; flex-wrap: wrap; gap: 10px;">
       <a href="https://github.com/AhBiYout-all/IpName2/releases" target="_blank" rel="noopener noreferrer" style="background: #16a34a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 9px 18px; border-radius: 8px;">
@@ -295,7 +295,7 @@ IpName2는 광고나 불필요한 번들이 일절 없는 100% 클린 오픈소�
 
 발행 전 아래 항목들을 최종 점검하세요:
 - [ ] 구글 블로거 새 글 작성 진입 (`https://draft.blogger.com/` 또는 `blogger.com`)
-- [ ] 제목에 권장 제목(`AhBiYout IpName2 v1.13.12`) 입력
+- [ ] 제목에 권장 제목(`AhBiYout IpName2 v1.13.13`) 입력
 - [ ] 라벨(Labels)에 `Windows 유틸리티`, `네트워크 관리`, `IP설정`, `Tauri v2`, `IpName2`, `다중IP`, `다국어지원` 추가
 - [ ] 우측 메뉴 **[링크]**에서 맞춤 URL 선택 후 `ahbiyout-ipname2-network-manager-v1-13` 입력
 - [ ] 우측 메뉴 **[검색 설명]**에 메타 설명 붙여넣기

@@ -4,11 +4,11 @@
 
 ![IpName2 Logo](app-icon.png)
 
-### Windows 系统名称及高性能网络适配器与多 IP 管理桌面实用工具 (v1.13.12)
+### Windows 系统名称及高性能网络适配器与多 IP 管理桌面实用工具 (v1.13.13)
 
 🌍 **语言**: [🇰🇷 한국어](README.md) | [🇺🇸 English](README_EN.md) | [🇯🇵 日本語](README_JA.md) | [🇨🇳 中文](README_ZH.md)
 
-[![Version](https://img.shields.io/badge/Version-v1.13.12-0284c7.svg)](docs/PATCH_NOTES.md)
+[![Version](https://img.shields.io/badge/Version-v1.13.13-0284c7.svg)](docs/PATCH_NOTES.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](docs/LICENSE_NOTICE.md)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.11-orange.svg)](https://tauri.app/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
@@ -25,7 +25,7 @@
 
 **AhBiYout IpName2** 是一款专为 Windows 10 和 Windows 11（64位）设计的精简高效桌面应用程序，用于直观管理计算机名、工作组（Workgroup）以及网络适配器的 IP、子网掩码、网关和 DNS 设置。
 
-结合了 **SWR 即时状态还原**、**Rust + Win32 原生并行轮询** 以及 **纯 C99 原生 DLL (`ipname_core.dll`)**，可实现零延迟无感启动，并同时支持单文件免安装便携版 (`IpName2_v1.13.12_Portable.exe` / `_Portable.zip`) 和官方 Inno Setup 安装程序 (`IpName2_v1.13.12_Setup.exe`) 分发。
+结合了 **SWR 即时状态还原**、**Rust + Win32 原生并行轮询** 以及 **纯 C99 原生 DLL (`ipname_core.dll`)**，可实现零延迟无感启动，并同时支持单文件免安装便携版 (`IpName2_v1.13.13_Portable.exe` / `_Portable.zip`) 和官方 Inno Setup 安装程序 (`IpName2_v1.13.13_Setup.exe`) 分发。
 
 ### 核心功能 (Key Features)
 
@@ -103,12 +103,12 @@ build.bat
 项目详细架构、GitHub 运营和博客发布指南已系统整理在 [`/docs`](docs/README.md) 目录中：
 
 - **[GitHub 运营与发布指南 (GITHUB_GUIDE.md)](docs/GITHUB_GUIDE.md)**: 6 阶段仓库审计、自动推送、GitHub Actions Node 24 CI/CD 与发布模板。
-- **[Google Blogger 官方发布指南 (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: 适用于编写模式（富文本）与 HTML 编辑模式的最新 v1.13.12 发布介绍文。
+- **[Google Blogger 官方发布指南 (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: 适用于编写模式（富文本）与 HTML 编辑模式的最新 v1.13.13 发布介绍文。
 - **[开发规范说明书 (DEVELOPMENT.md)](docs/DEVELOPMENT.md)**: 完整开发环境、构建步骤、窗口尺寸（`650x920`）、端口（`3030`）及流水线指南。
 - **[系统架构设计 (ARCHITECTURE.md)](docs/ARCHITECTURE.md)**: 多层架构、Win32/Rust IPC 结构、SWR 启动与网络控制流。
 - **[纯原创原生 DLL 规范 (DLL_SPECIFICATION.md)](docs/DLL_SPECIFICATION.md)**: `ipname_core.dll` C-ABI 接口规范与系统 DLL 审计报告。
 - **[补丁日志 (PATCH_NOTES.md)](docs/PATCH_NOTES.md)**: 各版本详细变更说明与深度审计缺陷解决记录。
-- **[技术路线图 (ROADMAP.md)](docs/ROADMAP.md)**: 项目里程碑与验证历史记录（`ROADMAP-001` ~ `ROADMAP-028`）。
+- **[技术路线图 (ROADMAP.md)](docs/ROADMAP.md)**: 项目里程碑与验证历史记录（`ROADMAP-001` ~ `ROADMAP-029`）。
 - **[版本管理策略 (VERSIONING_POLICY.md)](docs/VERSIONING_POLICY.md)**: 语义化版本控制（Semantic Versioning）与三重锁步（Triple Lockstep）规则。
 - **[AI 标准升级作业指导书 (UPDATE_WORK_INSTRUCTION.md)](docs/UPDATE_WORK_INSTRUCTION.md)**: 用于升级其他 IP Name 系列应用的集成 AI 提示词模板。
 - **[开源许可证声明 (LICENSE_NOTICE.md)](docs/LICENSE_NOTICE.md)**: 开源许可证说明及 MIT License 全文。

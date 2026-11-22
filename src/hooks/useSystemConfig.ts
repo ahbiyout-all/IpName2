@@ -1,10 +1,89 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { SystemInfo, NetworkAdapter } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import type { Language } from '../i18n/translations';
 import { executePowerShell, isTauriEnv } from '../lib/powershell';
 import { safeStorage } from '../lib/storage';
 
 const STARTUP_CACHE_KEY = 'ipname2_startup_snapshot_v1';
+
+interface ScriptComments {
+  sysHeader: string;
+  workgroupCmd: string;
+  renameCmd: string;
+  netHeader: string;
+  enableCmd: string;
+  disableCmd: string;
+  dhcpCmd: string;
+  primaryIpCmd: string;
+  secondaryIpCmd: string;
+  dnsStaticCmd: string;
+  dnsDhcpCmd: string;
+  toggleHeader: string;
+}
+
+const SCRIPT_COMMENTS: Record<Language, ScriptComments> = {
+  ko: {
+    sysHeader: '# IpName2 시스템 설정 변경 스크립트',
+    workgroupCmd: '# 작업 그룹 변경',
+    renameCmd: '# 컴퓨터 이름 변경',
+    netHeader: '# IpName2 네트워크 어댑터 구성 스크립트',
+    enableCmd: '# 네트워크 어댑터(랜카드) 활성화',
+    disableCmd: '# 네트워크 어댑터(랜카드) 비활성화',
+    dhcpCmd: '# IP 및 DNS 자동 할당(DHCP) 구성',
+    primaryIpCmd: '# 기본(메인) 고정 IPv4 주소 설정',
+    secondaryIpCmd: '# 다중(보조) IPv4 주소 추가',
+    dnsStaticCmd: '# 고정 DNS 서버 설정',
+    dnsDhcpCmd: '# DNS 서버 자동 할당(DHCP) 설정',
+    toggleHeader: '# IpName2 네트워크 어댑터 전원 제어 스크립트'
+  },
+  en: {
+    sysHeader: '# IpName2 System Configuration Script',
+    workgroupCmd: '# Change Workgroup',
+    renameCmd: '# Rename Computer',
+    netHeader: '# IpName2 Network Adapter Configuration Script',
+    enableCmd: '# Enable Network Adapter',
+    disableCmd: '# Disable Network Adapter',
+    dhcpCmd: '# Configure DHCP for IP & DNS',
+    primaryIpCmd: '# Configure Primary Static IPv4 Address',
+    secondaryIpCmd: '# Add Secondary IPv4 Address',
+    dnsStaticCmd: '# Configure Static DNS Servers',
+    dnsDhcpCmd: '# Configure DHCP DNS Servers',
+    toggleHeader: '# IpName2 Network Adapter Power Control Script'
+  },
+  ja: {
+    sysHeader: '# IpName2 システム設定変更スクリプト',
+    workgroupCmd: '# ワークグループ変更',
+    renameCmd: '# コンピューター名変更',
+    netHeader: '# IpName2 ネットワークアダプター構成スクリプト',
+    enableCmd: '# ネットワークアダプター有効化',
+    disableCmd: '# ネットワークアダプター無効化',
+    dhcpCmd: '# IPおよびDNSの自動取得(DHCP)設定',
+    primaryIpCmd: '# メイン固定IPv4アドレス設定',
+    secondaryIpCmd: '# 追加(セカンダリ)IPv4アドレス設定',
+    dnsStaticCmd: '# 固定DNSサーバー設定',
+    dnsDhcpCmd: '# DNSサーバー自動取得(DHCP)設定',
+    toggleHeader: '# IpName2 ネットワークアダプター電源制御スクリプト'
+  },
+  zh: {
+    sysHeader: '# IpName2 系统配置修改脚本',
+    workgroupCmd: '# 更改工作组',
+    renameCmd: '# 重命名计算机',
+    netHeader: '# IpName2 网络适配器配置脚本',
+    enableCmd: '# 启用网络适配器(网卡)',
+    disableCmd: '# 禁用网络适配器(网卡)',
+    dhcpCmd: '# 配置自动获取 IP 与 DNS (DHCP)',
+    primaryIpCmd: '# 配置主静态 IPv4 地址',
+    secondaryIpCmd: '# 添加辅助 IPv4 地址',
+    dnsStaticCmd: '# 配置静态 DNS 服务器',
+    dnsDhcpCmd: '# 配置自动获取 DNS (DHCP)',
+    toggleHeader: '# IpName2 网络适配器开关控制脚本'
+  }
+};
+
+function getScriptComments(language: Language): ScriptComments {
+  return SCRIPT_COMMENTS[language] || SCRIPT_COMMENTS.en;
+}
 
 interface StartupSnapshot {
   systemInfo: SystemInfo;
@@ -302,7 +381,7 @@ export function sortAdaptersAndEnforcePrimaryIp(adapters: NetworkAdapter[]): Net
 }
 
 export function useSystemConfig() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
 
   const initialSnapshotRef = useRef<StartupSnapshot | null | undefined>(undefined);
   if (initialSnapshotRef.current === undefined) {
@@ -715,6 +794,8 @@ export function useSystemConfig() {
       let script = '';
       let requiresRestart = false;
 
+      const comments = getScriptComments(language);
+
       let nameChanged = false;
       if (originalSystemInfo) {
         const trimmedName = (systemInfo.computerName || '').trim();
@@ -747,12 +828,12 @@ export function useSystemConfig() {
             setIsSaving(false);
             return;
           }
-          script += `Add-Computer -WorkgroupName "${escapePsDoubleQuoted(trimmedWorkgroup)}" -Force\n`;
+          script += `${comments.workgroupCmd}\nAdd-Computer -WorkgroupName "${escapePsDoubleQuoted(trimmedWorkgroup)}" -Force\n`;
           requiresRestart = true;
         }
 
         if (trimmedName !== (originalSystemInfo.computerName || '').trim()) {
-          script += `Rename-Computer -NewName "${escapePsDoubleQuoted(trimmedName)}" -Force\n`;
+          script += `${comments.renameCmd}\nRename-Computer -NewName "${escapePsDoubleQuoted(trimmedName)}" -Force\n`;
           requiresRestart = true;
           nameChanged = true;
         }
@@ -768,6 +849,7 @@ export function useSystemConfig() {
         $ErrorActionPreference = 'Stop';
         try {
           & {
+            ${comments.sysHeader}
             ${script}
           } 2>&1 | Out-Null
           exit 0
@@ -798,7 +880,7 @@ export function useSystemConfig() {
         }
       } else {
         // Web Preview Mock
-        console.log("Mock saveSystemInfo executed with script:", script);
+        console.log("Mock saveSystemInfo executed with script:", wrappedScript);
         dirtySystemRef.current = false;
         const nextInfo = { ...systemInfo };
         setOriginalSystemInfo(nextInfo);
@@ -823,7 +905,7 @@ export function useSystemConfig() {
         setIsSaving(false);
       }
     }
-  }, [systemInfo, originalSystemInfo, fetchInitialData, t, showToast]);
+  }, [systemInfo, originalSystemInfo, fetchInitialData, language, t, showToast]);
 
   const saveNetworkConfig = useCallback(async (selectedAdapterId: string) => {
     if (isSavingRef.current) return;
@@ -831,6 +913,8 @@ export function useSystemConfig() {
     setIsSaving(true);
     try {
       let script = '';
+
+      const comments = getScriptComments(language);
 
       const adapter = adapters.find(a => a.id === selectedAdapterId);
       const originalAdapter = originalAdapters.find(a => a.id === selectedAdapterId);
@@ -841,10 +925,10 @@ export function useSystemConfig() {
         // Handle Enable/Disable
         if (originalAdapter && adapter.isEnabled !== originalAdapter.isEnabled) {
           if (adapter.isEnabled) {
-            script += `Enable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\n`;
+            script += `${comments.enableCmd}\nEnable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\n`;
             script += `Start-Sleep -Seconds 2\n`;
           } else {
-            script += `Disable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\n`;
+            script += `${comments.disableCmd}\nDisable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\n`;
           }
         }
 
@@ -914,11 +998,11 @@ export function useSystemConfig() {
           }
 
           if (adapter.isDhcp) {
-            script += `netsh interface ipv4 set address name="${safeAdapterName}" source=dhcp\n`;
+            script += `${comments.dhcpCmd}\nnetsh interface ipv4 set address name="${safeAdapterName}" source=dhcp\n`;
             script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
           } else {
             const gw = gateway ? ` gateway=${gateway}` : '';
-            script += `netsh interface ipv4 set address name="${safeAdapterName}" source=static address=${primaryIp} mask=${subnetMask}${gw}\n`;
+            script += `${comments.primaryIpCmd}\nnetsh interface ipv4 set address name="${safeAdapterName}" source=static address=${primaryIp} mask=${subnetMask}${gw}\n`;
             
             // Add secondary / multiple IP addresses
             if (adapter.additionalIps && adapter.additionalIps.length > 0) {
@@ -926,20 +1010,20 @@ export function useSystemConfig() {
                 const secIp = (sec.ipAddress || '').trim();
                 const secMask = (sec.subnetMask || '').trim();
                 if (secIp && secMask) {
-                  script += `netsh interface ipv4 add address name="${safeAdapterName}" address=${secIp} mask=${secMask}\n`;
+                  script += `${comments.secondaryIpCmd}\nnetsh interface ipv4 add address name="${safeAdapterName}" address=${secIp} mask=${secMask}\n`;
                 }
               }
             }
 
             if (dns1) {
-              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${dns1} validate=no\n`;
+              script += `${comments.dnsStaticCmd}\nnetsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${dns1} validate=no\n`;
               if (dns2 && dns2 !== dns1) {
                 script += `netsh interface ipv4 add dns name="${safeAdapterName}" address=${dns2} index=2 validate=no\n`;
               }
             } else if (dns2) {
-              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${dns2} validate=no\n`;
+              script += `${comments.dnsStaticCmd}\nnetsh interface ipv4 set dns name="${safeAdapterName}" source=static address=${dns2} validate=no\n`;
             } else {
-              script += `netsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
+              script += `${comments.dnsDhcpCmd}\nnetsh interface ipv4 set dns name="${safeAdapterName}" source=dhcp\n`;
             }
           }
         }
@@ -955,6 +1039,7 @@ export function useSystemConfig() {
         $ErrorActionPreference = 'Stop';
         try {
           & {
+            ${comments.netHeader}
             ${script}
           } 2>&1 | Out-Null
           exit 0
@@ -1032,7 +1117,7 @@ export function useSystemConfig() {
         }
       } else {
         // Web Preview Mock
-        console.log("Mock saveNetworkConfig executed with script:", script);
+        console.log("Mock saveNetworkConfig executed with script:", wrappedScript);
         dirtyAdapterIdsRef.current.delete(selectedAdapterId);
         const snapshotAdapters = [...adaptersRef.current];
         setOriginalAdapters(snapshotAdapters);
@@ -1050,7 +1135,7 @@ export function useSystemConfig() {
         setIsSaving(false);
       }
     }
-  }, [adapters, originalAdapters, systemInfo, fetchInitialData, t, showToast]);
+  }, [adapters, originalAdapters, systemInfo, fetchInitialData, language, t, showToast]);
 
   const updateAdapter = useCallback((id: string, fieldOrUpdates: keyof NetworkAdapter | Partial<NetworkAdapter>, value?: any) => {
     dirtyAdapterIdsRef.current.add(id);
@@ -1101,15 +1186,17 @@ export function useSystemConfig() {
       } : a));
 
       if (isTauriEnv()) {
+        const comments = getScriptComments(language);
         const safeAdapterName = escapePsDoubleQuoted(adapter.name);
         const cmd = newEnabled 
-          ? `Enable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\nStart-Sleep -Seconds 2`
-          : `Disable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false`;
+          ? `${comments.enableCmd}\nEnable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false\nStart-Sleep -Seconds 2`
+          : `${comments.disableCmd}\nDisable-NetAdapter -Name "${safeAdapterName}" -Confirm:$false`;
 
         const wrappedScript = `
           $ErrorActionPreference = 'Stop';
           try {
             & {
+              ${comments.toggleHeader}
               ${cmd}
             } 2>&1 | Out-Null
             exit 0
@@ -1180,7 +1267,7 @@ export function useSystemConfig() {
         setIsSaving(false);
       }
     }
-  }, [adapters, systemInfo, fetchInitialData, t, showToast]);
+  }, [adapters, systemInfo, fetchInitialData, language, t, showToast]);
 
   const rebootSystem = useCallback(async () => {
     try {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { RealIpInfo } from '../types';
 import { isTauriEnv, executePowerShell } from '../lib/powershell';
 import { safeStorage } from '../lib/storage';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const CACHE_KEY = 'ipname2_real_ip_cache';
 
@@ -16,6 +17,7 @@ interface CachedRealIp {
 }
 
 export function useRealIp() {
+  const { t } = useLanguage();
   const [data, setData] = useState<RealIpInfo>(() => {
     try {
       const cached = safeStorage.getItem(CACHE_KEY);
@@ -156,7 +158,7 @@ export function useRealIp() {
         if (!isTauriEnv()) {
           resolvedIp = '211.234.120.45';
           resolvedIsp = 'KT Corporation';
-          resolvedCountry = '대한민국';
+          resolvedCountry = t('defaultCountryLabel');
           resolvedCity = 'Seoul';
         }
       }
@@ -168,8 +170,8 @@ export function useRealIp() {
         const updatedInfo: RealIpInfo = {
           ip: resolvedIp,
           ipv4: resolvedIpv4 || resolvedIp,
-          isp: resolvedIsp || '공인 네트워크 (ISP)',
-          country: resolvedCountry || '대한민국',
+          isp: resolvedIsp || t('publicNetworkIsp'),
+          country: resolvedCountry || t('defaultCountryLabel'),
           city: resolvedCity,
           asn: resolvedAsn,
           status: 'success',
@@ -194,7 +196,7 @@ export function useRealIp() {
         setData(prev => ({
           ...prev,
           status: prev.ip ? 'success' : 'error',
-          errorMessage: '인터넷 연결 끊김'
+          errorMessage: t('internetDisconnected')
         }));
       }
     } catch {
@@ -202,7 +204,7 @@ export function useRealIp() {
         setData(prev => ({
           ...prev,
           status: prev.ip ? 'success' : 'error',
-          errorMessage: '인터넷 연결 끊김'
+          errorMessage: t('internetDisconnected')
         }));
       }
     } finally {
@@ -211,7 +213,7 @@ export function useRealIp() {
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const cacheAgeMs = Date.now() - cacheTimestampRef.current;

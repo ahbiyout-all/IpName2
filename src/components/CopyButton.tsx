@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CopyButtonProps {
   textToCopy: string;
@@ -7,6 +8,7 @@ interface CopyButtonProps {
 }
 
 export const CopyButton: React.FC<CopyButtonProps> = ({ textToCopy, className = '' }) => {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,7 +64,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({ textToCopy, className = 
     <button
       onClick={handleCopy}
       className={`p-1 text-text-muted hover:text-primary transition-colors rounded-md hover:bg-[var(--input-bg)] ${className}`}
-      title="Copy to clipboard"
+      title={t('copyToClipboard')}
       type="button"
     >
       {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}

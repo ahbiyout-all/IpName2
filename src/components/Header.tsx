@@ -3,6 +3,8 @@ import { Shield, Globe, Power, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../lib/storage';
 
+import type { Language } from '../i18n/translations';
+
 interface HeaderProps {
   isAdmin: boolean;
   onReboot: () => void;
@@ -10,11 +12,13 @@ interface HeaderProps {
   updateAvailable?: boolean;
 }
 
+const LANGUAGE_CYCLE: readonly Language[] = ['ko', 'en', 'ja', 'zh'];
+
 const THEMES = [
-  { id: 'default', color: '#0067c0', name: '기본' },
-  { id: 'dark', color: '#0f172a', name: '다크' },
-  { id: 'emerald', color: '#10b981', name: '에메랄드' },
-  { id: 'sunset', color: '#f97316', name: '선셋' }
+  { id: 'default', color: '#0067c0', labelKey: 'themeDefault' as const },
+  { id: 'dark', color: '#0f172a', labelKey: 'themeDark' as const },
+  { id: 'emerald', color: '#10b981', labelKey: 'themeEmerald' as const },
+  { id: 'sunset', color: '#f97316', labelKey: 'themeSunset' as const }
 ];
 
 export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate, updateAvailable }) => {
@@ -34,7 +38,9 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
   };
 
   const toggleLanguage = () => {
-    setLanguage(language === 'ko' ? 'en' : 'ko');
+    const idx = LANGUAGE_CYCLE.indexOf(language);
+    const nextLang = LANGUAGE_CYCLE[(idx + 1) % LANGUAGE_CYCLE.length];
+    setLanguage(nextLang);
   };
 
   return (
@@ -79,10 +85,10 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
           type="button"
           onClick={toggleLanguage}
           className="flex items-center gap-1 bg-card border border-border px-2 py-1 rounded-full shadow-sm text-[10px] font-bold text-text-muted hover:text-primary transition-colors cursor-pointer"
-          title="Toggle Language"
+          title={t('toggleLanguage')}
         >
           <Globe size={12} />
-          {language === 'ko' ? 'EN' : 'KO'}
+          {language.toUpperCase()}
         </button>
 
         <div className="flex items-center gap-1.5 bg-card border border-border p-1 rounded-full shadow-sm">
@@ -93,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onReboot, onCheckUpdate
               onClick={() => handleThemeChange(theme.id)}
               className={`w-4 h-4 rounded-full transition-transform cursor-pointer ${currentTheme === theme.id ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-bg' : 'hover:scale-110 opacity-70 hover:opacity-100'}`}
               style={{ backgroundColor: theme.color }}
-              title={`${theme.name} 테마`}
+              title={t(theme.labelKey)}
             />
           ))}
         </div>

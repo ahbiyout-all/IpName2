@@ -206,26 +206,26 @@ const AppContent: React.FC = () => {
         if (res.success) {
           const latencyStr = `${res.round_trip_time_ms}ms (TTL ${res.time_to_live})`;
           setPingStatus(latencyStr);
-          showToast(`⚡ [IpNameCore] ${dnsTarget} Ping 성공: ${latencyStr}`, 'success');
+          showToast(t('pingSuccessToast').replace('{ip}', dnsTarget).replace('{latency}', latencyStr), 'success');
         } else {
-          setPingStatus('타임아웃');
-          showToast(`[IpNameCore] Ping 실패: ${res.message}`, 'error');
+          setPingStatus(t('pingTimeout'));
+          showToast(t('pingFailedToast').replace('{msg}', res.message), 'error');
         }
       } catch (e) {
         console.error("Native Ping failed, falling back to CMD:", e);
         if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
         if (!/^[a-zA-Z0-9.:-]+$/.test(dnsTarget)) {
-          setPingStatus('형식 오류');
+          setPingStatus(t('pingFormatError'));
           showToast(t('invalidDns'), 'error');
         } else {
           try {
             const { Command } = await import('@tauri-apps/plugin-shell');
             await Command.create('cmd', ['/c', 'start', 'IpName2 Ping', 'cmd.exe', '/k', 'ping', '-t', dnsTarget]).execute();
             if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
-            setPingStatus('CMD 실행됨');
+            setPingStatus(t('pingCmdLaunched'));
           } catch {
             if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
-            setPingStatus('오류');
+            setPingStatus(t('pingErrorStatus'));
             showToast(t('applyError'), 'error');
           }
         }
@@ -241,7 +241,7 @@ const AppContent: React.FC = () => {
         if (!isMountedRef.current || pingRequestIdRef.current !== reqId) return;
         const mockLatency = '8ms (TTL 64)';
         setPingStatus(mockLatency);
-        showToast(`⚡ [IpNameCore 모의] ${dnsTarget} Ping 성공: ${mockLatency}`, 'success');
+        showToast(t('pingSuccessMockToast').replace('{ip}', dnsTarget).replace('{latency}', mockLatency), 'success');
         setIsPinging(false);
       }, 400);
     }
@@ -444,7 +444,7 @@ const AppContent: React.FC = () => {
                 onClick={handlePingDns}
                 disabled={!selectedAdapter?.primaryDns || isPinging}
                 className="card p-3 flex items-center justify-center gap-1.5 hover:bg-[var(--card-hover)] transition-colors border border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed select-none"
-                title={!selectedAdapter?.primaryDns ? t('noPrimaryDns') : 'IpNameCore 네이티브 ICMP Echo Ping 실행'}
+                title={!selectedAdapter?.primaryDns ? t('noPrimaryDns') : t('pingToolTip')}
               >
                 {isPinging ? (
                   <Activity size={15} className="text-primary animate-spin" />

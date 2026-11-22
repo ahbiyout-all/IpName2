@@ -244,3 +244,31 @@ This document tracks high-priority features, reliability fixes, and architecture
   1. Update all GitHub links/tooltips/labels in `Footer.tsx` to `https://github.com/AhBiYout-all/IpName2`.
   2. Synchronize Triple Lockstep version `1.13.7` across all 10 targets and documentation.
 - **Validation**: Triple Lockstep version `1.13.7` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-024] Automatic Browser Language Detection & 4-Language Dynamic Support (v1.13.8)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `src/contexts/LanguageContext.tsx`, `src/i18n/translations.ts`, `src/components/Footer.tsx`, `src/hooks/useSystemConfig.ts`, `README_EN.md`, `README_JA.md`, `README_ZH.md`, `docs/*`
+- **Description**: Implement automatic user language detection (`ko`, `en`, `ja`, `zh`) based on browser locale (`navigator.language`) on first load, provide manual language switcher buttons in the footer (KR, EN, JP, CN), fully translate all UI labels and messages for Korean, English, Japanese, and Chinese, and dynamically localize PowerShell execution script comment headers matching the active app language.
+- **Acceptance Criteria**:
+  1. `LanguageContext` auto-detects browser locale on startup if no manual override is saved in `safeStorage`.
+  2. Footer provides quick language toggle buttons for Korean, English, Japanese, and Chinese.
+  3. `translations.ts` includes complete dictionaries for all 4 languages.
+  4. Generated PowerShell scripts in `useSystemConfig.ts` include localized header comments (`# ...`) matching the active language.
+  5. Synchronize Triple Lockstep version `1.13.8` across all 10 targets and documentation.
+- **Validation**: Triple Lockstep version `1.13.8` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-025] Round 7 Self-Reflection & Deep Audit: Complete 4-Lang Parity, Closure Fix & Win32 UB Safety (v1.13.9)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `src/i18n/translations.ts`, `src/contexts/LanguageContext.tsx`, `src/components/{Header,SubnetMaskSelector,CopyButton,Footer,UpdateModal,AdapterItem}.tsx`, `src/hooks/{useSystemConfig,useGitHubUpdate,useRealIp}.ts`, `src/App.tsx`, `src-tauri/src/windows_native.rs`, `README*.md`, `docs/*`
+- **Description**: Conduct a comprehensive Round 7 Self-Reflection audit resolving Header 2-language cycling bug, stale `language` closure in dynamic PowerShell scripts, `<html lang>` sync, all remaining hardcoded Korean UI/diagnostic/update strings across 4 languages, unaligned `*const u16` UB & missing `lpSockaddr.is_null()` guards in Win32 native Rust code, and 52-file documentation parity.
+- **Acceptance Criteria**:
+  1. Cycle through `['ko', 'en', 'ja', 'zh']` cleanly in `Header.tsx` and sync `document.documentElement.lang` in `LanguageContext.tsx`.
+  2. Fix missing `language` dependencies in `useSystemConfig.ts` (`saveSystemInfo`, `saveNetworkConfig`, `toggleAdapterEnabled`) and inject localized per-command PowerShell comments via `getScriptComments(language)`.
+  3. Add 48 symmetrical keys to `translations.ts` and localize `UpdateModal`, `useGitHubUpdate`, `SubnetMaskSelector`, `AdapterItem`, `App`, `Footer`, `CopyButton`, and `useRealIp` across all 4 languages.
+  4. Replace unaligned `*const u16` casts in `windows_native.rs` with `chunks_exact(2)` + `u16::from_le_bytes` and guard `lpSockaddr.is_null()` across all 3 Win32 address loops.
+  5. Synchronize Triple Lockstep version `1.13.9` across all 10 targets, 52 manifest files, multilingual READMEs, and `docs/*`.
+- **Validation**: Triple Lockstep version `1.13.9` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
+
+

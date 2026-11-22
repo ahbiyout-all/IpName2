@@ -56,6 +56,8 @@
   - 6차 심층 감사(푸터 Tauri 외부 링크 보호·ARP 예외 오표기 차단·동기 저장 잠금 `isSavingRef`·서브넷 마스크 폴링 검증·업데이트 체크 경합 방지·Win32 빈 GUID 방어) (v1.13.5)
   - 세로 창 크기 확장(`650x920`) 및 `ExternalLink` 컴포넌트를 통한 푸터/모달 외부 링크 중복 실행 방지 (v1.13.6)
   - 하단 푸터 및 정보 모달 GitHub 링크를 공식 저장소 직통 경로(`https://github.com/AhBiYout-all/IpName2`)로 수정 (v1.13.7)
+  - 브라우저 로캘 4개 국어(`ko/en/ja/zh`) 자동 감지·수동 전환 UI, 동적 스크립트 헤더 현지화 및 다국어 README 정비 (v1.13.8)
+  - 7차 심층 감사(헤더 4개 국어 순환·`useSystemConfig.ts` 스크립트 `language` 의존성 및 명령별 주석 확장·`<html lang>` 동기화·업데이트/ARP/Ping/서브넷 4개 국어 완전 현지화·Rust Win32 레지스트리 `u16` 정렬 UB 및 `lpSockaddr.is_null()` 방어, 52종 핵심 파일) (v1.13.9)
   - 배치 스크립트 특수문자(`&`) 구문 오류 방지 및 CMD 중첩 괄호 파싱 결함 해결
 
 ---

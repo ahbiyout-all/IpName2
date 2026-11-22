@@ -4,11 +4,11 @@
 
 ![IpName2 Logo](app-icon.png)
 
-### Windows システム名および高性能ネットワークアダプター・マルチIP管理デスクトップユーティリティ (v1.13.7)
+### Windows システム名および高性能ネットワークアダプター・マルチIP管理デスクトップユーティリティ (v1.13.9)
 
 🌍 **言語**: [🇰🇷 한국어](README.md) | [🇺🇸 English](README_EN.md) | [🇯🇵 日本語](README_JA.md) | [🇨🇳 中文](README_ZH.md)
 
-[![Version](https://img.shields.io/badge/Version-v1.13.7-0284c7.svg)](docs/PATCH_NOTES.md)
+[![Version](https://img.shields.io/badge/Version-v1.13.9-0284c7.svg)](docs/PATCH_NOTES.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](docs/LICENSE_NOTICE.md)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.11-orange.svg)](https://tauri.app/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
@@ -25,7 +25,7 @@
 
 **AhBiYout IpName2**は、Windows 10およびWindows 11（64ビット）環境で、コンピューター名、ワークグループ、ネットワークアダプターのIP、サブネットマスク、ゲートウェイ、DNS設定を直感的に管理できる高性能デスクトップアプリケーションです。
 
-**SWR即時状態復元**、**Rust + Win32ネイティブ並列ポーリング**、**純粋なC99ネイティブDLL (`ipname_core.dll`)**を組み合わせることで、遅延のない起動を実現し、ポータブル実行と公式Inno Setupインストーラー(`IpName2_v1.13.7_Setup.exe`)の両方をサポートしています。
+**SWR即時状態復元**、**Rust + Win32ネイティブ並列ポーリング**、**純粋なC99ネイティブDLL (`ipname_core.dll`)**を組み合わせることで、遅延のない起動を実現し、ポータブル実行と公式Inno Setupインストーラー(`IpName2_v1.13.9_Setup.exe`)の両方をサポートしています。
 
 ### 主な機能 (Key Features)
 
@@ -48,6 +48,9 @@
 7. **ネットワークアダプター電源のワンクリック制御 & GitHub Releasesリアルタイム自動アップデート**:
    - 管理者権限（UAC）昇格を通じたアダプターの有効/無効切り替えと再入防止ロック(`isSavingRef`)。
    - バックグラウンドおよび手動でのアップデート確認、`UpdateModal`による直接ダウンロード案内。
+8. **ユーザー言語自動検出（KO/EN/JA/ZH）& 動的PowerShellスクリプトコメント生成**:
+   - 起動時にOS/ブラウザのロケールを自動検出し、韓国語・英語・日本語・中国語（簡体字）の4言語へ即時切替。ヘッダーおよびフッターボタンからいつでも手動切替が可能。
+   - すべてのUIラベル、診断・アップデートモーダルに加え、生成されるPowerShell実行スクリプト内のコメントも選択中の言語に合わせて動的に生成。
 
 ---
 
@@ -60,7 +63,7 @@
 | **Desktop Core** | Rust (Tauri v2.11) | 超軽量ネイティブIPC (`spawn_blocking`)、Win32 APIラッパー、Shell/Processプラグイン |
 | **Native Engine** | ISO C99 (`ipname_core.dll`) | Layer-2 ARP競合検出、ICMP Ping、TCP診断、6-Hex OUIアダプター分類器 |
 | **Installer** | Inno Setup 6 | 64ビットWindows用公式インストーラー (`installer/setup.iss`) |
-| **CI/CD & QA** | GitHub Actions (Node 24), `verify-core-files.cjs` | 6段階リポジトリ監査（49のコアファイル、シークレット、10地点のバージョン同期）と自動リリース |
+| **CI/CD & QA** | GitHub Actions (Node 24), `verify-core-files.cjs` | 6段階リポジトリ監査（52のコアファイル、シークレット、10地点のバージョン同期）と自動リリース |
 
 ---
 
@@ -100,12 +103,12 @@ build.bat
 プロジェクトの詳細なアーキテクチャ、GitHub運用、ブログ投稿ガイドは [`/docs`](docs/README.md) ディレクトリに体系的に整理されています：
 
 - **[GitHub運用・リリースガイド (GITHUB_GUIDE.md)](docs/GITHUB_GUIDE.md)**: 6段階リポジトリ監査、自動プッシュ、GitHub Actions Node 24 CI/CD、リリース雛形。
-- **[Google Blogger公式投稿ガイド (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: 作成モード（リッチテキスト）およびHTML編集モード用の最新v1.13.7紹介記事。
+- **[Google Blogger公式投稿ガイド (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: 作成モード（リッチテキスト）およびHTML編集モード用の最新v1.13.9紹介記事。
 - **[開発仕様書 (DEVELOPMENT.md)](docs/DEVELOPMENT.md)**: 開発環境、ビルド手順、ウィンドウ寸法(`650x920`)、ポート(`3030`)、パイプライン案内。
 - **[システムアーキテクチャ (ARCHITECTURE.md)](docs/ARCHITECTURE.md)**: 多層アーキテクチャ、Win32/Rust IPC構造、SWRブート、ネットワーク制御フロー。
 - **[純粋ネイティブDLL仕様書 (DLL_SPECIFICATION.md)](docs/DLL_SPECIFICATION.md)**: `ipname_core.dll` C-ABIインターフェース仕様およびシステムDLL監査レポート。
 - **[パッチノート (PATCH_NOTES.md)](docs/PATCH_NOTES.md)**: バージョン別詳細変更履歴および深層監査の不具合解決記録。
-- **[技術ロードマップ (ROADMAP.md)](docs/ROADMAP.md)**: プロジェクトのマイルストーンと検証完了履歴 (`ROADMAP-001` ~ `ROADMAP-023`).
+- **[技術ロードマップ (ROADMAP.md)](docs/ROADMAP.md)**: プロジェクトのマイルストーンと検証完了履歴 (`ROADMAP-001` ~ `ROADMAP-025`).
 - **[バージョン管理ポリシー (VERSIONING_POLICY.md)](docs/VERSIONING_POLICY.md)**: Semantic Versioningおよびトリプルロックステップ（Triple Lockstep）規則。
 - **[AI標準アップグレード作業指示書 (UPDATE_WORK_INSTRUCTION.md)](docs/UPDATE_WORK_INSTRUCTION.md)**: 他のIP Nameアプリのアップグレード用統合AIプロンプト。
 - **[ライセンス通知 (LICENSE_NOTICE.md)](docs/LICENSE_NOTICE.md)**: オープンソースライセンス通知およびMITライセンス全文。

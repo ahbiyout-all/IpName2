@@ -10,7 +10,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   const openSourceLicenses = [
@@ -35,7 +35,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
             type="button"
             onClick={() => setIsAboutOpen(true)}
             className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors focus:outline-none font-bold"
-            title="About / Licenses"
+            title={t('aboutTitle')}
           >
             <Settings size={11} className="animate-pulse text-primary" />
             <span>v{CURRENT_VERSION}</span>
@@ -76,6 +76,21 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
           </div>
         </div>
         <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-0.5 bg-secondary/50 px-1 py-0.5 rounded border border-border/50 text-[9px]">
+            {(['ko', 'en', 'ja', 'zh'] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={`px-1 py-0.2 rounded font-bold uppercase transition-colors cursor-pointer ${
+                  language === lang ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title={`Language: ${lang.toUpperCase()}`}
+              >
+                {lang === 'ko' ? 'KR' : lang === 'en' ? 'EN' : lang === 'ja' ? 'JP' : 'CN'}
+              </button>
+            ))}
+          </div>
           {onCheckUpdate && (
             <button
               type="button"
@@ -87,7 +102,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
           )}
           <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[9px] uppercase tracking-wider">
             <AlertCircle size={11} />
-            <span>REBOOT REQUIRED</span>
+            <span>{t('rebootRequiredBadge')}</span>
           </div>
         </div>
       </footer>

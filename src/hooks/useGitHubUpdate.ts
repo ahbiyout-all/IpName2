@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { safeStorage } from '../lib/storage';
+import { useLanguage } from '../contexts/LanguageContext';
 
-export const CURRENT_VERSION = '1.13.7';
+export const CURRENT_VERSION = '1.13.9';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -20,7 +21,10 @@ export interface GitHubReleaseInfo {
   htmlUrl: string;
   downloadUrl?: string;
   publishedAt?: string;
+  publishedAtIso?: string;
 }
+
+type UpdateStatusKey = 'no_releases' | 'up_to_date' | 'connect_failed' | null;
 
 // Compare semantic version numbers (e.g. "1.10.0" vs "1.9.0")
 export function isNewerVersion(remoteVer: string, currentVer: string): boolean {
@@ -41,12 +45,13 @@ export function isNewerVersion(remoteVer: string, currentVer: string): boolean {
 }
 
 export function useGitHubUpdate() {
+  const { language, t } = useLanguage();
   const [isChecking, setIsChecking] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [latestRelease, setLatestRelease] = useState<GitHubReleaseInfo | null>(null);
+  const [rawRelease, setRawRelease] = useState<GitHubReleaseInfo | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusKey, setStatusKey] = useState<UpdateStatusKey>(null);
 
   const isMountedRef = useRef(true);
   const checkGenRef = useRef(0);
@@ -68,7 +73,7 @@ export function useGitHubUpdate() {
     activeControllerRef.current = controller;
 
     setIsChecking(true);
-    setStatusMessage(null);
+    setStatusKey(null);
     const timeoutId = setTimeout(() => controller.abort(), 6000);
     try {
       const response = await fetch(
@@ -87,7 +92,7 @@ export function useGitHubUpdate() {
         // If 404 (no releases published yet), handle gracefully
         if (response.status === 404) {
           if (manual) {
-            setStatusMessage('현재 등록된 릴리스가 없습니다 (최신 빌드 상태).');
+            setStatusKey('no_releases');
             setIsModalOpen(true);
           }
           return;
@@ -119,10 +124,10 @@ export function useGitHubUpdate() {
         body: data.body || '',
         htmlUrl: data.html_url || GITHUB_REPO_URL,
         downloadUrl,
-        publishedAt: data.published_at ? new Date(data.published_at).toLocaleDateString() : undefined
+        publishedAtIso: data.published_at || undefined
       };
 
-      setLatestRelease(releaseInfo);
+      setRawRelease(releaseInfo);
       setLastCheckedTime(new Date().toLocaleTimeString());
 
       const hasNewVersion = isNewerVersion(remoteVersion, CURRENT_VERSION);
@@ -137,7 +142,7 @@ export function useGitHubUpdate() {
       } else {
         setUpdateAvailable(false);
         if (manual) {
-          setStatusMessage('현재 최신 버전(v' + CURRENT_VERSION + ')을 사용하고 있습니다.');
+          setStatusKey('up_to_date');
           setIsModalOpen(true);
         }
       }
@@ -145,7 +150,7 @@ export function useGitHubUpdate() {
       if (!isMountedRef.current || checkGenRef.current !== gen) return;
       console.warn('[GitHub Update Check] Failed to check for updates:', err?.message || err);
       if (manual) {
-        setStatusMessage('GitHub 릴리스 서버 연결 실패. 잠시 후 다시 시도해 주세요.');
+        setStatusKey('connect_failed');
         setIsModalOpen(true);
       }
     } finally {
@@ -161,10 +166,10 @@ export function useGitHubUpdate() {
 
   const dismissUpdate = useCallback((skipCurrent = false) => {
     setIsModalOpen(false);
-    if (skipCurrent && latestRelease?.version) {
-      safeStorage.setItem('ipname_skipped_update_version', latestRelease.version);
+    if (skipCurrent && rawRelease?.version) {
+      safeStorage.setItem('ipname_skipped_update_version', rawRelease.version);
     }
-  }, [latestRelease]);
+  }, [rawRelease]);
 
   // Initial background check deferred until after first paint and Win32 startup
   useEffect(() => {
@@ -190,6 +195,25 @@ export function useGitHubUpdate() {
       }
     };
   }, [checkUpdate]);
+
+  const localeTag = language === 'ko' ? 'ko-KR' : language === 'ja' ? 'ja-JP' : language === 'zh' ? 'zh-CN' : 'en-US';
+
+  const latestRelease = useMemo<GitHubReleaseInfo | null>(() => {
+    if (!rawRelease) return null;
+    return {
+      ...rawRelease,
+      publishedAt: rawRelease.publishedAtIso
+        ? new Date(rawRelease.publishedAtIso).toLocaleDateString(localeTag)
+        : undefined
+    };
+  }, [rawRelease, localeTag]);
+
+  const statusMessage = useMemo<string | null>(() => {
+    if (statusKey === 'no_releases') return t('updateNoReleases');
+    if (statusKey === 'up_to_date') return t('updateUpToDate').replace('{ver}', CURRENT_VERSION);
+    if (statusKey === 'connect_failed') return t('updateConnectFailed');
+    return null;
+  }, [statusKey, t]);
 
   return {
     currentVersion: CURRENT_VERSION,

@@ -7,19 +7,21 @@ export interface SubnetPreset {
   cidr: string;
   descKo: string;
   descEn: string;
+  descJa: string;
+  descZh: string;
   isDefault?: boolean;
 }
 
 export const SUBNET_PRESETS: SubnetPreset[] = [
-  { mask: '255.255.255.0', cidr: '/24', descKo: 'Class C (기본 256 IP)', descEn: 'Class C (Default 256 IPs)', isDefault: true },
-  { mask: '255.255.255.128', cidr: '/25', descKo: '128 IP (서브넷 분할)', descEn: '128 IPs (Subnetting)' },
-  { mask: '255.255.255.192', cidr: '/26', descKo: '64 IP', descEn: '64 IPs' },
-  { mask: '255.255.255.224', cidr: '/27', descKo: '32 IP', descEn: '32 IPs' },
-  { mask: '255.255.255.240', cidr: '/28', descKo: '16 IP', descEn: '16 IPs' },
-  { mask: '255.255.255.248', cidr: '/29', descKo: '8 IP', descEn: '8 IPs' },
-  { mask: '255.255.255.252', cidr: '/30', descKo: '4 IP (P2P / 게이트웨이)', descEn: '4 IPs (Point-to-Point)' },
-  { mask: '255.255.0.0', cidr: '/16', descKo: 'Class B (65,536 IP)', descEn: 'Class B (65,536 IPs)' },
-  { mask: '255.0.0.0', cidr: '/8', descKo: 'Class A (16,777,216 IP)', descEn: 'Class A (16,777,216 IPs)' },
+  { mask: '255.255.255.0', cidr: '/24', descKo: 'Class C (기본 256 IP)', descEn: 'Class C (Default 256 IPs)', descJa: 'Class C (既定 256 IP)', descZh: 'C 类 (默认 256 IP)', isDefault: true },
+  { mask: '255.255.255.128', cidr: '/25', descKo: '128 IP (서브넷 분할)', descEn: '128 IPs (Subnetting)', descJa: '128 IP (サブネット分割)', descZh: '128 IP (子网划分)' },
+  { mask: '255.255.255.192', cidr: '/26', descKo: '64 IP', descEn: '64 IPs', descJa: '64 IP', descZh: '64 IP' },
+  { mask: '255.255.255.224', cidr: '/27', descKo: '32 IP', descEn: '32 IPs', descJa: '32 IP', descZh: '32 IP' },
+  { mask: '255.255.255.240', cidr: '/28', descKo: '16 IP', descEn: '16 IPs', descJa: '16 IP', descZh: '16 IP' },
+  { mask: '255.255.255.248', cidr: '/29', descKo: '8 IP', descEn: '8 IPs', descJa: '8 IP', descZh: '8 IP' },
+  { mask: '255.255.255.252', cidr: '/30', descKo: '4 IP (P2P / 게이트웨이)', descEn: '4 IPs (Point-to-Point)', descJa: '4 IP (P2P / 接続)', descZh: '4 IP (点对点)' },
+  { mask: '255.255.0.0', cidr: '/16', descKo: 'Class B (65,536 IP)', descEn: 'Class B (65,536 IPs)', descJa: 'Class B (65,536 IP)', descZh: 'B 类 (65,536 IP)' },
+  { mask: '255.0.0.0', cidr: '/8', descKo: 'Class A (16,777,216 IP)', descEn: 'Class A (16,777,216 IPs)', descJa: 'Class A (16,777,216 IP)', descZh: 'A 类 (16,777,216 IP)' },
 ];
 
 interface SubnetMaskSelectorProps {
@@ -111,13 +113,21 @@ export const SubnetMaskSelector: React.FC<SubnetMaskSelectorProps> = memo(({
               {t('presetSubnetMasks')}
             </span>
             <span className="text-[9px] text-text-muted">
-              {language === 'ko' ? '클릭 시 즉시 적용' : 'Click to select'}
+              {t('clickToSelect')}
             </span>
           </div>
 
           <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
             {SUBNET_PRESETS.map((preset) => {
               const isSelected = value.trim() === preset.mask;
+              const localizedDesc =
+                language === 'ko'
+                  ? preset.descKo
+                  : language === 'ja'
+                  ? preset.descJa
+                  : language === 'zh'
+                  ? preset.descZh
+                  : preset.descEn;
               return (
                 <button
                   key={preset.mask}
@@ -136,14 +146,14 @@ export const SubnetMaskSelector: React.FC<SubnetMaskSelectorProps> = memo(({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[9px] text-text-muted truncate max-w-[85px]">
-                      {language === 'ko' ? preset.descKo : preset.descEn}
+                    <span className="text-[9px] text-text-muted truncate max-w-[95px]">
+                      {localizedDesc}
                     </span>
                     {isSelected ? (
                       <Check size={12} className="text-primary shrink-0" />
                     ) : preset.isDefault ? (
                       <span className="text-[8px] bg-emerald-500/10 text-emerald-600 px-1 rounded font-medium">
-                        {language === 'ko' ? '기본' : 'Def'}
+                        {t('defaultShortBadge')}
                       </span>
                     ) : null}
                   </div>

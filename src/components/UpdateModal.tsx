@@ -3,6 +3,7 @@ import { Sparkles, Download, ExternalLink as ExternalLinkIcon, CheckCircle, Gith
 import { Modal } from './Modal';
 import { GitHubReleaseInfo } from '../hooks/useGitHubUpdate';
 import { ExternalLink } from './ExternalLink';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface UpdateModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   repoUrl,
   onSkipVersion
 }) => {
+  const { t } = useLanguage();
+
   if (!isOpen) return null;
 
   const downloadTargetUrl = latestRelease?.downloadUrl || latestRelease?.htmlUrl || repoUrl;
@@ -47,7 +50,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             </div>
           )}
           <span className="font-bold text-sm">
-            {updateAvailable ? '새로운 버전 업데이트 알림' : '소프트웨어 업데이트 확인'}
+            {updateAvailable ? t('updateModalTitleNew') : t('updateModalTitleCheck')}
           </span>
         </div>
       }
@@ -59,7 +62,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               onClick={onSkipVersion}
               className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
-              이 버전 건너뛰기
+              {t('skipThisVersion')}
             </button>
           ) : (
             <div />
@@ -70,7 +73,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               onClick={onClose}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer"
             >
-              닫기
+              {t('close')}
             </button>
             {updateAvailable && (
               <ExternalLink
@@ -78,7 +81,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 className="btn-primary py-1.5 px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
               >
                 <Download size={13} />
-                <span>업데이트 다운로드</span>
+                <span>{t('downloadUpdate')}</span>
               </ExternalLink>
             )}
           </div>
@@ -92,7 +95,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-                  NEW UPDATE
+                  {t('newUpdateBadge')}
                 </span>
                 <span className="text-xs font-bold text-foreground">
                   {latestRelease.name || `v${latestRelease.version}`}
@@ -100,7 +103,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               </div>
               {latestRelease.publishedAt && (
                 <span className="text-[10px] text-muted-foreground">
-                  출시일: {latestRelease.publishedAt}
+                  {t('releaseDateLabel')}: {latestRelease.publishedAt}
                 </span>
               )}
             </div>
@@ -108,11 +111,11 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             {/* Version Diff Comparison */}
             <div className="grid grid-cols-2 gap-2 text-center py-2 bg-card/60 rounded-lg border border-border/50">
               <div className="border-r border-border/40 pr-2">
-                <span className="text-[9px] uppercase font-bold text-muted-foreground block">현재 버전</span>
+                <span className="text-[9px] uppercase font-bold text-muted-foreground block">{t('currentVersionLabel')}</span>
                 <span className="font-mono text-xs font-bold text-foreground">v{currentVersion}</span>
               </div>
               <div className="pl-2">
-                <span className="text-[9px] uppercase font-bold text-primary block">최신 버전</span>
+                <span className="text-[9px] uppercase font-bold text-primary block">{t('latestVersionLabel')}</span>
                 <span className="font-mono text-xs font-extrabold text-primary animate-pulse">
                   v{latestRelease.version}
                 </span>
@@ -126,10 +129,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             </div>
             <div>
               <h4 className="font-bold text-xs text-foreground">
-                {statusMessage || '현재 최신 버전을 사용 중입니다.'}
+                {statusMessage || t('upToDateTitle')}
               </h4>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                현재 설치 버전: <strong>v{currentVersion}</strong> (최신 안정 빌드)
+                {t('currentVersionLabel')}: <strong>v{currentVersion}</strong> ({t('upToDateStableDesc')})
               </p>
             </div>
           </div>
@@ -140,13 +143,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-bold text-foreground/90">
               <Github size={13} className="text-primary" />
-              <span>공식 GitHub 저장소 경로</span>
+              <span>{t('officialGithubRepoPath')}</span>
             </div>
             <ExternalLink
               href={repoTargetUrl}
               className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
             >
-              <span>저장소 방문</span>
+              <span>{t('visitRepository')}</span>
               <ExternalLinkIcon size={10} />
             </ExternalLink>
           </div>
@@ -159,7 +162,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         {latestRelease?.body && (
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase">
-              변경 내역 (Release Notes)
+              {t('releaseNotesLabel')}
             </label>
             <div className="p-2.5 rounded-lg bg-card border border-border text-[11px] leading-relaxed text-foreground/80 max-h-36 overflow-y-auto whitespace-pre-line font-sans custom-scrollbar">
               {latestRelease.body}

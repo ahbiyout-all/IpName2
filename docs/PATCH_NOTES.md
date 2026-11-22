@@ -2,6 +2,44 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.9] - 2026-11-22
+
+### 1. 7차 심층 감사(Self-Reflection & Deep Audit): 4개 국어 완전성·스크립트 클로저·Win32 정렬 UB 수정
+* **헤더 4개 국어 순환 및 테마 툴팁 다국어화 (`Header.tsx`)**:
+  - 상단 언어 전환 버튼이 `ko ⇄ en` 2개 언어만 순환하던 결함을 수정하여 `['ko', 'en', 'ja', 'zh']` 4개 국어를 순서대로 순환하고 활성 언어 코드(`KO`/`EN`/`JA`/`ZH`)를 표시하도록 교정.
+  - 4종 테마 버튼 툴팁 및 언어 전환 툴팁을 `t(...)` 번역 키(`toggleLanguage`, `themeDefault`, `themeDark`, `themeEmerald`, `themeSunset`)로 현지화.
+* **동적 PowerShell 스크립트 언어 Stale Closure 수정 및 전 명령 주석 확장 (`useSystemConfig.ts`)**:
+  - `saveSystemInfo`, `saveNetworkConfig`, `toggleAdapterEnabled`의 `useCallback` 의존성 배열에 `language`가 누락되어 언어 전환 직후에도 이전 언어 주석이 출력되던 결함 해결.
+  - `getScriptComments(language)` 헬퍼를 도입해 컴퓨터 이름 변경, 어댑터 DHCP/고정 IP·다중 IP·DNS 설정, 랜카드 활성화/비활성화 전 스크립트 명령에 선택 언어별 상세 주석 헤더/단계 주석을 동적 생성.
+* **전역 `<html lang>` 동기화 및 컨텍스트 메모이제이션 (`LanguageContext.tsx`)**:
+  - `document.documentElement.lang`을 현재 활성 언어(`zh` ➔ `zh-CN`, 기타 `ko`/`en`/`ja`)와 실시간 동기화하고, 중복 초기 감지 `useEffect` 제거 및 `useCallback`/`useMemo` 최적화 적용.
+* **잔존 한국어 하드코딩 4개 국어 완전 해소 (`translations.ts`, `UpdateModal.tsx`, `useGitHubUpdate.ts`, `SubnetMaskSelector.tsx`, `AdapterItem.tsx`, `App.tsx`, `Footer.tsx`, `CopyButton.tsx`, `useRealIp.ts`)**:
+  - `translations.ts`에 48개 번역 키를 `ko/en/ja/zh` 4개 국어 대칭 구조로 추가.
+  - `UpdateModal.tsx` 및 `useGitHubUpdate.ts`의 상태 메시지(`no_releases`/`up_to_date`/`connect_failed`), 로캘 기반 릴리스 날짜 포맷, 모달 배지·라벨·버튼 전면 다국어화.
+  - `SubnetMaskSelector.tsx`의 `descJa`/`descZh` 및 기본 배지, `useRealIp.ts`의 국가/ISP/연결 끊김 문구, `AdapterItem.tsx`의 ARP 충돌/내부 중복/툴팁/Wireless LAN, `App.tsx`의 Ping 토스트/상태/툴팁, `CopyButton.tsx`·`Footer.tsx` 툴팁 및 배지 현지화.
+* **Rust Win32 레지스트리 포인터 정렬 UB 및 NULL `lpSockaddr` 방어 (`windows_native.rs`)**:
+  - `read_registry_string` 및 `read_registry_strings`에서 바이트 버퍼를 `*const u16`로 직접 캐스팅하던 비정렬 메모리 접근(UB) 위험을 `chunks_exact(2)` 기반 `u16::from_le_bytes` 안전 디코딩으로 교체.
+  - `get_adapters_native`의 유니캐스트/게이트웨이/DNS 주소 순회 루프에 `lpSockaddr.is_null()` 방어 가드 추가.
+* **문서 및 버전 삼중 동기화 (`v1.13.9`, 52종 핵심 파일)**:
+  - `README.md`, `README_EN.md`, `README_JA.md`, `README_ZH.md` 및 `docs/` 전체 문서를 `v1.13.9` 및 52개 핵심 파일 규격으로 일괄 동기화.
+
+---
+
+## [v1.13.8] - 2026-11-21
+
+### 1. 사용자 기본 언어 자동 감지 및 4개 국어(KO, EN, JA, ZH) 동적 지원 구현
+* **브라우저 언어 자동 감지 (`LanguageContext.tsx`, `translations.ts`)**:
+  - 첫 실행 시 브라우저(`navigator.language`)의 로캘을 자동 감지하여 한국어(`ko`), 일본어(`ja`), 중국어 간체(`zh`), 영어(`en`) 중 최적의 언어로 자동 설정.
+  - 사용자가 하단 푸터에 추가된 빠른 언어 선택 버튼(KR, EN, JP, CN)을 통해 언제든지 수동으로 언어를 변경할 수 있으며, 선택값은 `safeStorage`에 안전하게 영구 저장되어 오버라이드 지원.
+* **4개 국어(한국어, 영어, 일본어, 중국어) 완벽 대응 번역 딕셔너리 구축**:
+  - 앱 내 모든 레이블, 버튼, 알림 메시지, 모달 안내문을 4개 언어로 완전 동적 번역.
+* **생성된 PowerShell 스크립트 동적 주석 현지화 (`useSystemConfig.ts`)**:
+  - 컴퓨터 이름 변경 및 네트워크 어댑터 구성 스크립트 실행 시 현재 선택된 앱 언어에 맞춰 실시간으로 동적 주석 헤더(`# IpName2 시스템 설정 변경 스크립트` 등)를 생성하도록 개선.
+* **다국어 GitHub README 파일 정비 (`README_EN.md`, `README_JA.md`, `README_ZH.md`)**:
+  - 글로벌 사용자 및 개발자를 위한 영어, 일본어, 중국어 간체 README 파일 생성 및 상단 언어 전환 내비게이션 바 탑재.
+* **버전 삼중 동기화 (`v1.13.8`) 및 저장소 감사**:
+  - 10개 빌드 타깃 버전 동기화, core-manifest 필수 파일 목록(52개) 및 6단계 저장소 무결성 감사 통과.
+
 ## [v1.13.7] - 2026-11-20
 
 ### 1. 하단 푸터 및 정보(About) 모달 GitHub 저장소 경로 수정 (`Footer.tsx`)

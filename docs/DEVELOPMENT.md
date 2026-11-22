@@ -1,12 +1,12 @@
 # IpName2 개발 명세서 (Development Specifications)
 
-본 문서는 **IpName2 v1.13.7**의 설계 구조, 기술 스택, 빌드 파이프라인, 순수 창작 DLL, 실시간 업데이트 및 GitHub 패키징 자동화를 기록한 개발 지침서입니다. AI 및 개발자가 본 프로젝트를 유지보수하거나 확장할 때 참고할 수 있도록 상세히 기술되었습니다.
+본 문서는 **IpName2 v1.13.9**의 설계 구조, 기술 스택, 빌드 파이프라인, 순수 창작 DLL, 실시간 업데이트 및 GitHub 패키징 자동화를 기록한 개발 지침서입니다. AI 및 개발자가 본 프로젝트를 유지보수하거나 확장할 때 참고할 수 있도록 상세히 기술되었습니다.
 
 ---
 
 ## 1. 프로젝트 개요
-- **프로젝트명**: AhBiYout IpName2 v1.13.7
-- **버전**: v1.13.7 (v1.13-STABLE)
+- **프로젝트명**: AhBiYout IpName2 v1.13.9
+- **버전**: v1.13.9 (v1.13-STABLE)
 - **개발자**: AhBiYout (GitHub: [https://github.com/AhBiYout-all](https://github.com/AhBiYout-all))
 - **공식 저장소**: [https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2)
 - **공식 구글 블로그**: [https://ahbiyoutvibe.blogspot.com/](https://ahbiyoutvibe.blogspot.com/)
@@ -109,7 +109,7 @@
 - **단일 화면 전체 표시 창 규격**: 윈도우 데스크톱 창 기본 크기를 가로 650px x 세로 920px(최소 650x760)로 확장하여 어댑터 목록, IP 입력폼, 서브넷 마스크 프리셋, DNS 원클릭 설정, 빠른 진단 도구와 최하단 푸터까지 스크롤 없이 한눈에 들어오도록 최적화.
 - **외부 링크 단일 실행 보호 (`ExternalLink.tsx`)**: Tauri WebView2에서 `<a target="_blank">` 기본 내비게이션과 `@tauri-apps/plugin-shell` `open()`이 중복 실행되는 현상을 차단하기 위해 데스크톱 모드에서 쿨다운 잠금 기반 버튼 런처를 사용.
 - **Windows 11 스타일**: Fluent 디자인 시스템(`rounded-xl`, `backdrop-blur-xl`, 정밀한 대비)을 사용하여 현대적인 프리미엄 디자인 구현.
-- **다국어 지원**: `src/i18n` 폴더를 통한 한국어/영어 지원 및 `v1.13-STABLE` 표기 통일.
+- **다국어 자동 감지 및 동적 현지화 (`LanguageContext.tsx`, `src/i18n/translations.ts`)**: 첫 실행 시 OS/브라우저 로캘(`navigator.language`)을 감지해 한국어(`ko`), 영어(`en`), 일본어(`ja`), 중국어 간체(`zh`) 4개 국어를 자동 설정하며, 헤더 4개 국어 순환 버튼 및 푸터(KR/EN/JP/CN) 수동 전환·`<html lang>` 동기화·선택 언어 기반 PowerShell 스크립트 주석 동적 생성을 지원합니다. (`v1.13-STABLE` 표기 통일)
 
 ### 4.7. 순수 창작 DLL (`ipname_core.dll`) 네트워크 진단 & IP 충돌 감지 Engine
 - **Layer-2 ARP 기반 초고속 IP 충돌 감지 (`IpName_CheckIpConflict` & `IpName_CheckIpConflictEx`)**:
@@ -128,7 +128,7 @@
 ### 4.8. GitHub Releases 기반 실시간 자동 업데이트 시스템 (`useGitHubUpdate.ts`, `UpdateModal.tsx`)
 - **실시간 비동기 감지**:
   - 앱 구동 유휴 시점(`requestIdleCallback` / 약 2.2초 후) 및 푸터의 [업데이트 확인] 버튼 클릭 시 GitHub REST API(`repos/ahbiyout-all/IpName2/releases/latest`)를 쿼리하여 최신 배포본 버전을 확인.
-  - Semantic Versioning 비교 알고리즘(`isNewerVersion`)을 통해 현재 설치본(`v1.13.7`)보다 상위 릴리스가 존재하면 자동으로 알림 팝업 창(`UpdateModal.tsx`) 실행.
+  - Semantic Versioning 비교 알고리즘(`isNewerVersion`)을 통해 현재 설치본(`v1.13.9`)보다 상위 릴리스가 존재하면 자동으로 알림 팝업 창(`UpdateModal.tsx`) 실행.
 - **업데이트 알림 모달 UI**:
   - NEW UPDATE 배지, 최신 버전명, 릴리스 배포일, 현재 버전 vs 최신 버전 비교 디스플레이.
   - [업데이트 다운로드] 버튼: 전용 설치 프로그램(`.exe`) 직접 다운로드 링크로 연결 (Tauri shell open 연동).
@@ -139,7 +139,7 @@
 - **Unpacked Multi-File 개별 설치**: 불필요한 포터블 압축 파일이나 임시 문서를 제외하고 `IpName2.exe`, `ipname_core.dll`, 아이콘 리소스, `LICENSE`만 컴파일 타임 `#ifexist` 검증으로 안전하게 패키징 및 배포(`shellexec`로 UAC 740 오류 방지).
 - **기존 설치본 감지 & 덮어쓰기 지원**: 레지스트리 조회를 통해 구버전 설치가 감지되면 대화형 모드에서는 사용자에게 삭제/덮어쓰기 여부를 질의하고, 무인 설치 모드 시 자동 갱신.
 - **무인 자동 설치 (Silent Install)**: `/SILENT`, `/VERYSILENT`, `/SUPPRESSMSGBOXES`, `/NORESTART` 옵션 완전 대응.
-- **Windows 방화벽 사전 조용히 등록**: 기본 명칭(`IpName2`)과 버전 명칭(`IpName2 v1.13.7`) 모두 인바운드/아웃바운드 허용 규칙을 백그라운드에서 자동 등록하며 제거 시 깔끔하게 정리.
+- **Windows 방화벽 사전 조용히 등록**: 기본 명칭(`IpName2`)과 버전 명칭(`IpName2 v1.13.9`) 모두 인바운드/아웃바운드 허용 규칙을 백그라운드에서 자동 등록하며 제거 시 깔끔하게 정리.
 
 ---
 
@@ -157,11 +157,11 @@
 ### 5.2. 자동 빌드 스크립트 (`build.bat` / `build.ps1`)
 - 사용자에게 통신용 포트 번호(기본값: 3030) 입력 요청.
 - 종속성 검증, 아이콘 자동 보정(`fix-icon.cjs`), 프론트엔드 빌드, 순수 창작 DLL 컴파일(`native/ipname_core/build.bat`), Tauri 본체 컴파일 진행.
-- `bin/postbuild-rename.cjs`: 빌드 완료 후 실행파일을 `IpName2_v1.13.7.exe`로 자동 명명하고 결과물 폴더(`src-tauri\target\release`)를 탐색기로 자동 오픈.
+- `bin/postbuild-rename.cjs`: 빌드 완료 후 실행파일을 `IpName2_v1.13.9.exe`로 자동 명명하고 결과물 폴더(`src-tauri\target\release`)를 탐색기로 자동 오픈.
 
 ### 5.3. GitHub 핵심 빌드 파일 전용 관리 파이프라인 (`scripts/github/`)
 GitHub 저장소에 소스 코드를 동기화할 때, 빌드에 필요한 핵심 파일만 안전하게 선별하여 관리하는 전용 시스템입니다:
-- `scripts/github/core-manifest.json`: 빌드에 필수적인 49개 핵심 파일/폴더 화이트리스트 및 금지 파일 패턴 정의 (`docs/GITHUB_GUIDE.md` 상세 참조).
+- `scripts/github/core-manifest.json`: 빌드에 필수적인 52개 핵심 파일/폴더 화이트리스트 및 금지 파일 패턴 정의 (`docs/GITHUB_GUIDE.md` 상세 참조).
 - `scripts/github/verify-core-files.cjs`: 6단계(필수 파일, 금지·스크래치 파일 자동 정리 `--clean`, 미등록 파일 감사, 시크릿/개인정보/이메일 유출 스캔, 10개 대상 버전 삼중 동기화 검증, 로컬 제외 스크립트 격리 검증) 통합 감사 도구.
 - `scripts/github/prepare-github-sync.bat`: Windows 환경에서 사전 감사 및 인덱스 정리를 원클릭으로 수행.
 
@@ -169,7 +169,7 @@ GitHub 저장소에 소스 코드를 동기화할 때, 빌드에 필요한 핵�
 - **로컬 실행 전용 격리 및 원격 제외**: `git-push.bat` 및 `scripts/git-push.bat`은 로컬 개발자의 푸시 편의를 위한 유틸리티로, `.gitignore`, `.gitkeep-ignore`, `core-manifest.json` 내 `excludedFiles`에 공식 등록되어 GitHub 원격 저장소에는 푸시되지 않도록 철저히 격리됩니다.
 - **다단 동적 버전 자동 추출**: `package.json` ➔ PowerShell ➔ `docs/PATCH_NOTES.md` 최상단 헤더 정규식 파싱.
 - **사전 무결성 검증 (STEP 3)**: 스테이징 직전 `node scripts\github\verify-core-files.cjs --clean`을 자동 호출하여 불필요한 파일이 Git에 포함되는 사고를 원천 차단.
-- **원클릭 자동화**: 추출된 버전(`v1.13.7`)으로 커밋 생성, Git 릴리스 태그 생성, 원격 저장소(`main` 브랜치 및 `--tags`) 푸시 완결.
+- **원클릭 자동화**: 추출된 버전(`v1.13.9`)으로 커밋 생성, Git 릴리스 태그 생성, 원격 저장소(`main` 브랜치 및 `--tags`) 푸시 완결.
 
 ### 5.5. GitHub Actions 릴리스 배포 워크플로 (`.github/workflows/release.yml`)
 - **Node.js 24 런타임 전면 마이그레이션**: GitHub Actions 러너의 Node 20 EOL 정책에 따라 `actions/checkout@v5`, `actions/setup-node@v5`(`cache: 'npm'`), `softprops/action-gh-release@v3`로 전면 승급하고 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true`를 선언하여 런타임 경고 완전 해소.
@@ -179,7 +179,7 @@ GitHub 저장소에 소스 코드를 동기화할 때, 빌드에 필요한 핵�
 - **인스톨 파일 전용 배포 정책**: 소스 압축본, 디버그 산출물, 포터블 폴더를 제외하고 Inno Setup 순수 설치 프로그램(`IpName2_v*_Setup.exe`)만 GitHub Releases 자산으로 등록.
 
 ### 5.6. 타 IP Name 앱 표준 업그레이드를 위한 AI 작업 지시서 (`docs/UPDATE_WORK_INSTRUCTION.md`)
-- 다른 IP Name 시리즈 및 신규 파생 데스크톱 앱을 본 프로젝트의 최신 고성능 아키텍처(불변 규격, 순수 C DLL, IPv4 Primary 강제 정렬, 물리/가상 NIC 식별, Node 24 Actions CI/CD, 49종 핵심 파일 화이트리스트, 삼중 동기화)로 동일하게 일괄 업그레이드할 수 있는 복사 가능한 완성형 AI 프롬프트 및 구현 기술 지침을 제공합니다.
+- 다른 IP Name 시리즈 및 신규 파생 데스크톱 앱을 본 프로젝트의 최신 고성능 아키텍처(불변 규격, 순수 C DLL, IPv4 Primary 강제 정렬, 물리/가상 NIC 식별, Node 24 Actions CI/CD, 52종 핵심 파일 화이트리스트, 삼중 동기화)로 동일하게 일괄 업그레이드할 수 있는 복사 가능한 완성형 AI 프롬프트 및 구현 기술 지침을 제공합니다.
 
 ---
 

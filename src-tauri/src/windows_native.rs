@@ -128,9 +128,13 @@ unsafe fn read_registry_string(hkey: windows_sys::Win32::System::Registry::HKEY,
     RegCloseKey(hsub_key);
     
     if val_type == REG_SZ || val_type == REG_EXPAND_SZ {
-        let u16_slice = std::slice::from_raw_parts(buffer.as_ptr() as *const u16, len as usize / 2);
-        let mut s = String::from_utf16_lossy(u16_slice);
-        if s.ends_with('\0') {
+        let byte_len = (len as usize).min(buffer.len());
+        let u16_vec: Vec<u16> = buffer[..byte_len]
+            .chunks_exact(2)
+            .map(|c| u16::from_le_bytes([c[0], c[1]]))
+            .collect();
+        let mut s = String::from_utf16_lossy(&u16_vec);
+        while s.ends_with('\0') {
             s.pop();
         }
         Some(s.trim().to_string())
@@ -167,11 +171,15 @@ unsafe fn read_registry_strings(hkey: windows_sys::Win32::System::Registry::HKEY
     
     RegCloseKey(hsub_key);
     
+    let byte_len = (len as usize).min(buffer.len());
+    let u16_iter = buffer[..byte_len]
+        .chunks_exact(2)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]));
+
     if val_type == REG_MULTI_SZ {
-        let u16_slice = std::slice::from_raw_parts(buffer.as_ptr() as *const u16, len as usize / 2);
         let mut result = Vec::new();
         let mut curr = Vec::new();
-        for &ch in u16_slice {
+        for ch in u16_iter {
             if ch == 0 {
                 if !curr.is_empty() {
                     let s = String::from_utf16_lossy(&curr).trim().to_string();
@@ -184,10 +192,16 @@ unsafe fn read_registry_strings(hkey: windows_sys::Win32::System::Registry::HKEY
                 curr.push(ch);
             }
         }
+        if !curr.is_empty() {
+            let s = String::from_utf16_lossy(&curr).trim().to_string();
+            if !s.is_empty() && s != "0.0.0.0" {
+                result.push(s);
+            }
+        }
         Some(result)
     } else if val_type == REG_SZ || val_type == REG_EXPAND_SZ {
-        let u16_slice = std::slice::from_raw_parts(buffer.as_ptr() as *const u16, len as usize / 2);
-        let s = String::from_utf16_lossy(u16_slice).trim_end_matches('\0').trim().to_string();
+        let u16_vec: Vec<u16> = u16_iter.collect();
+        let s = String::from_utf16_lossy(&u16_vec).trim_end_matches('\0').trim().to_string();
         if !s.is_empty() && s != "0.0.0.0" {
             Some(vec![s])
         } else {
@@ -551,6 +565,10 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             let mut unicast = addr.FirstUnicastAddress;
             while !unicast.is_null() {
                 let uaddr = &*unicast;
+                if uaddr.Address.lpSockaddr.is_null() {
+                    unicast = uaddr.Next;
+                    continue;
+                }
                 let sa = &*uaddr.Address.lpSockaddr;
                 if sa.sa_family == AF_INET {
                     let ipv4: *const SOCKADDR_IN = uaddr.Address.lpSockaddr as *const _;
@@ -598,6 +616,10 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             let mut gw = addr.FirstGatewayAddress;
             while !gw.is_null() {
                 let gw_addr = &*gw;
+                if gw_addr.Address.lpSockaddr.is_null() {
+                    gw = gw_addr.Next;
+                    continue;
+                }
                 let sa = &*gw_addr.Address.lpSockaddr;
                 if sa.sa_family == AF_INET {
                     let ipv4: *const SOCKADDR_IN = gw_addr.Address.lpSockaddr as *const _;
@@ -617,6 +639,10 @@ pub fn get_adapters_native() -> Result<Vec<NetworkAdapter>, String> {
             let mut dns = addr.FirstDnsServerAddress;
             while !dns.is_null() {
                 let dns_addr = &*dns;
+                if dns_addr.Address.lpSockaddr.is_null() {
+                    dns = dns_addr.Next;
+                    continue;
+                }
                 let sa = &*dns_addr.Address.lpSockaddr;
                 if sa.sa_family == AF_INET {
                     let ipv4: *const SOCKADDR_IN = dns_addr.Address.lpSockaddr as *const _;

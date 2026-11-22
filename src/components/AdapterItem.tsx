@@ -58,7 +58,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
       setConflictResult({
         is_conflict: true,
         conflicting_mac: '',
-        message: `⚠️ [형식 오류] ${t('invalidIp')}`
+        message: t('arpFormatError').replace('{msg}', t('invalidIp'))
       });
       return;
     }
@@ -84,14 +84,14 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           setConflictResult({
             is_conflict: false,
             conflicting_mac: ownMac,
-            message: `✓ [현재 어댑터] 해당 IP(${targetIp})는 현재 본인 랜카드(MAC: ${ownMac})에 할당된 정상 주소이며, 외부 충돌이 없습니다.`
+            message: t('arpOwnAdapterMsg').replace('{ip}', targetIp).replace('{mac}', ownMac)
           });
         } else {
           setConflictResult(res);
         }
       } catch (err: any) {
         if (!isMountedRef.current || primaryConflictReqRef.current !== reqId) return;
-        const errMsg = typeof err === 'string' ? err : (err?.message || 'IP 충돌 검사 중 오류가 발생했습니다.');
+        const errMsg = typeof err === 'string' ? err : (err?.message || t('arpCheckError'));
         setConflictResult({
           is_conflict: true,
           conflicting_mac: '',
@@ -112,15 +112,15 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           setConflictResult({
             is_conflict: false,
             conflicting_mac: ownMac,
-            message: `✓ [현재 어댑터] 해당 IP(${targetIp})는 현재 본인 랜카드(MAC: ${ownMac})에 할당된 정상 주소이며, 외부 충돌이 없습니다.`
+            message: t('arpOwnAdapterMsg').replace('{ip}', targetIp).replace('{mac}', ownMac)
           });
         } else {
           setConflictResult({
             is_conflict: isConflict,
             conflicting_mac: isConflict ? 'AA:BB:CC:11:22:33' : '',
             message: isConflict 
-              ? '⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: AA:BB:CC:11:22:33)가 로컬 네트워크에 존재합니다.'
-              : `✓ [사용 가능] ${targetIp}는 충돌 없이 사용 가능한 IP입니다.`
+              ? t('arpMockConflict')
+              : t('arpMockAvailable').replace('{ip}', targetIp)
           });
         }
         setIsCheckingConflict(false);
@@ -153,7 +153,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           result: {
             is_conflict: true,
             conflicting_mac: '',
-            message: `⚠️ [형식 오류] ${t('invalidIp')}`
+            message: t('arpFormatError').replace('{msg}', t('invalidIp'))
           }
         }
       }));
@@ -175,7 +175,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           result: {
             is_conflict: true,
             conflicting_mac: ownMac,
-            message: `⚠️ [내부 중복] 기본 IP(${adapter.ipAddress})와 동일한 주소입니다. 보조 IP는 기본 IP와 달라야 합니다.`
+            message: t('arpInternalDupPrimary').replace('{ip}', adapter.ipAddress)
           }
         }
       }));
@@ -194,7 +194,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
           result: {
             is_conflict: true,
             conflicting_mac: ownMac,
-            message: `⚠️ [내부 중복] 보조 IP #${duplicateSecIdx + 1}과 중복된 주소입니다.`
+            message: t('arpInternalDupSecondary').replace('{idx}', String(duplicateSecIdx + 1))
           }
         }
       }));
@@ -220,7 +220,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
               result: {
                 is_conflict: false,
                 conflicting_mac: ownMac,
-                message: `✓ [현재 어댑터] 해당 보조 IP(${trimmedIp})는 현재 본인 랜카드(MAC: ${ownMac})에 할당된 정상 주소이며, 외부 충돌이 없습니다.`
+                message: t('arpOwnAdapterSecMsg').replace('{ip}', trimmedIp).replace('{mac}', ownMac)
               }
             }
           }));
@@ -229,7 +229,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
         }
       } catch (err: any) {
         if (!isMountedRef.current || secGlobalGenRef.current !== globalGen || secConflictGenRef.current[index] !== reqGen) return;
-        const errMsg = typeof err === 'string' ? err : (err?.message || 'IP 충돌 검사 중 오류가 발생했습니다.');
+        const errMsg = typeof err === 'string' ? err : (err?.message || t('arpCheckError'));
         setSecConflictStates(prev => ({
           ...prev,
           [index]: {
@@ -256,7 +256,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
               result: {
                 is_conflict: false,
                 conflicting_mac: ownMac,
-                message: `✓ [현재 어댑터] 해당 보조 IP(${trimmedIp})는 현재 본인 랜카드(MAC: ${ownMac})에 할당된 정상 주소이며, 외부 충돌이 없습니다.`
+                message: t('arpOwnAdapterSecMsg').replace('{ip}', trimmedIp).replace('{mac}', ownMac)
               }
             }
           }));
@@ -269,8 +269,8 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                 is_conflict: isConflict,
                 conflicting_mac: isConflict ? 'AA:BB:CC:11:22:33' : '',
                 message: isConflict 
-                  ? '⚠️ [IP 충돌 감지] 동일한 IP를 사용하는 외부 기기(MAC: AA:BB:CC:11:22:33)가 발견되었습니다.'
-                  : `✓ [사용 가능] ${trimmedIp}는 충돌 없이 사용 가능한 IP입니다.`
+                  ? t('arpMockConflict')
+                  : t('arpMockAvailable').replace('{ip}', trimmedIp)
               }
             }
           }));
@@ -423,7 +423,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
             <div className="flex items-center gap-1 text-[9px] text-text-muted mt-0.5">
               <span>{adapter.status === 'Connected' ? t('connected') : adapter.status === 'Disabled' || !adapter.isEnabled ? t('statusDisabled') : t('disconnected')}</span>
               <span>•</span>
-              <span className="font-semibold text-foreground/80 truncate max-w-[160px]">{isVirtual ? t('virtualNicDesc') : adapter.type === 'Wi-Fi' ? 'Wireless LAN' : t('physicalNicDesc')}</span>
+              <span className="font-semibold text-foreground/80 truncate max-w-[160px]">{isVirtual ? t('virtualNicDesc') : adapter.type === 'Wi-Fi' ? t('wirelessLan') : t('physicalNicDesc')}</span>
             </div>
           </div>
         </div>
@@ -563,7 +563,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                   : 'text-text-muted hover:text-primary hover:bg-primary/5'
               } disabled:opacity-40 disabled:cursor-not-allowed`}
-              title="순수 창작 DLL (ipname_core) 초고속 ARP 레이어2 IP 충돌 검사"
+              title={t('arpTooltipPrimary')}
             >
               {isCheckingConflict ? (
                 <RefreshCw size={8} className="animate-spin text-amber-500" />
@@ -679,7 +679,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
               onClick={handleAddSecondaryIp}
               disabled={isSaving}
               className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded-md bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="이 어댑터에 보조(다중) IP를 추가합니다."
+              title={t('addSecondaryIpTooltip')}
             >
               <Plus size={10} />
               <span>{t('addSecondaryIp')}</span>
@@ -715,7 +715,7 @@ export const AdapterItem = memo(({ adapter, isSaving, onUpdate, onSave, onReques
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                               : 'text-text-muted hover:text-primary hover:bg-primary/5 border border-transparent'
                           } disabled:opacity-40 disabled:cursor-not-allowed`}
-                          title="이 보조 IP에 대해 ARP 충돌 검사를 수행합니다."
+                          title={t('arpTooltipSecondary')}
                         >
                           {secConflict?.checking ? (
                             <RefreshCw size={8} className="animate-spin text-amber-500" />

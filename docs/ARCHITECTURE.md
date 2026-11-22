@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.13.6**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.13.7**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -83,9 +83,10 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 ### 2.4. 패키징, GitHub 관리 및 표준화 파이프라인 (`/installer`, `/.github`, `/scripts`, `/docs`)
 * `installer/setup.iss`: Inno Setup 프로페셔널 스크립트 (Unpacked Multi-File, 기존 버전 감지 및 덮어쓰기, 무인 설치, Windows 방화벽 기본명/버전명 듀얼 사전 등록).
 * `.github/workflows/release.yml`: Node.js 24 런타임(`checkout@v5`, `setup-node@v5` npm 캐시, `rust-cache@v2`), `verify-core-files.cjs` + `npm run lint` 선행 Fast-Fail 게이트 및 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` 기반 릴리스 자동화 (AI Studio Web Sync 및 Git Tag 듀얼 트리거).
-* `scripts/github/core-manifest.json`: 48개 빌드 필수 파일 화이트리스트 및 금지·중복 파일 패턴 정의.
+* `scripts/github/core-manifest.json`: 49개 빌드 필수 파일 화이트리스트 및 금지·중복 파일 패턴 정의.
 * `scripts/github/verify-core-files.cjs`: 작업 트리 실시간 6단계 감사(필수 파일·스크래치 정리·미등록 탐지·시크릿/이메일 스캔·10지점 버전 정합성·로컬 스크립트 격리) 도구.
 * `git-push.bat`: 다단 동적 버전 자동 추출 및 STEP 3 사전 무결성 감사 연동 푸시 파이프라인 (GitHub 원격 업로드 격리).
+* `docs/GITHUB_GUIDE.md` & `docs/BLOGGER_POST.md`: GitHub 저장소 운영·릴리스 템플릿 및 구글 블로거 작성/HTML 모드 배포 문서.
 * `docs/UPDATE_WORK_INSTRUCTION.md`: 타 IP Name 시리즈 및 신규 파생 데스크톱 앱을 최신 표준으로 일괄 업그레이드하기 위한 AI 전용 작업 지시 프롬프트.
 
 ---
@@ -120,7 +121,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
                                      ▼                                                           ▼
                            [remoteVer > currentVer]                                    [최신 버전 유지 중]
                         UpdateModal 팝업 창 자동 실행                                   최신 상태 안내 배너
-                        - 버전 차이(v1.13.6 vs vX.Y.Z)
+                        - 버전 차이(v1.13.7 vs vX.Y.Z)
                         - 전용 인스톨러 직접 다운로드
                         - 이번 버전 건너뛰기
 ```
@@ -134,7 +135,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
        │
        ▼
 [STEP 3: 6단계 저장소 정밀 감사] (scripts/github/verify-core-files.cjs --clean)
-       ├── 48개 필수 빌드 파일 존재 및 미등록·중복 에셋 탐지
+       ├── 49개 필수 빌드 파일 존재 및 미등록·중복 에셋 탐지
        ├── 시크릿·개인 이메일 유출 스캔 및 10지점 버전 삼중 동기화 검증
        └── 스크래치 파일 및 비표준 락파일(bun.lock 등) 자동 제거
        │
@@ -206,7 +207,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
         ├── 순수 창작 C DLL (Layer-2 ARP SendARP 본인 MAC 오탐 방어)
         ├── 어댑터 Primary IP 정렬 & 물리/가상 NIC 엄격 필터링
         ├── Tauri v2 클린 컴파일 & GitHub Actions Node 24 + 캐시 + Fast-Fail 승급
-        └── 48종 필수 빌드 파일 화이트리스트·시크릿 감사 & 버전 삼중 동기화
+        └── 49종 필수 빌드 파일 화이트리스트·시크릿 감사 & 버전 삼중 동기화
         │
         ▼
 [타 IP Name 애플리케이션 AI 어시스턴트에 원클릭 전달 ➔ 100% 동일 규격 업그레이드 완료]

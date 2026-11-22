@@ -3,7 +3,7 @@
   "description": "IpName2",
   "author": "AhBiYout",
   "private": true,
-  "version": "1.13.6",
+  "version": "1.13.7",
   "type": "module",
   "scripts": {
     "dev": "vite",

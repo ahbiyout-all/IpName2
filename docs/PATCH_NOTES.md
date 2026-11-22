@@ -2,6 +2,16 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.7] - 2026-11-20
+
+### 1. 하단 푸터 및 정보(About) 모달 GitHub 저장소 경로 수정 (`Footer.tsx`)
+* **공식 저장소 직통 연결 (`https://github.com/AhBiYout-all/IpName2`)**:
+  - 메인 화면 하단 푸터 GitHub 바로가기 링크/툴팁, 프로그램 정보(`About / Licenses`) 모달의 GitHub 경로, 오픈소스 라이선스 목록 내 `IpNameCore Native DLL` 프로젝트 링크를 프로필 최상위(`github.com/AhBiYout-all`)에서 공식 저장소 직통 URL인 `https://github.com/AhBiYout-all/IpName2`로 일괄 교정.
+  - 정보 모달 2단 그리드에서 긴 URL이 넘치지 않도록 `truncate` 및 아이콘 `shrink-0` 안전 스타일 적용.
+  - 버전 삼중 동기화(`v1.13.7`) 및 전체 기술 문서 동기화 완료.
+
+---
+
 ## [v1.13.6] - 2026-11-20
 
 ### 1. 세로 뷰포트 확장(650x920) 및 푸터 바로가기 중복 창 열림 결함 해결
@@ -12,7 +22,9 @@
   - Tauri WebView2 환경에서 `<a href target="_blank">` 기본 동작과 `@tauri-apps/plugin-shell`의 `open()` 호출이 동시에 실행되어 외부 브라우저 창이 2개씩 열리던 문제를 해결.
   - 공용 `ExternalLink` 컴포넌트를 신설해 Tauri 데스크톱에서는 `href`/`target="_blank"` 없는 시맨틱 `<button>`으로 렌더링하고 `600ms` 중복 호출 잠금을 적용해 단일 실행을 보장하며, 웹 미리보기에서는 표준 `<a target="_blank">`로 동작하도록 분리.
 * **문서 및 버전 삼중 동기화 (`v1.13.6`)**:
-  - 변경된 창 규격(`650x920`) 및 `ExternalLink` 아키텍처를 `AGENTS.md`, `README.md`, `docs/` 전체 기술 문서에 반영.
+  - 변경된 창 규격(`650x920`), SWR 고속 부팅, `ExternalLink` 아키텍처를 `AGENTS.md`, `README.md`, `docs/` 전체 기술 문서(11종)에 반영.
+  - 깃허브 저장소 운영·6단계 감사·Node 24 CI/CD 릴리스 안내 문서(`docs/GITHUB_GUIDE.md`) 신규 생성 및 핵심 파일 화이트리스트(49종) 등록.
+  - 구글 블로거 공식 포스팅 가이드(`docs/BLOGGER_POST.md`)의 **`[작성 모드 (서식 있는 텍스트)]`** 및 **`[HTML 편집 모드]`** 콘텐츠를 최신 `v1.13.6` 사양으로 전면 갱신.
 
 ---
 

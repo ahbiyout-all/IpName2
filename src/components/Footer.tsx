@@ -18,7 +18,7 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
     { name: 'Vite', version: 'v6.2.0', license: 'MIT', copyright: 'Copyright (c) 2019-present, Yuxi (Evan) You and Vite contributors.', url: 'https://vite.dev' },
     { name: 'Tauri', version: 'v2.11.1', license: 'MIT / Apache-2.0', copyright: 'Copyright (c) 2017-present, Tauri Apps Contributors.', url: 'https://tauri.app' },
     { name: 'Tailwind CSS', version: 'v4.1.14', license: 'MIT', copyright: 'Copyright (c) Tailwind Labs, Inc.', url: 'https://tailwindcss.com' },
-    { name: 'IpNameCore Native DLL', version: `v${CURRENT_VERSION} (ipname_core.dll)`, license: 'MIT', copyright: 'Copyright (c) 2026 AhBiYout (Pure Creative Native Engine)', url: 'https://github.com/AhBiYout-all' },
+    { name: 'IpNameCore Native DLL', version: `v${CURRENT_VERSION} (ipname_core.dll)`, license: 'MIT', copyright: 'Copyright (c) 2026 AhBiYout (Pure Creative Native Engine)', url: 'https://github.com/AhBiYout-all/IpName2' },
     { name: 'Lucide React', version: 'v0.546.0', license: 'ISC', copyright: 'Copyright (c) 2020, Lucide Contributors', url: 'https://lucide.dev' },
     { name: 'Motion', version: 'v12.23.24', license: 'MIT', copyright: 'Copyright (c) 2018 Framer B.V.', url: 'https://motion.dev' },
     { name: 'Jimp', version: 'v0.22.10', license: 'MIT', copyright: 'Copyright (c) 2018 Oliver Moran', url: 'https://github.com/jimp-dev/jimp' },
@@ -44,11 +44,11 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
             <User size={11} className="text-primary/70" />
             <span className="font-semibold">AhBiYout</span>
           </div>
-          <div className="flex items-center gap-1" title="GitHub: https://github.com/AhBiYout-all">
+          <div className="flex items-center gap-1" title="GitHub: https://github.com/AhBiYout-all/IpName2">
             <Github size={11} className="text-primary/70" />
             <ExternalLink 
-              href="https://github.com/AhBiYout-all" 
-              title="GitHub: https://github.com/AhBiYout-all"
+              href="https://github.com/AhBiYout-all/IpName2" 
+              title="GitHub: https://github.com/AhBiYout-all/IpName2"
               className="hover:text-primary transition-colors font-medium text-foreground/70"
             >
               GitHub
@@ -129,11 +129,11 @@ export const Footer: React.FC<FooterProps> = ({ onCheckUpdate }) => {
                   <Github size={12} className="text-primary/70 shrink-0" />
                   <span>GitHub: </span>
                   <ExternalLink
-                    href="https://github.com/AhBiYout-all"
-                    className="text-primary hover:underline font-medium flex items-center gap-0.5"
+                    href="https://github.com/AhBiYout-all/IpName2"
+                    className="text-primary hover:underline font-medium flex items-center gap-0.5 truncate"
                   >
-                    github.com/AhBiYout-all
-                    <ExternalLinkIcon size={9} />
+                    github.com/AhBiYout-all/IpName2
+                    <ExternalLinkIcon size={9} className="shrink-0" />
                   </ExternalLink>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">

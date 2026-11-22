@@ -234,3 +234,13 @@ This document tracks high-priority features, reliability fixes, and architecture
   2. Introduce `ExternalLink.tsx` rendering a cooldown-guarded `<button>` backed by `@tauri-apps/plugin-shell` `open()` inside Tauri and a standard `<a target="_blank">` in web preview, replacing raw external anchors in `Footer.tsx` and `UpdateModal.tsx`.
   3. Synchronize documentation and Triple Lockstep version `1.13.6` across all 10 targets.
 - **Validation**: Triple Lockstep version `1.13.6` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-023] Footer & About Modal Direct GitHub Repository URL Alignment (v1.13.7)
+- **Priority**: P2
+- **Status**: VERIFIED
+- **Target Files**: `src/components/Footer.tsx`, `README.md`, `docs/*`
+- **Description**: Point the bottom footer GitHub shortcut, About modal GitHub link, and `IpNameCore Native DLL` license entry directly to `https://github.com/AhBiYout-all/IpName2` with overflow-safe truncation in the About grid.
+- **Acceptance Criteria**:
+  1. Update all GitHub links/tooltips/labels in `Footer.tsx` to `https://github.com/AhBiYout-all/IpName2`.
+  2. Synchronize Triple Lockstep version `1.13.7` across all 10 targets and documentation.
+- **Validation**: Triple Lockstep version `1.13.7` synchronized across all 10 targets; 6-stage `verify-core-files.cjs`, Vite production build, and TypeScript lint verified.

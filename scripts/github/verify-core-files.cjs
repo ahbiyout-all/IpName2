@@ -408,7 +408,7 @@ console.log('   - Desktop Backend:        src-tauri/ (Tauri v2 + Win32 Rust Nati
 console.log('   - Pure Native DLL Engine: native/ipname_core/ (C99 Win32 DLL)');
 console.log('   - Inno Setup Installer:   installer/setup.iss');
 console.log('   - CI/CD Release Pipeline: .github/workflows/release.yml');
-console.log('   - Documentation & Specs:  docs/ (10 Official Specs & Patch Notes)');
+console.log('   - Documentation & Specs:  docs/ (11 Official Specs & Patch Notes)');
 console.log('   - Build Scripts:          build.bat, build.ps1, bin/');
 console.log('   - Excluded Automation:    git-push.bat (local execution only, excluded from GitHub)');
 console.log('----------------------------------------------------------------------');

@@ -88,7 +88,7 @@
    - `package.json`에서 버전을 동적 추출하고, `git branch -M main` 보정, author 자동 설정(`AhBiYout`), 스테이징 전 자체 캐시 제거(`git rm --cached git-push.bat`), 커밋, `v%APP_VER%` 태그 생성 및 푸시 완결.
    - 배치 파일 내 앰퍼샌드는 반드시 `^&`로 이스케이프하고, 괄호 충돌을 방지하기 위해 라벨 분기(`goto :push_failed`)를 사용할 것.
 3. **6단계 핵심 파일·보안·버전 감사 도구**:
-   - `scripts/github/core-manifest.json` 및 `scripts/github/verify-core-files.cjs`를 통해 48개 필수 빌드 파일 무결성, 중복·스크래치 파일 자동 정화(`--clean`), 미등록 파일 감사, 시크릿/이메일 유출 스캔 및 10지점 버전 삼중 동기화 검증 체계를 구축할 것.
+   - `scripts/github/core-manifest.json` 및 `scripts/github/verify-core-files.cjs`를 통해 49개 필수 빌드 파일 무결성, 중복·스크래치 파일 자동 정화(`--clean`), 미등록 파일 감사, 시크릿/이메일 유출 스캔 및 10지점 버전 삼중 동기화 검증 체계를 구축할 것.
 
 ---
 
@@ -234,20 +234,21 @@ jobs:
 
 ---
 
-## 🛠️ 3. 파일 매니페스트 및 디렉터리 레이아웃 표준 (48 Core Files)
+## 🛠️ 3. 파일 매니페스트 및 디렉터리 레이아웃 표준 (49 Core Files)
 
-다른 프로젝트 구성 시 아래 48개 필수 파일 구조를 정확하게 유지해야 합니다:
+다른 프로젝트 구성 시 아래 49개 필수 파일 구조를 정확하게 유지해야 합니다:
 
 ```
 IpName/
 ├── .github/workflows/release.yml         # CI/CD 자동 패키징 파이프라인
 ├── bin/postbuild-rename.cjs             # 빌드 후 실행파일 버전 명명 유틸리티
-├── docs/                                # 공식 기술 문서 모음 (10개 필수 문서)
+├── docs/                                # 공식 기술 문서 모음 (11개 필수 문서)
 │   ├── README.md                        # 문서 색인 허브
 │   ├── ARCHITECTURE.md                  # 시스템 아키텍처 명세서
 │   ├── BLOGGER_POST.md                  # 구글 블로거 공식 배포 소개 글
 │   ├── DEVELOPMENT.md                   # 개발 및 빌드 환경 가이드
 │   ├── DLL_SPECIFICATION.md             # 순수 창작 DLL C-ABI 명세서
+│   ├── GITHUB_GUIDE.md                  # GitHub 저장소 운영 및 릴리스 가이드
 │   ├── LICENSE_NOTICE.md                # 라이선스 고지사항
 │   ├── PATCH_NOTES.md                   # 버전별 패치 노트 (Triple Lockstep)
 │   ├── ROADMAP.md                       # 로드맵
@@ -260,7 +261,7 @@ IpName/
 │   ├── build.bat
 │   └── Makefile
 ├── scripts/github/                      # GitHub 핵심 파일 감사 및 동기화 도구
-│   ├── core-manifest.json               # 48개 필수 빌드 파일 화이트리스트
+│   ├── core-manifest.json               # 49개 필수 빌드 파일 화이트리스트
 │   ├── prepare-github-sync.bat          # 원클릭 감사 및 푸시 연동 스크립트
 │   └── verify-core-files.cjs            # 6단계 보안·버전 감사 및 자동 정화기
 ├── public/favicon.ico                   # 웹/앱 공용 파비콘 아이콘
@@ -286,7 +287,7 @@ IpName/
 ## ✅ 4. 최종 무결성 검증 체크리스트
 
 1. [ ] `npm run build` 및 `npm run lint` (`tsc --noEmit`) 에러 0건 확인.
-2. [ ] `node scripts\github\verify-core-files.cjs --clean` 실행 시 48개 필수 파일·보안 스캔·10지점 버전 정합성 100% 정상 통과.
+2. [ ] `node scripts\github\verify-core-files.cjs --clean` 실행 시 49개 필수 파일·보안 스캔·10지점 버전 정합성 100% 정상 통과.
 3. [ ] `git-push.bat` 및 `scripts/git-push.bat`이 `.gitignore`에 의해 Git 추적에서 제외되어 있는지 확인 (`git check-ignore -v git-push.bat`).
 4. [ ] `package.json`, `tauri.conf.json`, `Cargo.toml`, `ipname_core.c`, `PATCH_NOTES.md` 버전 삼중 동기화 완료.
 5. [ ] GitHub Actions 워크플로가 Node.js 24 규격(`actions/checkout@v5`, `setup-node@v5`, `action-gh-release@v3`)으로 설정되어 있는지 확인.

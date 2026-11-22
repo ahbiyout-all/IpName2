@@ -6,6 +6,8 @@
 
 ### Windows 시스템 이름 및 고성능 네트워크 어댑터·다중 IP 관리 데스크톱 유틸리티 (v1.13.7)
 
+🌍 **언어**: [🇰🇷 한국어](README.md) | [🇺🇸 English](README_EN.md) | [🇯🇵 日本語](README_JA.md) | [🇨🇳 中文](README_ZH.md)
+
 [![Version](https://img.shields.io/badge/Version-v1.13.7-0284c7.svg)](docs/PATCH_NOTES.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](docs/LICENSE_NOTICE.md)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.11-orange.svg)](https://tauri.app/)

@@ -1,6 +1,6 @@
 # IpNameCore 순수 창작 DLL 명세서 (DLL Specification)
 
-본 문서는 **AhBiYout IpName2 v1.13.13**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
+본 문서는 **AhBiYout IpName2 v1.13.14**에 탑재된 순수 창작 네이티브 동적 링크 라이브러리인 **`ipname_core.dll` (IpNameCore Native Engine)**의 동작 원리, C-ABI 인터페이스 명세, 빌드 파이프라인 및 기존 시스템 DLL과의 연동 개선 사항을 기술한 공식 문서입니다.
 
 ---
 
@@ -10,7 +10,7 @@
 | :--- | :--- |
 | **모듈 명칭** | `ipname_core.dll` (IpNameCore Native Engine) |
 | **설계 목적** | 외부 프로세스(`cmd.exe`, `powershell.exe`) 구동 오버헤드를 100% 제거하고, 인프로세스(In-Process) 메모리 수준에서 초정밀 네트워크 진단, 물리/가상 어댑터 완벽 판별, Layer-2 ARP IP 충돌 감지 및 자체 MAC 오탐 방지(Whitelist), TCP 포트 진단 및 서브넷 연산 수행 |
-| **버전** | v1.13.13 (IpName2 v1.13.13 정식 탑재) |
+| **버전** | v1.13.14 (IpName2 v1.13.14 정식 탑재) |
 | **아키텍처** | Windows x64 / x86 호환 C-ABI (`__stdcall` / `__cdecl`) |
 | **표준 규격** | ISO C99 / Win32 Native API |
 | **의존성** | 독립 실행형 (Zero External Dependencies, Windows OS 표준 `ws2_32.dll`, `iphlpapi.dll`만 동적 링킹) |

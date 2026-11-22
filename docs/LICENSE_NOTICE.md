@@ -1,11 +1,11 @@
 # 오픈소스 라이선스 고지사항 (Open Source License Notice)
 
-본 소프트웨어(**AhBiYout IpName2 v1.13.13**)는 다양한 오픈소스 소프트웨어 라이브러리를 기반으로 개발되었으며, 설치 및 배포 시 아래의 라이선스 규정을 준수합니다.
+본 소프트웨어(**AhBiYout IpName2 v1.13.14**)는 다양한 오픈소스 소프트웨어 라이브러리를 기반으로 개발되었으며, 설치 및 배포 시 아래의 라이선스 규정을 준수합니다.
 
 ---
 
 ## 1. 프로젝트 및 개발자 정보
-* **프로젝트명**: AhBiYout IpName2 v1.13.13
+* **프로젝트명**: AhBiYout IpName2 v1.13.14
 * **개발자**: AhBiYout (GitHub: [https://github.com/AhBiYout-all](https://github.com/AhBiYout-all))
 * **공식 저장소**: [https://github.com/AhBiYout-all/IpName2](https://github.com/AhBiYout-all/IpName2)
 * **공식 블로그**: [ahbiyoutvibe.blogspot.com](https://ahbiyoutvibe.blogspot.com/)

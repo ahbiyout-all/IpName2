@@ -319,5 +319,14 @@ This document tracks high-priority features, reliability fixes, and architecture
   4. Synchronize Triple Lockstep version `1.13.13` across all 10 targets, multilingual READMEs, and documentation.
 - **Validation**: Triple Lockstep version `1.13.13` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
 
-
-
+#### [ROADMAP-030] Inno Setup Streamlined Auto-Uninstall & Direct License-to-Install 6-Stage Flow (v1.13.14)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `installer/setup.iss`, `.github/workflows/release.yml`, `docs/*`, `README*.md`
+- **Description**: Streamline the Inno Setup installer flow by removing the Uninstall/Overwrite confirmation prompt and performing automatic clean uninstallation of any detected prior installation before proceeding directly through MIT License (`wpLicense`) -> Install (`DisableDirPage=yes`, `DisableReadyPage=yes`, official Windows Add/Remove Programs registration & Firewall rules) -> Finish-page Desktop Shortcut checkbox -> Launch Application (`shellexec`).
+- **Acceptance Criteria**:
+  1. Force-terminate running `IpName2.exe`/`ipname2.exe` processes (`ForceKillRunningApp()`), then automatically execute silent clean uninstall (`/VERYSILENT /NORESTART /SUPPRESSMSGBOXES`) when `GetUninstallString()` locates an existing `{#MyAppGuid}_is1` or `{#MyAppName}_is1` registry entry.
+  2. Configure `DisableWelcomePage=yes`, `DisableProgramGroupPage=yes`, `DisableDirPage=yes`, and `DisableReadyPage=yes` so `wpLicense` transitions directly into installation (`wpInstalling`) and `wpFinished` (`DesktopShortcutCheck` + `shellexec` launch).
+  3. Preserve full Windows Add/Remove Programs registration (`Uninstallable=yes`, `CreateUninstallRegKey=yes`, `VersionInfo*`) and firewall cleanup (`[UninstallRun]`/`[UninstallDelete]`).
+  4. Synchronize Triple Lockstep version `1.13.14` across all 10 targets, CI release notes, multilingual READMEs, and documentation.
+- **Validation**: Triple Lockstep version `1.13.14` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.

@@ -3,16 +3,16 @@
 ; ======================================================================
 ; Execution Sequence:
 ;   1. Force-close running IpName2 instances (taskkill /F /T)
-;   2. Detect existing installation & prompt Uninstall / Overwrite / Cancel
+;   2. Automatically uninstall existing installation if detected
 ;   3. Display MIT License Agreement (wpLicense)
-;   4. Install application files, icons & Windows Firewall rules
+;   4. Install application files, Windows Add/Remove Programs & Firewall rules
 ;   5. Desktop Shortcut checkbox (checked by default on Finish page)
 ;   6. Launch Application checkbox (checked by default on Finish page)
 ; - Silent / Unattended Installation Support (/VERYSILENT /SUPPRESSMSGBOXES)
 ; ======================================================================
 
 #define MyAppName "IpName2"
-#define MyAppVersion "1.13.13"
+#define MyAppVersion "1.13.14"
 #define MyAppPublisher "AhBiYout"
 #define MyAppURL "https://github.com/AhBiYout-all/IpName2"
 #define MyAppBlogURL "https://ahbiyoutvibe.blogspot.com/"
@@ -34,7 +34,8 @@ DefaultGroupName={#MyAppName}
 DisableWelcomePage=yes
 LicenseFile=..\LICENSE
 DisableProgramGroupPage=yes
-DisableDirPage=auto
+DisableDirPage=yes
+DisableReadyPage=yes
 OutputDir=..\dist-installer
 OutputBaseFilename=IpName2_v{#MyAppVersion}_Setup
 SetupIconFile=..\IpName2.ico
@@ -163,8 +164,6 @@ end;
 function InitializeSetup(): Boolean;
 var
   sUninstPath: String;
-  sPrompt: String;
-  iChoice: Integer;
   iResultCode: Integer;
 begin
   Result := True;
@@ -172,54 +171,12 @@ begin
   // 1. Force terminate running application first
   ForceKillRunningApp();
 
-  // 2. Detect existing installation and ask user to Uninstall / Overwrite / Cancel
+  // 2. If an existing installation is detected, uninstall it cleanly before License & Install
   sUninstPath := GetUninstallString();
   if (sUninstPath <> '') and FileExists(sUninstPath) then
   begin
-    if WizardSilent then
-    begin
-      Exec(sUninstPath, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
-      Sleep(300);
-      Result := True;
-    end
-    else
-    begin
-      if ActiveLanguage() = 'korean' then
-      begin
-        sPrompt :=
-          '기존 버전의 {#MyAppName}가 이미 설치되어 있습니다.' + #13#10#13#10 +
-          '[예(Y)] : 기존 앱을 삭제(제거)한 후 새 버전(v{#MyAppVersion}) 설치' + #13#10 +
-          '[아니오(N)] : 기존 설정을 유지하고 새 버전으로 덮어쓰기' + #13#10 +
-          '[취소] : 설치 중단';
-      end
-      else
-      begin
-        sPrompt :=
-          'An existing installation of {#MyAppName} was detected.' + #13#10#13#10 +
-          '[Yes] : Uninstall the existing version, then install v{#MyAppVersion}' + #13#10 +
-          '[No] : Overwrite the existing installation directly' + #13#10 +
-          '[Cancel] : Cancel setup';
-      end;
-
-      iChoice := MsgBox(sPrompt, mbConfirmation, MB_YESNOCANCEL);
-      if iChoice = IDYES then
-      begin
-        // Uninstall existing version cleanly before proceeding to License & Install
-        Exec(sUninstPath, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
-        Sleep(300);
-        Result := True;
-      end
-      else if iChoice = IDNO then
-      begin
-        // Overwrite existing installation directly
-        Result := True;
-      end
-      else
-      begin
-        // Cancelled by user
-        Result := False;
-      end;
-    end;
+    Exec(sUninstPath, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+    Sleep(500);
   end;
 end;
 

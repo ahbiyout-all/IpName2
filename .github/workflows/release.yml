@@ -152,7 +152,7 @@ jobs:
             고급 윈도우 시스템 및 네트워크 구성 유틸리티 **AhBiYout IpName2**의 공식 릴리스 배포본입니다.
             
             ### 📦 다운로드 및 설치 안내
-            - **설치 버전 (`IpName2_v${{ steps.extract_version.outputs.version }}_Setup.exe`)**: Inno Setup 6단계 스마트 인스톨러 (실행 중 앱 자동 강제 종료 ➔ 기존 설치 삭제/덮어쓰기 선택 ➔ MIT 라이선스 동의 ➔ 설치 및 방화벽 등록 ➔ 바탕화면 바로가기 ➔ 앱 실행, 무인 설치 `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` 지원)
+            - **설치 버전 (`IpName2_v${{ steps.extract_version.outputs.version }}_Setup.exe`)**: Inno Setup 6단계 스마트 인스톨러 (실행 중 앱 자동 강제 종료 ➔ 기존 설치 감지 시 자동 삭제 진행 ➔ MIT 라이선스 동의 ➔ 설치 및 Windows 프로그램 추가/제거·방화벽 등록 ➔ 바탕화면 바로가기 체크 ➔ 앱 실행, 무인 설치 `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` 지원)
             - **단일 실행 포터블 (`IpName2_v${{ steps.extract_version.outputs.version }}_Portable.exe`)**: 별도 설치 없이 바로 실행 가능한 단일 포터블 실행 파일
             - **포터블 압축 패키지 (`IpName2_v${{ steps.extract_version.outputs.version }}_Portable.zip`)**: `IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE` 포함 무설치 압축 패키지
             

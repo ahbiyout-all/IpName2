@@ -4,11 +4,11 @@
 
 ![IpName2 Logo](app-icon.png)
 
-### Windows 시스템 이름 및 고성능 네트워크 어댑터·다중 IP 관리 데스크톱 유틸리티 (v1.13.13)
+### Windows 시스템 이름 및 고성능 네트워크 어댑터·다중 IP 관리 데스크톱 유틸리티 (v1.13.14)
 
 🌍 **언어**: [🇰🇷 한국어](README.md) | [🇺🇸 English](README_EN.md) | [🇯🇵 日本語](README_JA.md) | [🇨🇳 中文](README_ZH.md)
 
-[![Version](https://img.shields.io/badge/Version-v1.13.13-0284c7.svg)](docs/PATCH_NOTES.md)
+[![Version](https://img.shields.io/badge/Version-v1.13.14-0284c7.svg)](docs/PATCH_NOTES.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](docs/LICENSE_NOTICE.md)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.11-orange.svg)](https://tauri.app/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
@@ -25,7 +25,7 @@
 
 **AhBiYout IpName2**는 Windows 10 및 Windows 11(64비트) 환경에서 컴퓨터 이름, 작업 그룹(Workgroup), 네트워크 어댑터 IP/서브넷/게이트웨이/DNS 설정을 직관적으로 관리할 수 있는 고성능 데스크톱 애플리케이션입니다.
 
-**SWR 즉시 화면 복원**과 **Rust + Win32 네이티브 병렬 조회**, **순수 C99 네이티브 DLL(`ipname_core.dll`)**을 결합해 지연 없이 기동하며, 무설치 포터블(`IpName2_v1.13.13_Portable.exe` / `_Portable.zip`)과 Inno Setup 정식 인스톨러(`IpName2_v1.13.13_Setup.exe`) 배포를 모두 지원합니다.
+**SWR 즉시 화면 복원**과 **Rust + Win32 네이티브 병렬 조회**, **순수 C99 네이티브 DLL(`ipname_core.dll`)**을 결합해 지연 없이 기동하며, 무설치 포터블(`IpName2_v1.13.14_Portable.exe` / `_Portable.zip`)과 Inno Setup 정식 인스톨러(`IpName2_v1.13.14_Setup.exe`) 배포를 모두 지원합니다.
 
 ### 핵심 기능 (Key Features)
 
@@ -103,12 +103,12 @@ build.bat
 프로젝트의 상세 아키텍처, GitHub 운영 및 블로그 배포 문서는 [`/docs`](docs/README.md) 디렉터리에 체계적으로 정리되어 있습니다:
 
 - **[GitHub 운영 및 릴리스 가이드 (GITHUB_GUIDE.md)](docs/GITHUB_GUIDE.md)**: 저장소 6단계 감사, 자동 푸시, GitHub Actions Node 24 CI/CD 및 릴리스 템플릿.
-- **[구글 블로거 공식 포스팅 가이드 (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: 작성 모드(서식 있는 텍스트) 및 HTML 편집 모드용 최신 v1.13.13 배포 소개 글.
+- **[구글 블로거 공식 포스팅 가이드 (BLOGGER_POST.md)](docs/BLOGGER_POST.md)**: 작성 모드(서식 있는 텍스트) 및 HTML 편집 모드용 최신 v1.13.14 배포 소개 글.
 - **[개발 명세서 (DEVELOPMENT.md)](docs/DEVELOPMENT.md)**: 전체 개발 환경, 빌드 절차, 창 규격(`650x920`), 포트(`3030`), 파이프라인 안내.
 - **[시스템 아키텍처 (ARCHITECTURE.md)](docs/ARCHITECTURE.md)**: 다계층 아키텍처, Win32/Rust IPC 구조, SWR 부팅 및 네트워크 제어 흐름.
 - **[순수 창작 DLL 명세서 (DLL_SPECIFICATION.md)](docs/DLL_SPECIFICATION.md)**: `ipname_core.dll` C-ABI 인터페이스 명세 및 시스템 DLL 감사 보고.
 - **[패치 노트 (PATCH_NOTES.md)](docs/PATCH_NOTES.md)**: 버전별 상세 변경 내역 및 심층 감사 결함 해결 기록.
-- **[기술 로드맵 (ROADMAP.md)](docs/ROADMAP.md)**: 프로젝트 마일스톤 및 검증 완료 이력 (`ROADMAP-001` ~ `ROADMAP-029`).
+- **[기술 로드맵 (ROADMAP.md)](docs/ROADMAP.md)**: 프로젝트 마일스톤 및 검증 완료 이력 (`ROADMAP-001` ~ `ROADMAP-030`).
 - **[버전 관리 정책 (VERSIONING_POLICY.md)](docs/VERSIONING_POLICY.md)**: Semantic Versioning 및 삼중 동기화(Triple Lockstep) 규칙.
 - **[AI 표준 업그레이드 작업 지시서 (UPDATE_WORK_INSTRUCTION.md)](docs/UPDATE_WORK_INSTRUCTION.md)**: 타 IP Name 앱 업그레이드용 통합 AI 프롬프트.
 - **[라이선스 고지사항 (LICENSE_NOTICE.md)](docs/LICENSE_NOTICE.md)**: 오픈소스 라이선스 고지 및 MIT License 전문.

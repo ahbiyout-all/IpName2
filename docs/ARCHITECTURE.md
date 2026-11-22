@@ -1,6 +1,6 @@
 # IpName2 시스템 아키텍처 (System Architecture)
 
-본 문서는 **AhBiYout IpName2 v1.13.13**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, 포터블 배포 파이프라인, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
+본 문서는 **AhBiYout IpName2 v1.13.14**의 프론트엔드, 데스크톱 런타임(Tauri v2), Win32 Native C++ 계층, 순수 창작 DLL(`ipname_core.dll`), Inno Setup 인스톨러, 포터블 배포 파이프라인, GitHub Releases 실시간 업데이트 및 핵심 파일 관리 파이프라인의 전체 소프트웨어 구조를 기술합니다.
 
 ---
 
@@ -83,7 +83,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
 * `native/ipname_core/build.bat`: MSVC `cl.exe` 및 MinGW `gcc.exe` 감지 기반 순차 컴파일 스크립트.
 
 ### 2.4. 패키징, GitHub 관리 및 표준화 파이프라인 (`/installer`, `/.github`, `/scripts`, `/docs`)
-* `installer/setup.iss`: Inno Setup 6단계 표준 인스톨러 (실행 앱 강제 종료 ➔ 기존 설치 삭제/덮어쓰기 확인 ➔ MIT 라이선스 선언 ➔ Unpacked Multi-File 설치·Windows 프로그램 추가/제거 정식 등록·방화벽 등록 ➔ 완료 화면 바탕화면 바로가기 체크 ➔ 앱 실행).
+* `installer/setup.iss`: Inno Setup 6단계 표준 인스톨러 (실행 앱 강제 종료 ➔ 기존 설치 감지 시 자동 삭제 진행 ➔ MIT 라이선스 선언 ➔ 설치(`DisableDirPage`/`DisableReadyPage` 생략)·Windows 프로그램 추가/제거 정식 등록·방화벽 등록 ➔ 완료 화면 바탕화면 바로가기 체크 ➔ 앱 실행).
 * `.github/workflows/release.yml`: Node.js 24 런타임(`checkout@v5`, `setup-node@v5` npm 캐시, `rust-cache@v2`), `verify-core-files.cjs` + `npm run lint` 선행 Fast-Fail 게이트, Inno Setup 인스톨러(`_Setup.exe`) 및 포터블 패키지(`_Portable.exe`, `_Portable.zip`) 듀얼 릴리스, 배포 후 **최신 3개 릴리즈 바이너리 유지 및 구버전 에셋 자동 정리**(노트·제목·태그 보존) 자동화 (AI Studio Web Sync 및 Git Tag 듀얼 트리거).
 * `scripts/github/core-manifest.json`: 52개 빌드 필수 파일 화이트리스트 및 금지·중복 파일 패턴 정의.
 * `scripts/github/verify-core-files.cjs`: 작업 트리 실시간 6단계 감사(필수 파일·스크래치 정리·미등록 탐지·시크릿/이메일 스캔·10지점 버전 정합성·로컬 스크립트 격리) 도구.
@@ -123,7 +123,7 @@ IpName2는 **초경량 무설치(Portable)** 실행과 **초고속 오프라인 
                                      ▼                                                           ▼
                            [remoteVer > currentVer]                                    [최신 버전 유지 중]
                         UpdateModal 팝업 창 자동 실행                                   최신 상태 안내 배너
-                        - 버전 차이(v1.13.13 vs vX.Y.Z)
+                        - 버전 차이(v1.13.14 vs vX.Y.Z)
                         - 전용 인스톨러(_Setup.exe) 최우선 다운로드
                         - 이번 버전 건너뛰기
 ```

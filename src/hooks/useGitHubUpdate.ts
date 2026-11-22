@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { safeStorage } from '../lib/storage';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export const CURRENT_VERSION = '1.13.13';
+export const CURRENT_VERSION = '1.13.14';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;

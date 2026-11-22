@@ -2,6 +2,23 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.14] - 2026-11-22
+
+### 1. Inno Setup 6단계 무중단 설치 순서 확정 (기존 앱 자동 삭제 & Windows 프로그램 추가/제거 정식 등록) (`installer/setup.iss`)
+* **기존 설치 감지 시 덮어쓰기 선택 없이 자동 삭제 진행 (`InitializeSetup`)**:
+  - 기존 버전이 설치되어 있을 경우 사용자에게 삭제/덮어쓰기를 되묻던 `MB_YESNOCANCEL` 대화상자를 제거하고, 실행 중 앱 강제 종료(`ForceKillRunningApp()`) 직후 `{#MyAppGuid}_is1` 및 `{#MyAppName}_is1` 레지스트리(64/32비트)에서 탐지된 기존 버전을 `/VERYSILENT /NORESTART /SUPPRESSMSGBOXES`로 자동 완전 삭제(`Sleep(500)` 파일 잠금 해제 대기 포함)한 뒤 곧바로 다음 단계로 진행합니다.
+* **라이선스 선언 ➔ 설치 직결 (`DisableDirPage=yes`, `DisableReadyPage=yes`)**:
+  - `DisableWelcomePage=yes`, `DisableProgramGroupPage=yes`와 함께 `DisableDirPage=yes` 및 `DisableReadyPage=yes`를 추가해 중간 경로/확인 화면 없이 **MIT 라이선스 선언(`wpLicense`) ➔ 즉시 설치(`wpInstalling`)**로 간결하게 전환됩니다.
+* **최종 6단계 설치 순서 & Windows 프로그램 추가/제거 정식 등록**:
+  1. **기존 앱 실행 시 강제 종료**: `InitializeSetup()`, `InitializeUninstall()` 및 `CurStepChanged(ssInstall)` 파일 복사 직전 `ForceKillRunningApp()` 다중 가드.
+  2. **기존 앱 설치 시 자동 삭제 진행**: 레지스트리 탐지 시 사용자 프롬프트 없이 무인 완전 삭제 후 진행.
+  3. **라이선스 선언**: `LicenseFile=..\LICENSE` (MIT 라이선스 동의 화면).
+  4. **설치 및 Windows 프로그램 추가/제거 정식 등록**: `Uninstallable=yes`, `CreateUninstallRegKey=yes`, `UninstallDisplayName`, `UninstallDisplayIcon`, `VersionInfo*` 기반 Windows **프로그램 추가/제거(Apps & Features)** 정식 등록 및 방화벽 인바운드/아웃바운드 규칙 등록.
+  5. **바탕화면 바로가기 체크**: 완료 화면(`wpFinished`) 상단 기본 체크 박스(`IpName2.lnk`).
+  6. **앱 실행**: 완료 화면 하단 기본 체크 박스(`shellexec` UAC 지원)로 즉시 실행.
+
+---
+
 ## [v1.13.13] - 2026-11-22
 
 ### 1. Inno Setup 6단계 진행 순서 정밀 보강 & Windows 프로그램 추가/제거 정식 등록 (`installer/setup.iss`)

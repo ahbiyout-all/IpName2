@@ -40,6 +40,7 @@ const ignoredScanDirs = new Set([
   'dist',
   'dist-ssr',
   'dist-installer',
+  'dist-portable',
   'build',
   'Output',
   'release',

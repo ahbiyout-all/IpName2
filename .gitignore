@@ -33,6 +33,7 @@ scripts/git-push.bat
 dist/
 dist-ssr/
 dist-installer/
+dist-portable/
 build/
 Output/
 installer/Output/

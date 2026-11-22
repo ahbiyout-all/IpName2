@@ -271,4 +271,41 @@ This document tracks high-priority features, reliability fixes, and architecture
   5. Synchronize Triple Lockstep version `1.13.9` across all 10 targets, 52 manifest files, multilingual READMEs, and `docs/*`.
 - **Validation**: Triple Lockstep version `1.13.9` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
 
+#### [ROADMAP-026] Inno Setup 6-Stage Installer Flow Optimization (v1.13.10)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `installer/setup.iss`, `docs/*`, `README*.md`
+- **Description**: Restructure the Inno Setup installer execution sequence into a streamlined 6-stage workflow: force-kill running instances -> uninstall/overwrite/cancel prompt on existing install -> MIT license declaration -> installation -> Finish-page desktop shortcut checkbox -> Finish-page app launch.
+- **Acceptance Criteria**:
+  1. Force-terminate running `IpName2.exe`/`ipname2.exe` instances immediately at the beginning of `InitializeSetup()` and `InitializeUninstall()`.
+  2. Query 64-bit/32-bit uninstall registry entries and present a clear `MB_YESNOCANCEL` prompt (`Yes`: clean uninstall & install, `No`: direct overwrite, `Cancel`: abort).
+  3. Enable `LicenseFile=..\LICENSE` and `DisableWelcomePage=yes`, remove the intermediate `[Tasks]` page, and place the default-checked `CreateDesktopShortcut` checkbox cleanly above the default-checked app launch option on `wpFinished` (plus `[UninstallDelete]` cleanup and silent install support).
+  4. Synchronize Triple Lockstep version `1.13.10` across all 10 targets and documentation.
+- **Validation**: Triple Lockstep version `1.13.10` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-027] GitHub Releases Portable EXE & ZIP Packaging (v1.13.11)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `.github/workflows/release.yml`, `src/hooks/useGitHubUpdate.ts`, `.gitignore`, `scripts/github/verify-core-files.cjs`, `docs/*`, `README*.md`
+- **Description**: Extend the GitHub Actions CI/CD release pipeline to package and publish both a standalone single-file portable executable (`IpName2_vX.Y.Z_Portable.exe`) and a bundled portable ZIP archive (`IpName2_vX.Y.Z_Portable.zip` containing `IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE`) alongside the Inno Setup installer (`_Setup.exe`), while safeguarding in-app updater asset selection priority.
+- **Acceptance Criteria**:
+  1. Generate `dist-portable/IpName2_v*_Portable.exe` and `dist-portable/IpName2_v*_Portable.zip` in `.github/workflows/release.yml` and attach all three artifacts (`_Setup.exe`, `_Portable.exe`, `_Portable.zip`) to GitHub Releases.
+  2. Prioritize `/setup.*\.exe$/i` (and non-portable `.exe`/`.msi`) over `_Portable.exe` in `useGitHubUpdate.ts` so in-app auto-updates always download the installer first regardless of GitHub asset alphabetical ordering.
+  3. Register `dist-portable/` in `.gitignore` and `verify-core-files.cjs` `ignoredScanDirs`.
+  4. Synchronize Triple Lockstep version `1.13.11` across all 10 targets, multilingual READMEs, and documentation.
+- **Validation**: Triple Lockstep version `1.13.11` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
+
+#### [ROADMAP-028] GitHub Releases Latest-3 Binary Asset Retention Policy (v1.13.12)
+- **Priority**: P1
+- **Status**: VERIFIED
+- **Target Files**: `.github/workflows/release.yml`, `docs/*`, `README*.md`
+- **Description**: Automatically retain binary assets only for the latest 3 published GitHub Releases after CI/CD upload completes, while deleting only attached binary assets on older releases and preserving release notes, titles, tags, and release history (with local build cleanup logic left unchanged).
+- **Acceptance Criteria**:
+  1. Paginate and sort published releases in `.github/workflows/release.yml` after `softprops/action-gh-release@v3` completes, protecting the top 3 releases (including the current tag).
+  2. Delete only attached binary assets (`DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}`) from releases beyond the latest 3 while preserving release notes, title, tag, and history.
+  3. Keep local build file cleanup logic (`build.bat`, `build.ps1`, `verify-core-files.cjs`) untouched.
+  4. Synchronize Triple Lockstep version `1.13.12` across all 10 targets, multilingual READMEs, and documentation.
+- **Validation**: Triple Lockstep version `1.13.12` synchronized across all 10 targets; 6-stage `verify-core-files.cjs` (52 core files), Vite production build, and TypeScript lint verified.
+
+
 

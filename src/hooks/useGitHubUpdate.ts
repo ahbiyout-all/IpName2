@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { safeStorage } from '../lib/storage';
 import { useLanguage } from '../contexts/LanguageContext';
 
-export const CURRENT_VERSION = '1.13.9';
+export const CURRENT_VERSION = '1.13.12';
 export const GITHUB_OWNER = 'AhBiYout-all';
 export const GITHUB_REPO = 'IpName2';
 export const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -106,12 +106,15 @@ export function useGitHubUpdate() {
       const tagName: string = data.tag_name || '';
       const remoteVersion = tagName.replace(/^v/i, '');
 
-      // Find primary installer asset if available (.exe / .msi)
+      // Prioritize primary Setup installer (*Setup*.exe / .msi) over portable executables
       let downloadUrl = data.html_url;
       if (Array.isArray(data.assets) && data.assets.length > 0) {
-        const installerAsset = data.assets.find((a: ReleaseAsset) => 
-          a.name.endsWith('.exe') || a.name.endsWith('.msi')
-        );
+        const installerAsset =
+          data.assets.find((a: ReleaseAsset) => /setup.*\.exe$/i.test(a.name)) ||
+          data.assets.find((a: ReleaseAsset) =>
+            (a.name.endsWith('.exe') && !/portable/i.test(a.name)) || a.name.endsWith('.msi')
+          ) ||
+          data.assets.find((a: ReleaseAsset) => a.name.endsWith('.exe'));
         if (installerAsset?.browser_download_url) {
           downloadUrl = installerAsset.browser_download_url;
         }

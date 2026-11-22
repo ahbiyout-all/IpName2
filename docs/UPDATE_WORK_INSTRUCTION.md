@@ -218,18 +218,39 @@ jobs:
           npm run build
           npm run tauri build
 
+      - name: Extract Release Version
+        id: extract_version
+        shell: pwsh
+        run: |
+          $ver = (Get-Content package.json | ConvertFrom-Json).version
+          Write-Output "APP_VERSION=$ver" >> $env:GITHUB_ENV
+          Write-Output "version=$ver" >> $env:GITHUB_OUTPUT
+
       - name: Compile Inno Setup Installer
         shell: cmd
         run: |
           "C:\Program Files (x86)\Inno Setup 6\iscc.exe" installer\setup.iss
 
-      - name: Upload Installer Assets to GitHub Release
+      - name: Package Portable Executable & Archive
+        shell: pwsh
+        run: |
+          # dist-portable/IpName2_v${ver}_Portable.exe & IpName2_v${ver}_Portable.zip 생성
+
+      - name: Upload Installer & Portable Assets to GitHub Release
         uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
           name: "IpName2 v${{ steps.extract_version.outputs.version }}"
           tag_name: "v${{ steps.extract_version.outputs.version }}"
-          files: dist-installer/*_Setup.exe
+          files: |
+            dist-installer/*_Setup.exe
+            dist-portable/*_Portable.exe
+            dist-portable/*_Portable.zip
+
+      - name: Retain Only Latest 3 Releases' Binary Assets
+        shell: pwsh
+        run: |
+          # 최신 3개 공개 릴리즈의 바이너리만 유지하고, 이전 릴리즈는 노트·제목·태그·이력 보존 후 바이너리 에셋만 삭제
 ```
 
 ---

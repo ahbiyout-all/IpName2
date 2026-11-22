@@ -2,6 +2,49 @@
 
 본 문서는 **AhBiYout IpName2**의 버전별 업데이트 및 버그 수정 내역을 기록합니다.
 
+## [v1.13.12] - 2026-11-22
+
+### 1. GitHub Releases 최신 3개 릴리즈 바이너리 유지 & 이전 릴리즈 에셋 자동 정리 (`.github/workflows/release.yml`)
+* **최신 3개 릴리즈 바이너리 보존 정책 (`Retain Only Latest 3 Releases' Binary Assets`)**:
+  - `Upload Installer & Portable Assets to GitHub Release` 단계 완료 후 GitHub REST API(`/repos/{owner}/{repo}/releases`)를 페이지네이션 조회하여 공개된 릴리즈(`draft == false`)를 최신순으로 정렬하고, 현재 릴리즈(`v1.13.12`)를 포함한 **최신 3개 릴리즈의 첨부 바이너리 파일(`_Setup.exe`, `_Portable.exe`, `_Portable.zip`)만 유지**합니다.
+* **이전 릴리즈 이력 보존 & 바이너리 에셋만 선택 삭제**:
+  - 최신 3개를 초과하는 이전 릴리즈에 대해서는 릴리즈 자체(`tag_name`), **릴리즈 제목(`name`), 릴리즈 노트 본문(`body`), Git 태그 및 배포 이력은 모두 그대로 보존**한 채 첨부된 바이너리 에셋(`DELETE /releases/assets/{asset_id}`)만 자동 삭제하여 저장소 용량을 최적화합니다.
+* **로컬 빌드 정리 로직 무변경 원칙 준수**:
+  - 로컬 개발 및 빌드 스크립트(`build.bat`, `build.ps1`, `verify-core-files.cjs`)의 로컬 산출물 정리 동작은 기존과 동일하게 유지했습니다.
+
+---
+
+## [v1.13.11] - 2026-11-22
+
+### 1. GitHub Releases 포터블 빌드(`_Portable.exe` & `_Portable.zip`) 자동 생성 파이프라인 추가
+* **단일 실행 포터블 & 압축 패키지 동시 빌드 (`.github/workflows/release.yml`)**:
+  - `Extract Release Version` 단계를 패키징 전으로 전진 배치해 `$env:APP_VERSION`을 확보하고, `Package Portable Executable & Archive` PowerShell 단계를 신설해 다음 2종의 포터블 배포본을 자동 생성합니다:
+    1. `dist-portable/IpName2_v1.13.11_Portable.exe`: 별도 설치나 런타임 없이 단독 실행 가능한 단일 포터블 실행 파일(`static_vc_runtime` 및 Win32 네이티브 엔진 내장).
+    2. `dist-portable/IpName2_v1.13.11_Portable.zip`: `IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE`가 포함된 무설치 포터블 압축 패키지.
+  - `Upload Installer & Portable Assets to GitHub Release` 단계(`softprops/action-gh-release@v3`)가 인스톨러(`*_Setup.exe`)와 포터블 산출물(`*_Portable.exe`, `*_Portable.zip`)을 모두 GitHub Releases에 업로드하고 릴리스 본문 다운로드 안내를 자동 갱신합니다.
+* **인앱 자동 업데이터 인스톨러 우선순위 보호 (`src/hooks/useGitHubUpdate.ts`)**:
+  - GitHub Release 에셋 목록에서 알파벳 순서상 `Portable`이 `Setup`보다 앞서더라도 자동 업데이트 다운로드 버튼이 항상 정식 설치 프로그램(`/setup.*\.exe$/i` 또는 비포터블 `.exe`/`.msi`)을 최우선 선택하도록 자산 매칭 규칙을 보강했습니다.
+* **빌드 산출물 격리 및 52종 핵심 파일 삼중 동기화 (`.gitignore`, `scripts/github/verify-core-files.cjs`)**:
+  - `dist-portable/` 디렉터리를 `.gitignore` 및 `verify-core-files.cjs`의 `ignoredScanDirs`에 등록하여 로컬 포터블 패키징 테스트 시 저장소 오염 및 감사 오탐을 차단했습니다.
+
+---
+
+## [v1.13.10] - 2026-11-22
+
+### 1. Inno Setup 인스톨러 6단계 표준 진행 순서 전면 개편 (`installer/setup.iss`)
+* **1단계 — 기존 실행 중인 앱 자동 강제 종료 (`ForceKillRunningApp`)**:
+  - `InitializeSetup()` 및 `InitializeUninstall()` 진입 즉시 `taskkill.exe /F /T`로 실행 중인 `IpName2.exe` 및 `ipname2.exe` 프로세스를 강제 종료하고 파일 핸들 해제(`Sleep(700)`)를 보장해 설치·제거 중 DLL/EXE 잠금 충돌을 원천 차단.
+* **2단계 — 기존 설치 감지 시 삭제/덮어쓰기 선택 프롬프트 (`GetUninstallString`, `MB_YESNOCANCEL`)**:
+  - 64비트(`HKLM`/`HKCU`) 및 32비트(`HKLM32`/`HKCU32`) 레지스트리를 전수 조회해 기존 설치본이 발견되면 대화상자를 통해 **[예: 기존 앱 삭제 후 새로 설치] / [아니오: 기존 설정 유지하며 덮어쓰기] / [취소: 설치 중단]**을 명확히 선택해 진행 (`WizardSilent` 무인 설치 시 자동 정리).
+* **3단계 — MIT 라이선스 선언 (`LicenseFile=..\LICENSE`, `DisableWelcomePage=yes`)**:
+  - 불필요한 환영 페이지와 중간 작업 페이지를 정리해 기존 설치 확인 직후 공식 MIT 라이선스 동의 화면(`wpLicense`)으로 바로 진입.
+* **4단계 — 파일 설치 및 Windows 방화벽 규칙 자동 등록**:
+  - `IpName2.exe`, `ipname_core.dll`, 아이콘, `LICENSE` 설치 및 Windows 방화벽 인바운드/아웃바운드 규칙 등록.
+* **5~6단계 — 완료 화면 바탕화면 바로가기 체크 & 앱 실행 (`wpFinished`, `CreateDesktopShortcut`)**:
+  - 설치 완료 페이지(`wpFinished`) 상단에 **[바탕화면 바로가기 만들기]** 체크박스(기본 선택)를 배치하고 그 아래 **[IpName2 실행]** 체크박스(기본 선택, `shellexec` UAC 지원)를 연동하여 `설치 ➔ 바탕화면 바로가기 체크 ➔ 앱 실행` 흐름을 완결 (`[UninstallDelete]`로 제거 시 바로가기 자동 정리).
+
+---
+
 ## [v1.13.9] - 2026-11-22
 
 ### 1. 7차 심층 감사(Self-Reflection & Deep Audit): 4개 국어 완전성·스크립트 클로저·Win32 정렬 UB 수정

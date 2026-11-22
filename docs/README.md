@@ -1,6 +1,6 @@
 # IpName2 문서 허브 (Documentation Hub)
 
-본 디렉터리(`/docs`)는 **AhBiYout IpName2 (v1.13.9)** 데스크톱 애플리케이션의 개발, 아키텍처, 순수 창작 DLL, 버전 관리, 패치 노트 및 GitHub 배포 파이프라인을 체계적으로 관리하는 공식 문서 모음입니다.
+본 디렉터리(`/docs`)는 **AhBiYout IpName2 (v1.13.12)** 데스크톱 애플리케이션의 개발, 아키텍처, 순수 창작 DLL, 버전 관리, 패치 노트 및 GitHub 배포 파이프라인을 체계적으로 관리하는 공식 문서 모음입니다.
 
 ---
 
@@ -8,14 +8,14 @@
 
 | 문서명 | 설명 | 주요 내용 |
 | :--- | :--- | :--- |
-| **[GITHUB_GUIDE.md](./GITHUB_GUIDE.md)** | GitHub 저장소 운영 및 릴리스 가이드 | GitHub 업로드 6단계 무결성·보안 감사(52종), `git-push.bat` 로컬 푸시 격리, Node 24 CI/CD 자동 릴리스, Release 노트 복사용 템플릿 |
+| **[GITHUB_GUIDE.md](./GITHUB_GUIDE.md)** | GitHub 저장소 운영 및 릴리스 가이드 | GitHub 업로드 6단계 무결성·보안 감사(52종), `git-push.bat` 로컬 푸시 격리, Node 24 CI/CD 자동 릴리스(설치본+포터블·최신 3개 보존), Release 노트 복사용 템플릿 |
 | **[BLOGGER_POST.md](./BLOGGER_POST.md)** | 구글 블로거 공식 배포 소개 글 | 공식 블로그([AhBiYout Vibe](https://ahbiyoutvibe.blogspot.com/)) 발행용 `[작성 모드 (서식 있는 텍스트)]` 본문 및 `[HTML 편집 모드]` 완성형 소스 코드 |
 | **[UPDATE_WORK_INSTRUCTION.md](./UPDATE_WORK_INSTRUCTION.md)** | 타 IP Name 앱 업데이트 작업 지시서 | 다른 AI 및 프로젝트에 즉시 전달 가능한 8대 핵심 원칙 통합 프롬프트, 모듈별 구현 코드, 52종 핵심 파일 검증표 |
-| **[DEVELOPMENT.md](./DEVELOPMENT.md)** | 개발 및 빌드 가이드 | 환경 설정, 빌드 스크립트(`build.bat`/`ps1`), 데스크톱 규격(650x920), 포트(3030), 4개 국어 자동 감지·동적 스크립트 주석, GitHub 핵심 파일 6단계 감사(`scripts/github/`) |
-| **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.13.9` 상세 변경 내역, 7차 심층 감사(4개 국어 완전성·스크립트 클로저·Win32 정렬 UB 수정), 4개 국어 자동 감지 및 6단계 무결성 게이트 |
-| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | 시스템 아키텍처 명세서 | Rust Tauri Backend, Win32 Native C++ API, 순수 창작 DLL(`ipname_core.dll`), `LanguageContext` 동적 다국어/스크립트 파이프라인, Inno Setup 인스톨러 |
+| **[DEVELOPMENT.md](./DEVELOPMENT.md)** | 개발 및 빌드 가이드 | 환경 설정, 빌드 스크립트(`build.bat`/`ps1`), 데스크톱 규격(650x920), 포트(3030), 4개 국어 자동 감지·동적 스크립트 주석, Inno Setup 6단계 인스톨러 & 포터블 패키징, GitHub 핵심 파일 6단계 감사 |
+| **[PATCH_NOTES.md](./PATCH_NOTES.md)** | 버전별 패치 노트 | Semantic Versioning 기준 최신 `v1.13.12` 상세 변경 내역, 최신 3개 릴리즈 바이너리 보존 정책, 포터블 릴리스(`_Portable.exe`/`.zip`) 자동화 및 Inno Setup 6단계 개편 |
+| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | 시스템 아키텍처 명세서 | Rust Tauri Backend, Win32 Native C++ API, 순수 창작 DLL(`ipname_core.dll`), `LanguageContext` 동적 다국어/스크립트 파이프라인, 인스톨러·포터블·최신 3개 에셋 보존 |
 | **[DLL_SPECIFICATION.md](./DLL_SPECIFICATION.md)** | 순수 창작 DLL 명세서 | `ipname_core.dll` C-ABI 규격, 물리/가상 어댑터 정밀 판별(`IpName_DistinguishAdapter`), Layer-2 ARP IP 충돌 감지(`SendARP`), 넌블로킹 TCP 포트 진단, 서브넷 비트 연산기, 기존 시스템 DLL 감사 보고서 |
-| **[ROADMAP.md](./ROADMAP.md)** | 기술 로드맵 & 작업 이력 | 프로젝트 마일스톤, 아키텍처 업그레이드 및 전 계층 감사·검증 완료 기록 (`ROADMAP-001` ~ `ROADMAP-025`) |
+| **[ROADMAP.md](./ROADMAP.md)** | 기술 로드맵 & 작업 이력 | 프로젝트 마일스톤, 아키텍처 업그레이드 및 전 계층 감사·검증 완료 기록 (`ROADMAP-001` ~ `ROADMAP-028`) |
 | **[VERSIONING_POLICY.md](./VERSIONING_POLICY.md)** | 버전 관리 및 기록 정책 | **MAJOR.MINOR.PATCH** 3단계 버전 관리 원칙, 버전 삼중 동기화(Triple Lockstep), 다단 동적 버전 자동 추출 및 특이점 기록 규칙 |
 | **[LICENSE_NOTICE.md](./LICENSE_NOTICE.md)** | 라이선스 고지사항 | 오픈소스 라이선스 고지 및 MIT License 전문 (Tauri, React, Vite, Tailwind CSS, Lucide, Jimp 등) |
 

@@ -58,6 +58,9 @@
   - 하단 푸터 및 정보 모달 GitHub 링크를 공식 저장소 직통 경로(`https://github.com/AhBiYout-all/IpName2`)로 수정 (v1.13.7)
   - 브라우저 로캘 4개 국어(`ko/en/ja/zh`) 자동 감지·수동 전환 UI, 동적 스크립트 헤더 현지화 및 다국어 README 정비 (v1.13.8)
   - 7차 심층 감사(헤더 4개 국어 순환·`useSystemConfig.ts` 스크립트 `language` 의존성 및 명령별 주석 확장·`<html lang>` 동기화·업데이트/ARP/Ping/서브넷 4개 국어 완전 현지화·Rust Win32 레지스트리 `u16` 정렬 UB 및 `lpSockaddr.is_null()` 방어, 52종 핵심 파일) (v1.13.9)
+  - Inno Setup 인스톨러 6단계 표준 진행 순서(실행 앱 강제 종료 → 기존 설치 삭제/덮어쓰기 선택 → MIT 라이선스 선언 → 설치 → 완료 화면 바탕화면 바로가기 체크 → 앱 실행) 개편 (v1.13.10)
+  - GitHub Releases 포터블 배포본(`_Portable.exe`, `_Portable.zip`) CI/CD 자동 생성 및 인앱 자동 업데이터 인스톨러(`_Setup.exe`) 우선순위 보호 (v1.13.11)
+  - GitHub Releases 배포 완료 후 최신 3개 릴리즈 바이너리 유지 및 이전 릴리즈 첨부 바이너리 에셋만 자동 삭제(노트·제목·태그·이력 보존, 로컬 정리 로직 무변경) (v1.13.12)
   - 배치 스크립트 특수문자(`&`) 구문 오류 방지 및 CMD 중첩 괄호 파싱 결함 해결
 
 ---

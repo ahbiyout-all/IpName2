@@ -78,15 +78,6 @@ jobs:
       - name: Post-build Versioned Executable Pipeline
         run: node bin/postbuild-rename.cjs
 
-      - name: Compile Inno Setup Professional Installer
-        shell: cmd
-        run: |
-          if not exist "dist-installer" mkdir dist-installer
-          "C:\Program Files (x86)\Inno Setup 6\iscc.exe" installer\setup.iss
-          if errorlevel 1 exit /b 1
-          dir /b dist-installer\*_Setup.exe
-          if errorlevel 1 exit /b 1
-
       - name: Extract Release Version
         id: extract_version
         shell: pwsh
@@ -97,7 +88,59 @@ jobs:
           Write-Output "version=$ver" >> $env:GITHUB_OUTPUT
           echo "Detected version: $ver"
 
-      - name: Upload Installer Assets to GitHub Release
+      - name: Compile Inno Setup Professional Installer
+        shell: cmd
+        run: |
+          if not exist "dist-installer" mkdir dist-installer
+          "C:\Program Files (x86)\Inno Setup 6\iscc.exe" installer\setup.iss
+          if errorlevel 1 exit /b 1
+          dir /b dist-installer\*_Setup.exe
+          if errorlevel 1 exit /b 1
+
+      - name: Package Portable Executable & Archive
+        shell: pwsh
+        run: |
+          $ver = $env:APP_VERSION
+          $portableRoot = "dist-portable"
+          $bundleDir = Join-Path $portableRoot "IpName2_v${ver}_Portable"
+          New-Item -ItemType Directory -Force -Path $bundleDir | Out-Null
+
+          $exeCandidates = @(
+            "src-tauri/target/release/IpName2_v${ver}.exe",
+            "src-tauri/target/release/IpName2.exe",
+            "src-tauri/target/release/ipname2.exe"
+          )
+          $sourceExe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $sourceExe) {
+            throw "Built executable not found for portable packaging."
+          }
+
+          # 1. Single-file standalone portable executable
+          $portableExe = Join-Path $portableRoot "IpName2_v${ver}_Portable.exe"
+          Copy-Item -Path $sourceExe -Destination $portableExe -Force
+
+          # 2. Portable archive (Executable + Pure C99 DLL + Icon + License)
+          Copy-Item -Path $sourceExe -Destination (Join-Path $bundleDir "IpName2.exe") -Force
+          $dllCandidates = @("bin/ipname_core.dll", "native/ipname_core/ipname_core.dll")
+          $sourceDll = $dllCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($sourceDll) {
+            Copy-Item -Path $sourceDll -Destination (Join-Path $bundleDir "ipname_core.dll") -Force
+          }
+          if (Test-Path "IpName2.ico") {
+            Copy-Item -Path "IpName2.ico" -Destination (Join-Path $bundleDir "IpName2.ico") -Force
+          }
+          if (Test-Path "LICENSE") {
+            Copy-Item -Path "LICENSE" -Destination (Join-Path $bundleDir "LICENSE") -Force
+          }
+
+          $portableZip = Join-Path $portableRoot "IpName2_v${ver}_Portable.zip"
+          if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
+          Compress-Archive -Path "$bundleDir\*" -DestinationPath $portableZip -CompressionLevel Optimal
+          Remove-Item -Path $bundleDir -Recurse -Force
+
+          Get-ChildItem $portableRoot
+
+      - name: Upload Installer & Portable Assets to GitHub Release
         uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         with:
@@ -106,13 +149,12 @@ jobs:
           body: |
             ## 🚀 IpName2 v${{ steps.extract_version.outputs.version }} Release
             
-            고급 윈도우 시스템 및 네트워크 구성 유틸리티 **AhBiYout IpName2**의 공식 릴리스 설치 파일입니다.
+            고급 윈도우 시스템 및 네트워크 구성 유틸리티 **AhBiYout IpName2**의 공식 릴리스 배포본입니다.
             
             ### 📦 다운로드 및 설치 안내
-            - 아래 첨부된 전용 설치 프로그램(`IpName2_v${{ steps.extract_version.outputs.version }}_Setup.exe`)을 다운로드하여 실행하세요.
-            - 기존 버전이 설치되어 있을 경우 자동으로 감지하여 덮어쓰기/삭제 후 업데이트를 진행합니다.
-            - Windows 방화벽 인바운드/아웃바운드 규칙이 자동으로 조용히 등록됩니다.
-            - 무인 설치 지원: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
+            - **설치 버전 (`IpName2_v${{ steps.extract_version.outputs.version }}_Setup.exe`)**: Inno Setup 6단계 스마트 인스톨러 (실행 중 앱 자동 강제 종료 ➔ 기존 설치 삭제/덮어쓰기 선택 ➔ MIT 라이선스 동의 ➔ 설치 및 방화벽 등록 ➔ 바탕화면 바로가기 ➔ 앱 실행, 무인 설치 `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` 지원)
+            - **단일 실행 포터블 (`IpName2_v${{ steps.extract_version.outputs.version }}_Portable.exe`)**: 별도 설치 없이 바로 실행 가능한 단일 포터블 실행 파일
+            - **포터블 압축 패키지 (`IpName2_v${{ steps.extract_version.outputs.version }}_Portable.zip`)**: `IpName2.exe`, `ipname_core.dll`, `IpName2.ico`, `LICENSE` 포함 무설치 압축 패키지
             
             ---
             * **개발자**: AhBiYout (ahbiyout-all)
@@ -122,5 +164,66 @@ jobs:
           prerelease: false
           files: |
             dist-installer/*_Setup.exe
+            dist-portable/*_Portable.exe
+            dist-portable/*_Portable.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retain Only Latest 3 Releases' Binary Assets (Preserve Older Release Notes, Titles & Tags)
+        shell: pwsh
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $headers = @{
+            Authorization          = "Bearer $env:GITHUB_TOKEN"
+            Accept                 = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $repo = $env:GITHUB_REPOSITORY
+          $allReleases = @()
+          $page = 1
+          while ($true) {
+            $uri = "https://api.github.com/repos/$repo/releases?per_page=100&page=$page"
+            $batch = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+            if (-not $batch -or $batch.Count -eq 0) { break }
+            $allReleases += $batch
+            if ($batch.Count -lt 100) { break }
+            $page++
+          }
+
+          $published = @($allReleases | Where-Object { -not $_.draft })
+          $sorted = @($published | Sort-Object -Property `
+            @{ Expression = { [DateTimeOffset]($_.published_at ?? $_.created_at) }; Descending = $true }, `
+            @{ Expression = { [int64]$_.id }; Descending = $true })
+
+          $currentTag = "v$($env:APP_VERSION)"
+          $keptReleases = @($sorted | Select-Object -First 3)
+          $keptIds = @($keptReleases | ForEach-Object { $_.id })
+
+          if ($currentTag) {
+            $currentRel = $sorted | Where-Object { $_.tag_name -eq $currentTag } | Select-Object -First 1
+            if ($currentRel -and ($keptIds -notcontains $currentRel.id)) {
+              $keptReleases = @($currentRel) + @($keptReleases | Select-Object -First 2)
+              $keptIds = @($keptReleases | ForEach-Object { $_.id })
+            }
+          }
+
+          Write-Host "Retaining binary assets for latest 3 releases: $(($keptReleases | ForEach-Object { $_.tag_name }) -join ', ')"
+
+          $olderReleases = @($sorted | Where-Object { $keptIds -notcontains $_.id })
+          foreach ($rel in $olderReleases) {
+            if (-not $rel.assets -or $rel.assets.Count -eq 0) {
+              continue
+            }
+            Write-Host "Deleting $($rel.assets.Count) binary asset(s) from older release $($rel.tag_name) (preserving notes, title, tag & history)..."
+            foreach ($asset in $rel.assets) {
+              $deleteUri = "https://api.github.com/repos/$repo/releases/assets/$($asset.id)"
+              try {
+                Invoke-RestMethod -Uri $deleteUri -Headers $headers -Method Delete | Out-Null
+                Write-Host "  - Deleted asset: $($asset.name) (id=$($asset.id))"
+              } catch {
+                Write-Warning "  - Failed to delete asset $($asset.name) (id=$($asset.id)): $($_.Exception.Message)"
+              }
+            }
+          }
